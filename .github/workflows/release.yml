@@ -59,10 +59,12 @@ jobs:
           npm install --no-audit --no-fund
           npx tauri icon app-icon.png
 
-      - uses: tauri-apps/tauri-action@v0
+      # Signing is optional. Empty APPLE_* variables make the bundler try to
+      # import an empty certificate and fail, so they are only exported when
+      # the secrets exist (unsigned builds otherwise).
+      - name: Optional signing secrets
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional signing (configure secrets to enable):
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -71,10 +73,22 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            if [ -n "${!v}" ]; then
+              { echo "$v<<__ZT_EOF__"; echo "${!v}"; echo "__ZT_EOF__"; } >> "$GITHUB_ENV"
+            fi
+          done
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'zero-teleprompter ${{ github.ref_name }}'
+          # Tag from the app version (v0.1.0); a manual run on a branch must
+          # not create a tag named after the branch.
+          tagName: v__VERSION__
+          releaseName: 'zero-teleprompter v__VERSION__'
           releaseBody: 'Siehe CHANGELOG. Installer für Windows, macOS und Linux.'
           releaseDraft: true
           prerelease: false
