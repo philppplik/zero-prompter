@@ -7,6 +7,11 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+    # proc-macro-error: unmaintained (not a vulnerability), only transitively via
+    # the Tauri/GTK3 build tree (glib-macros, gtk3-macros); no alternative until Tauri drops GTK3.
+    { id = "RUSTSEC-2024-0370", reason = "transitive via tauri/gtk3, build-time proc-macro only" },
+]
 
 [licenses]
 version = 2

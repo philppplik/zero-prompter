@@ -33,7 +33,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: fmt
         if: runner.os == 'Linux'
-        run: cargo fmt --all -- --check
+        # Prints an applicable unified diff on failure (git apply).
+        run: cargo fmt --all && git diff --exit-code
       - name: clippy (crates)
         run: cargo clippy --all-targets
       # default-members include zt-testkit, so this runs unit tests, tests/
@@ -50,8 +51,16 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@1.80
       - uses: Swatinem/rust-cache@v2
+      # No Cargo.lock is committed; newest transitive deps (e.g. getrandom 0.4)
+      # need edition 2024. Resolve with the MSRV-aware resolver (cargo >= 1.84)
+      # so every dependency is picked compatible with rust-version = 1.80.
+      - name: MSRV-compatible lockfile
+        run: cargo +stable generate-lockfile
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
       # `+1.80` overrides rust-toolchain.toml (channel = stable).
       - run: cargo +1.80 test --all-targets
 

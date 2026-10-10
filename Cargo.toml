@@ -39,12 +39,12 @@ sha2 = "0.10"
 cpal = "0.15"            # VERIFY: bump to latest 0.15.x/0.16 when building
 sherpa-onnx = "=1.13.8"  # API checked against docs.rs 1.13.8 (not compiled); keep pinned
 
-zt-core = { path = "crates/zt-core" }
-zt-align = { path = "crates/zt-align" }
-zt-audio = { path = "crates/zt-audio" }
-zt-stt = { path = "crates/zt-stt" }
-zt-models = { path = "crates/zt-models" }
-zt-testkit = { path = "crates/zt-testkit" }
+zt-core = { path = "crates/zt-core", version = "0.1.0" }
+zt-align = { path = "crates/zt-align", version = "0.1.0" }
+zt-audio = { path = "crates/zt-audio", version = "0.1.0" }
+zt-stt = { path = "crates/zt-stt", version = "0.1.0" }
+zt-models = { path = "crates/zt-models", version = "0.1.0" }
+zt-testkit = { path = "crates/zt-testkit", version = "0.1.0" }
 
 # Test-only (dev-dependencies). proptest 1.x: stable API (`proptest!`,
 # `prop_assert*!`, `prop_oneof!`, regex string strategies).
