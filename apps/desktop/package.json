@@ -18,8 +18,8 @@
     "@fontsource-variable/inter": "^5.1.0",
     "@fontsource-variable/jetbrains-mono": "^5.1.0",
     "@fontsource/atkinson-hyperlegible": "^5.1.0",
-    "@tauri-apps/api": "^2.1.1",
-    "@tauri-apps/plugin-dialog": "^2.0.1"
+    "@tauri-apps/api": "~2.11.0",
+    "@tauri-apps/plugin-dialog": "~2.7.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
