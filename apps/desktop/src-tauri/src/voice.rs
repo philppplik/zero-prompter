@@ -4,17 +4,22 @@
 //!
 //! Two modes share the same thread:
 //! - `tracking = true`  : voice tracking during Live (fed into the tracker);
-//! - `tracking = false` : microphone test (onboarding / inspector), only emits
+//! - `tracking = false` : microphone test (onboarding / settings), only emits
 //!   `voice://level` and `voice://transcript`.
 //!
-//! Without the `sherpa` feature (or without an installed model) the engine is
-//! `MockEngine::reading(script)` - a deterministic demo that "reads" the script
-//! at ~2.3 words/s, so the full UI path can be exercised on any machine.
+//! Engine choice (no silent fallbacks, ADR-007):
+//! - real engine: zt_stt::HybridEngine with the streaming model for the
+//!   script language (user pick -> manifest default -> fallback chain ->
+//!   installed model of another language, reported as a note);
+//! - demo (`MockEngine::reading`, auto-reads the script) ONLY when no
+//!   streaming model is installed at all or the build has no `sherpa`
+//!   feature; `EngineInfo.reason` says which, the UI shows "Modell laden";
+//! - engine construction failed although models are installed: no demo, a
+//!   silent `NullEngine` + error (toast + log + diagnostics panel), so the
+//!   text never scrolls by itself pretending to follow the speaker.
 //!
-//! With models (ADR-006) the engine is a zt_stt::HybridEngine: the streaming
-//! model chosen per language (user pick -> manifest default -> fallback chain)
-//! plus, if enabled, offline resync (Parakeet) on its own zt-resync thread;
-//! its SttEvent::Resync results re-anchor the tracker via VoiceTracker::resync.
+//! Every pipeline stage logs structured `tracing` events (targets `zt::*`)
+//! and feeds latency metrics into `diag` (docs/book/src/user/voice-tracking.md).
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, RecvTimeoutError};
@@ -23,16 +28,23 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
-use zt_align::{ResyncOutcome, TrackerEvent};
+use zt_align::{ResyncOutcome, TrackerEvent, VoiceState};
 use zt_audio::{rms_dbfs, AudioSource};
-use zt_stt::{build_hotwords, MockEngine, SpeechEngine, SttEvent};
+use zt_core::metrics::RateCounter;
+use zt_stt::{build_hotwords, Hotword, MockEngine, SpeechEngine, SttError, SttEvent};
 
 use crate::appcore::{apply_tracker_output, Shared};
+use crate::diag;
 
 pub const EV_LEVEL: &str = "voice://level";
 pub const EV_TRANSCRIPT: &str = "voice://transcript";
 pub const EV_ENGINE: &str = "voice://engine";
 pub const EV_RESYNC: &str = "voice://resync";
+
+/// RMS above this marks speech onset for the onset->partial latency metric.
+const ONSET_DBFS: f32 = -45.0;
+/// After this long without any non-zero sample the microphone is reported.
+const MIC_SILENCE_REPORT: Duration = Duration::from_secs(3);
 
 #[derive(Debug)]
 pub struct VoiceRuntime {
@@ -59,17 +71,25 @@ struct Transcript {
     is_final: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineInfo {
     pub name: String,
+    /// Demo engine (auto-reads the script); only with reason "noModel"/"noSherpa".
     pub demo: bool,
+    /// Why there is no real engine: "noModel" (no streaming model installed),
+    /// "noSherpa" (build without STT), "engineError" (model failed to load).
+    pub reason: Option<String>,
     pub microphone: bool,
     pub error: Option<String>,
     /// Offline resync running (ADR-006).
     pub resync: bool,
     /// Fallback / resync notes, e.g. "zipformer-en-kroko-2025-08-06 failed, fallback".
     pub notes: Vec<String>,
+    /// Primary script language the engine was chosen for.
+    pub language: String,
+    /// Audio stream description (device, native format).
+    pub audio: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -108,74 +128,147 @@ pub fn set_mic_test(app: &AppHandle, shared: &Shared, on: bool) {
     }
 }
 
+/// Restarts a running voice session so a new model / setting takes effect
+/// (after a model install or a model choice change).
+pub fn restart_if_running(app: &AppHandle, shared: &Shared) {
+    let running = shared.lock().voice_rt.as_ref().map(|r| r.tracking);
+    match running {
+        Some(true) => set_tracking(app, shared, true),
+        Some(false) => set_mic_test(app, shared, true),
+        None => {}
+    }
+}
+
 pub fn stop(shared: &Shared) {
     if let Some(rt) = shared.lock().voice_rt.take() {
         rt.shutdown();
     }
 }
 
+/// Everything the voice thread needs, moved in at start.
+struct Ctx {
+    app: AppHandle,
+    shared: Shared,
+    stop: Arc<AtomicBool>,
+    tracking: bool,
+    words: Vec<String>,
+    lang: String,
+    device: Option<String>,
+    prefs: crate::models::VoiceModelPrefs,
+}
+
 fn start(app: &AppHandle, shared: &Shared, tracking: bool) {
     let stop = Arc::new(AtomicBool::new(false));
-    let (words, lang, device, prefs) = {
+    let ctx = {
         let mut g = shared.lock();
         g.voice_rt = Some(VoiceRuntime { stop: stop.clone(), tracking });
-        (
-            g.spoken_words(),
-            g.ctl.state().settings.language.clone(),
-            g.audio_device.clone(),
-            g.voice_models.clone(),
-        )
+        Ctx {
+            app: app.clone(),
+            shared: shared.clone(),
+            stop,
+            tracking,
+            words: g.spoken_words(),
+            lang: g.ctl.state().settings.language.clone(),
+            device: g.audio_device.clone(),
+            prefs: g.voice_models.clone(),
+        }
     };
-    let app = app.clone();
-    let shared = shared.clone();
     let spawned = std::thread::Builder::new().name("zt-voice".into()).spawn(move || {
-        run(app, shared, stop, tracking, words, lang, device, prefs);
+        // A panic must not vanish with the thread: report it (toast + log).
+        let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(&ctx)));
+        if let Err(p) = res {
+            let msg = p
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| p.downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "unbekannter Fehler".into());
+            let text = format!("Voice-Thread abgestürzt: {msg}");
+            diag::report_error(&ctx.app, "voice-thread", text);
+        }
+        let mut d = diag::state();
+        d.running = false;
+        d.level_db = -100.0;
     });
     if let Err(e) = spawned {
-        eprintln!("zt: cannot spawn voice thread: {e}");
+        diag::report_error(app, "voice-thread", format!("Voice-Thread nicht startbar: {e}"));
     }
+}
+
+/// Engine used when a real engine was expected but failed to load: produces
+/// nothing, so the prompter never moves on its own (unlike the demo engine).
+#[derive(Debug)]
+#[cfg_attr(not(feature = "sherpa"), allow(dead_code))]
+struct NullEngine;
+
+impl SpeechEngine for NullEngine {
+    fn name(&self) -> &str {
+        "keine Engine (Fehler)"
+    }
+    fn accept_waveform(&mut self, _samples: &[f32]) {}
+    fn poll(&mut self) -> Vec<SttEvent> {
+        Vec::new()
+    }
+    fn set_hotwords(&mut self, _hotwords: &[Hotword]) -> Result<(), SttError> {
+        Ok(())
+    }
+    fn reset(&mut self) {}
 }
 
 struct MadeEngine {
     engine: Box<dyn SpeechEngine>,
     demo: bool,
+    reason: Option<&'static str>,
     resync: bool,
     error: Option<String>,
     notes: Vec<String>,
 }
 
-fn make_engine(
-    app: &AppHandle,
-    lang: &str,
-    words: &[String],
-    prefs: &crate::models::VoiceModelPrefs,
-) -> MadeEngine {
-    let demo = |error: Option<String>, notes: Vec<String>| MadeEngine {
-        engine: Box::new(MockEngine::reading(&words.join(" "), 1.0, 2.3)),
+fn demo_engine(ctx: &Ctx, reason: &'static str, notes: Vec<String>) -> MadeEngine {
+    MadeEngine {
+        engine: Box::new(MockEngine::reading(&ctx.words.join(" "), 1.0, 2.3)),
         demo: true,
+        reason: Some(reason),
         resync: false,
-        error,
+        error: None,
         notes,
-    };
-    #[cfg(feature = "sherpa")]
-    {
-        match crate::models::build_engine(app, lang, prefs) {
-            Ok(Some(b)) => {
-                return MadeEngine {
-                    engine: b.engine,
-                    demo: false,
-                    resync: b.resync,
-                    error: None,
-                    notes: b.notes,
-                }
-            }
-            Ok(None) => {}
-            Err(err) => return demo(Some(err), vec![]),
-        }
     }
-    let _ = (app, lang, prefs);
-    demo(None, vec![])
 }
+
+#[cfg(feature = "sherpa")]
+fn make_engine(ctx: &Ctx) -> MadeEngine {
+    match crate::models::build_engine(&ctx.app, &ctx.lang, &ctx.prefs) {
+        Ok(Some(b)) => MadeEngine {
+            engine: b.engine,
+            demo: false,
+            reason: None,
+            resync: b.resync,
+            error: None,
+            notes: b.notes,
+        },
+        Ok(None) => {
+            tracing::warn!(target: "zt::engine", lang = %ctx.lang,
+                "no streaming model installed -> demo mode");
+            demo_engine(ctx, "noModel", vec![])
+        }
+        Err(err) => MadeEngine {
+            engine: Box::new(NullEngine),
+            demo: false,
+            reason: Some("engineError"),
+            resync: false,
+            error: Some(format!("Sprachmodell konnte nicht geladen werden: {err}")),
+            notes: vec![],
+        },
+    }
+}
+
+#[cfg(not(feature = "sherpa"))]
+fn make_engine(ctx: &Ctx) -> MadeEngine {
+    tracing::warn!(target: "zt::engine", "build without `sherpa` feature -> demo mode");
+    let note = "Dieser Build enthält keine Spracherkennung (sherpa).".to_string();
+    demo_engine(ctx, "noSherpa", vec![note])
+}
+
+type Frame = (Instant, Vec<f32>);
 
 #[cfg(feature = "cpal")]
 fn make_source() -> Option<Box<dyn AudioSource>> {
@@ -187,67 +280,136 @@ fn make_source() -> Option<Box<dyn AudioSource>> {
     None
 }
 
-// Thread entry: plain values moved in from start, a struct would add nothing.
-#[allow(clippy::too_many_arguments)]
-fn run(
-    app: AppHandle,
-    shared: Shared,
-    stop: Arc<AtomicBool>,
-    tracking: bool,
-    words: Vec<String>,
-    lang: String,
-    device: Option<String>,
-    prefs: crate::models::VoiceModelPrefs,
-) {
-    let MadeEngine { mut engine, demo, resync, error: engine_err, notes } =
-        make_engine(&app, &lang, &words, &prefs);
-    let hotwords = build_hotwords(words.iter().map(String::as_str), 5, 200, 1.5);
-    if let Err(e) = engine.set_hotwords(&hotwords) {
-        eprintln!("zt: hotwords not applied: {e}");
+fn state_name(s: VoiceState) -> &'static str {
+    match s {
+        VoiceState::Idle => "idle",
+        VoiceState::Listening => "listening",
+        VoiceState::Tracking => "tracking",
+        VoiceState::Hold => "hold",
+        VoiceState::Lost => "lost",
+        VoiceState::Resync => "resync",
+    }
+}
+
+fn run(ctx: &Ctx) {
+    let app = &ctx.app;
+    let t_start = Instant::now();
+    tracing::info!(target: "zt::voice", tracking = ctx.tracking, lang = %ctx.lang,
+        device = ?ctx.device, prefs = ?ctx.prefs, script_words = ctx.words.len(), "voice start");
+    {
+        let mut d = diag::state();
+        d.running = true;
+        d.tracking = ctx.tracking;
+        d.last_partial = None;
+    }
+    diag::reset_latencies();
+
+    let MadeEngine { mut engine, demo, reason, resync, error: engine_err, notes } =
+        make_engine(ctx);
+    tracing::info!(target: "zt::engine", engine = engine.name(), demo, reason = ?reason,
+        resync, notes = ?notes, ms = t_start.elapsed().as_millis() as u64, "engine selected");
+    for n in &notes {
+        diag::record_warning("stt", n.clone());
+    }
+    if let Some(e) = &engine_err {
+        diag::report_error(app, "stt", e.clone());
+    }
+    let hotwords = build_hotwords(ctx.words.iter().map(String::as_str), 5, 200, 1.5);
+    match engine.set_hotwords(&hotwords) {
+        Ok(()) => tracing::info!(target: "zt::stt", count = hotwords.len(), "hotwords applied"),
+        // Expected for models without bpe.vocab (all bundled ones): no biasing.
+        Err(e) => tracing::info!(target: "zt::stt", error = %e, "hotwords not applied"),
     }
 
     // Audio callback -> bounded channel (try_send: never blocks the audio thread).
-    let (tx, rx) = sync_channel::<Vec<f32>>(64);
+    let (tx, rx) = sync_channel::<Frame>(64);
     let mut source = make_source();
     let mut mic_ok = false;
     let mut mic_err = None;
+    let mut audio_desc = None;
     if let Some(src) = source.as_mut() {
         let tx2 = tx.clone();
         match src.start(
-            device.as_deref(),
+            ctx.device.as_deref(),
             Box::new(move |f: &[f32]| {
-                let _ = tx2.try_send(f.to_vec());
+                let _ = tx2.try_send((Instant::now(), f.to_vec()));
             }),
         ) {
-            Ok(()) => mic_ok = true,
-            Err(e) => mic_err = Some(e.to_string()),
+            Ok(()) => {
+                mic_ok = true;
+                audio_desc = src.describe();
+                tracing::info!(target: "zt::audio", stream = ?audio_desc, "microphone started");
+            }
+            Err(e) => {
+                let msg = format!("Mikrofon konnte nicht geöffnet werden: {e}");
+                diag::report_error(app, "audio", msg.clone());
+                mic_err = Some(msg);
+            }
         }
+    } else {
+        diag::record_warning("audio", "Build ohne Mikrofon-Unterstützung (cpal)");
     }
-    let _ = app.emit(
-        EV_ENGINE,
-        EngineInfo {
-            name: engine.name().to_string(),
-            demo,
-            microphone: mic_ok,
-            error: engine_err.or(mic_err),
-            resync,
-            notes,
-        },
-    );
+    let info = EngineInfo {
+        name: engine.name().to_string(),
+        demo,
+        reason: reason.map(str::to_string),
+        microphone: mic_ok,
+        error: engine_err.or(mic_err),
+        resync,
+        notes,
+        language: zt_models::primary_language(&ctx.lang),
+        audio: audio_desc.clone(),
+    };
+    {
+        let mut d = diag::state();
+        d.engine = Some(info.clone());
+        d.audio = audio_desc;
+    }
+    let _ = app.emit(EV_ENGINE, info);
 
     let mut level_acc: Vec<f32> = Vec::with_capacity(2048);
     let mut last_level = Instant::now();
-    while !stop.load(Ordering::SeqCst) {
-        let frame = match rx.recv_timeout(Duration::from_millis(50)) {
+    let mut fps = RateCounter::default();
+    let mut mic_watch = MicWatch::new();
+    // Speech onset (capture time of the first voiced chunk) of the running utterance.
+    let mut onset: Option<Instant> = None;
+    let mut first_partial_done = false;
+    let mut last_state = VoiceState::Idle;
+
+    while !ctx.stop.load(Ordering::SeqCst) {
+        let (captured, frame) = match rx.recv_timeout(Duration::from_millis(50)) {
             Ok(f) => f,
             // No microphone: feed realtime silence so demo/mock engines advance.
-            Err(RecvTimeoutError::Timeout) if !mic_ok => vec![0.0; 800],
-            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::Timeout) if !mic_ok => (Instant::now(), vec![0.0; 800]),
+            Err(RecvTimeoutError::Timeout) => {
+                if let Some(msg) = mic_watch.check() {
+                    diag::report_error(app, "audio", msg);
+                }
+                continue;
+            }
             Err(RecvTimeoutError::Disconnected) => break,
         };
+        if mic_ok {
+            mic_watch.frame(&frame);
+            if let Some(msg) = mic_watch.check() {
+                diag::report_error(app, "audio", msg);
+            }
+        }
+        let frame_db = rms_dbfs(&frame);
+        if onset.is_none() && frame_db > ONSET_DBFS {
+            onset = Some(captured);
+            first_partial_done = false;
+        }
         level_acc.extend_from_slice(&frame);
+        if let Some(rate) = fps.hit(t_start.elapsed().as_millis() as u64) {
+            let db = rms_dbfs(&level_acc);
+            tracing::debug!(target: "zt::audio", frames_per_s = rate, rms_dbfs = db, "audio stats");
+            diag::state().frames_per_s = rate;
+        }
         if last_level.elapsed() >= Duration::from_millis(66) {
-            let _ = app.emit(EV_LEVEL, Level { db: rms_dbfs(&level_acc) });
+            let db = rms_dbfs(&level_acc);
+            diag::state().level_db = db;
+            let _ = app.emit(EV_LEVEL, Level { db });
             level_acc.clear();
             last_level = Instant::now();
         }
@@ -255,31 +417,72 @@ fn run(
         for ev in engine.poll() {
             let tev = match ev {
                 SttEvent::Partial(text) => {
+                    let ms = captured.elapsed().as_secs_f64() * 1000.0;
+                    tracing::debug!(target: "zt::stt", t_ms = t_start.elapsed().as_millis() as u64,
+                        latency_ms = ms, %text, "partial");
+                    if !demo {
+                        let mut d = diag::state();
+                        d.lat.audio_to_partial.push(ms);
+                        if let (Some(on), false) = (onset, first_partial_done) {
+                            d.lat.onset_to_partial.push(on.elapsed().as_secs_f64() * 1000.0);
+                            first_partial_done = true;
+                        }
+                        d.last_partial = Some(text.clone());
+                    }
                     let _ =
                         app.emit(EV_TRANSCRIPT, Transcript { text: text.clone(), is_final: false });
                     TrackerEvent::Hypothesis { text, is_final: false }
                 }
                 SttEvent::Final(text) => {
+                    tracing::info!(target: "zt::stt", t_ms = t_start.elapsed().as_millis() as u64,
+                        %text, "final");
+                    onset = None;
                     let _ =
                         app.emit(EV_TRANSCRIPT, Transcript { text: text.clone(), is_final: true });
                     TrackerEvent::Hypothesis { text, is_final: true }
                 }
-                SttEvent::Vad(true) => TrackerEvent::VadSpeech,
-                SttEvent::Vad(false) => TrackerEvent::VadSilence,
+                SttEvent::Vad(true) => {
+                    tracing::debug!(target: "zt::vad", "speech start");
+                    TrackerEvent::VadSpeech
+                }
+                SttEvent::Vad(false) => {
+                    tracing::debug!(target: "zt::vad", "speech end");
+                    onset = None;
+                    TrackerEvent::VadSilence
+                }
                 SttEvent::Resync { text, age_ms } => {
-                    if tracking {
-                        resync_event(&app, &shared, text, age_ms);
+                    if ctx.tracking {
+                        resync_event(app, &ctx.shared, text, age_ms);
                     }
                     continue;
                 }
             };
-            if tracking {
-                let out = {
-                    let mut g = shared.lock();
+            if ctx.tracking {
+                let t_hyp = Instant::now();
+                let (before, out) = {
+                    let mut g = ctx.shared.lock();
+                    let before = g.tracker.output().cursor_token;
                     let t = g.now_ms();
-                    g.tracker.handle(tev, t)
+                    (before, g.tracker.handle(tev, t))
                 };
-                apply_tracker_output(&app, &shared, out);
+                apply_tracker_output(app, &ctx.shared, out);
+                let mut d = diag::state();
+                if out.cursor_token != before && !demo {
+                    let align_ms = t_hyp.elapsed().as_secs_f64() * 1000.0;
+                    let e2e_ms = captured.elapsed().as_secs_f64() * 1000.0;
+                    d.lat.hyp_to_cursor.push(align_ms);
+                    d.lat.end_to_end.push(e2e_ms);
+                    tracing::debug!(target: "zt::tracker", cursor = ?out.cursor_token,
+                        confidence = out.confidence, align_ms, e2e_ms, "cursor moved");
+                }
+                if out.state != last_state {
+                    tracing::info!(target: "zt::tracker", from = state_name(last_state),
+                        to = state_name(out.state), confidence = out.confidence,
+                        cursor = ?out.cursor_token, "tracker state");
+                    last_state = out.state;
+                }
+                d.voice_state = state_name(out.state).to_string();
+                d.confidence = out.confidence;
             }
         }
     }
@@ -287,7 +490,49 @@ fn run(
         src.stop();
     }
     drop(tx);
+    tracing::info!(target: "zt::voice", secs = t_start.elapsed().as_secs_f64(), "voice stop");
     let _ = app.emit(EV_LEVEL, Level { db: -100.0 });
+}
+
+/// Watches the microphone for "opened but delivers nothing": Windows privacy
+/// settings ("Mikrofonzugriff für Desktop-Apps") or a muted device give no
+/// callbacks or digital silence instead of an error.
+#[derive(Debug)]
+struct MicWatch {
+    t_start: Instant,
+    got_frame: bool,
+    got_signal: bool,
+    reported: bool,
+}
+
+impl MicWatch {
+    fn new() -> Self {
+        Self { t_start: Instant::now(), got_frame: false, got_signal: false, reported: false }
+    }
+
+    fn frame(&mut self, samples: &[f32]) {
+        self.got_frame = true;
+        self.got_signal |= samples.iter().any(|s| *s != 0.0);
+    }
+
+    /// Error text once the watch period passed without signal (only once).
+    fn check(&mut self) -> Option<&'static str> {
+        if self.reported || self.got_signal || self.t_start.elapsed() < MIC_SILENCE_REPORT {
+            return None;
+        }
+        self.reported = true;
+        Some(mic_silence_message(self.got_frame))
+    }
+}
+
+fn mic_silence_message(got_frame: bool) -> &'static str {
+    if got_frame {
+        "Mikrofon liefert nur digitale Stille. Ist es stummgeschaltet oder ist der \
+         Mikrofonzugriff für Desktop-Apps in den Datenschutzeinstellungen gesperrt?"
+    } else {
+        "Mikrofon liefert keine Daten. Mikrofonzugriff in den System-Datenschutzeinstellungen \
+         prüfen oder ein anderes Eingabegerät wählen."
+    }
 }
 
 /// Feeds an offline resync hypothesis into the tracker (ADR-006). Runs on the
@@ -305,6 +550,49 @@ fn resync_event(app: &AppHandle, shared: &Shared, text: String, age_ms: u64) {
         ResyncOutcome::Confirmed => "confirmed",
         ResyncOutcome::Reanchored { .. } => "reanchored",
     };
+    tracing::info!(target: "zt::resync", age_ms, outcome, %text, "resync");
     let _ = app.emit(EV_RESYNC, ResyncInfo { text, age_ms, outcome });
     apply_tracker_output(app, shared, out);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn watch_started_ago(secs: u64) -> MicWatch {
+        let mut w = MicWatch::new();
+        w.t_start = Instant::now().checked_sub(Duration::from_secs(secs)).unwrap_or(w.t_start);
+        w
+    }
+
+    #[test]
+    fn mic_watch_reports_no_data_once() {
+        let mut w = watch_started_ago(5);
+        assert_eq!(w.check(), Some(mic_silence_message(false)));
+        assert_eq!(w.check(), None, "reported only once");
+    }
+
+    #[test]
+    fn mic_watch_reports_digital_silence() {
+        let mut w = watch_started_ago(5);
+        w.frame(&[0.0; 160]);
+        assert_eq!(w.check(), Some(mic_silence_message(true)));
+    }
+
+    #[test]
+    fn mic_watch_quiet_with_signal_or_early() {
+        let mut w = watch_started_ago(5);
+        w.frame(&[0.0, 0.001, 0.0]);
+        assert_eq!(w.check(), None);
+        let mut early = MicWatch::new();
+        assert_eq!(early.check(), None);
+    }
+
+    #[test]
+    fn null_engine_never_produces_events() {
+        let mut e = NullEngine;
+        e.accept_waveform(&[0.5; 1600]);
+        assert!(e.poll().is_empty());
+        assert!(e.set_hotwords(&[]).is_ok());
+    }
 }

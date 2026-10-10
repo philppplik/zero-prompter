@@ -233,17 +233,55 @@ pub fn voice_models_set(
     prefs: models::VoiceModelPrefs,
 ) -> CmdResult<()> {
     models::save_prefs(&app, &prefs)?;
-    let running = {
-        let mut g = shared.lock();
-        g.voice_models = prefs;
-        g.voice_rt.as_ref().map(|r| r.tracking)
-    };
-    match running {
-        Some(true) => voice::set_tracking(&app, &shared, true),
-        Some(false) => voice::set_mic_test(&app, &shared, true),
-        None => {}
-    }
+    tracing::info!(target: "zt::models", prefs = ?prefs, "voice model prefs changed");
+    shared.lock().voice_models = prefs;
+    voice::restart_if_running(&app, &shared);
     Ok(())
+}
+
+/// Diagnostics snapshot for the "Diagnose" settings tab (polled while open).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagReport {
+    #[serde(flatten)]
+    pub snapshot: crate::diag::Snapshot,
+    /// Installed streaming models usable for the script language, in order.
+    pub selection: Option<models::Selection>,
+}
+
+#[tauri::command]
+pub fn diag_snapshot(app: AppHandle, shared: State<'_, Shared>) -> DiagReport {
+    let (prefs, lang) = {
+        let g = shared.lock();
+        (g.voice_models.clone(), g.ctl.state().settings.language.clone())
+    };
+    DiagReport {
+        snapshot: crate::diag::snapshot(),
+        selection: models::selection(&app, &lang, &prefs).ok(),
+    }
+}
+
+/// Writes all log files (plus a JSON snapshot) to `dest` (chosen via the
+/// save dialog). Returns the number of bytes written.
+#[tauri::command]
+pub fn diag_export_log(dest: String) -> CmdResult<u64> {
+    crate::diag::export_logs(std::path::Path::new(&dest))
+}
+
+/// Log directory path (shown in the panel so users can attach the files).
+#[tauri::command]
+pub fn diag_log_dir() -> Option<String> {
+    crate::diag::snapshot().log_dir
+}
+
+/// Errors reported by the frontend (unhandled rejections etc.) go to the same log.
+#[tauri::command]
+pub fn diag_log_frontend(level: String, message: String) {
+    match level.as_str() {
+        "error" => tracing::error!(target: "zt::frontend", %message),
+        "warn" => tracing::warn!(target: "zt::frontend", %message),
+        _ => tracing::info!(target: "zt::frontend", %message),
+    }
 }
 
 /// Which models would run for `lang` (default: the script language).

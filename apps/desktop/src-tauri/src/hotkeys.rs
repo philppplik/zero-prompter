@@ -46,7 +46,7 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             };
             let shared = app.state::<Shared>();
             if let Err(e) = appcore::dispatch(app, &shared, cmd) {
-                eprintln!("zt: global shortcut ignored: {e}");
+                tracing::warn!(target: "zt::hotkeys", error = %e, "global shortcut ignored");
             }
         })
         .build()
@@ -56,7 +56,7 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 pub fn register_all(app: &AppHandle) {
     for (s, label, _) in bindings() {
         if let Err(e) = app.global_shortcut().register(s) {
-            eprintln!("zt: global shortcut {label} unavailable: {e}");
+            tracing::warn!(target: "zt::hotkeys", %label, error = %e, "global shortcut unavailable");
         }
     }
 }

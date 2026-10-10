@@ -27,6 +27,10 @@ zt-align = { workspace = true }
 zt-audio = { workspace = true }
 zt-stt = { workspace = true }
 zt-models = { workspace = true }
+# Structured logging (MIT): rotating log file in the app log dir + diagnostics.
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std", "env-filter"] }
+tracing-appender = "0.2"
 # Blocking HTTP client for model downloads (MIT OR Apache-2.0). Only 2.x API is used.
 ureq = { version = "2", optional = true }                # VERIFY: 2.x API (`set`, `into_reader`)
 

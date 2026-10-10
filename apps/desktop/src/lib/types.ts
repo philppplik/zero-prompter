@@ -189,11 +189,59 @@ export interface ModelSelection {
 
 export interface EngineInfo {
   name: string;
+  /** Demo engine (auto-reads the script); only when no model / no STT in the build. */
   demo: boolean;
+  /** Why no real engine runs: 'noModel' | 'noSherpa' | 'engineError'. */
+  reason: 'noModel' | 'noSherpa' | 'engineError' | null;
   microphone: boolean;
   error: string | null;
   resync: boolean;
   notes: string[];
+  language: string;
+  audio: string | null;
+}
+
+export interface LatencySummary {
+  count: number;
+  total: number;
+  p50Ms: number | null;
+  p95Ms: number | null;
+  maxMs: number | null;
+  lastMs: number | null;
+}
+
+export interface DiagErrorEntry {
+  atMs: number;
+  source: string;
+  message: string;
+}
+
+/** Backend `diag_snapshot` (diagnostics settings tab). */
+export interface DiagReport {
+  version: string;
+  os: string;
+  arch: string;
+  sherpa: boolean;
+  cpal: boolean;
+  running: boolean;
+  tracking: boolean;
+  engine: EngineInfo | null;
+  audio: string | null;
+  levelDb: number;
+  framesPerS: number;
+  tickHz: number;
+  voiceState: string;
+  confidence: number;
+  lastPartial: string | null;
+  latency: {
+    audioToPartial: LatencySummary;
+    onsetToPartial: LatencySummary;
+    hypToCursor: LatencySummary;
+    endToEnd: LatencySummary;
+  };
+  errors: DiagErrorEntry[];
+  logDir: string | null;
+  selection: ModelSelection | null;
 }
 
 export interface ResyncInfo {

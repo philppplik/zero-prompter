@@ -55,7 +55,7 @@ pub fn save_settings(app: &AppHandle, s: &Settings) {
     let file = SettingsFile { version: SETTINGS_VERSION, settings: s.clone() };
     if let Ok(json) = serde_json::to_vec_pretty(&file) {
         if let Err(e) = write_atomic(&dir.join("settings.json"), &json) {
-            eprintln!("zt: saving settings failed: {e}");
+            tracing::error!(target: "zt::persist", error = %e, "saving settings failed");
         }
     }
 }

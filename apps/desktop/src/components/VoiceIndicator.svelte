@@ -5,6 +5,7 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
   import { STATE_STYLE } from '../lib/tokens';
+  import { showDemoBadge } from '../lib/diagnostics';
   import type { VoicePhase } from '../lib/types';
 
   interface Props {
@@ -26,7 +27,9 @@
       case 'resync': return 'Springt…';
     }
   });
-  const demo = $derived(store.engine?.demo && voice?.enabled);
+  // Demo only when really no model is installed (or no STT in the build).
+  const demo = $derived(showDemoBadge(store.engine) && !!voice?.enabled);
+  const engineError = $derived(store.engine?.reason === 'engineError' && !!voice?.enabled);
 </script>
 
 <div class="wrap" role="status" aria-live={phase === 'lost' ? 'assertive' : 'polite'}>
@@ -54,8 +57,12 @@
           <span style:width="{Math.round(voice.confidence * 100)}%"></span>
         </span>
       {/if}
-      {#if demo}<span class="demo" title="Kein Sprachmodell installiert – Demo-Modus liest das Skript automatisch">Demo</span>{/if}
     </span>
+  {/if}
+  {#if demo}
+    <button class="demo" onclick={() => store.openSettings('voice')} title="Kein Sprachmodell installiert – der Demo-Modus liest das Skript automatisch vor. Klicken, um ein Modell zu laden.">Demo · Modell laden</button>
+  {:else if engineError}
+    <button class="demo err" onclick={() => store.openSettings('diagnostics')} title={store.engine?.error ?? ''}>Modellfehler · Details</button>
   {/if}
 </div>
 
@@ -77,7 +84,10 @@
   button.pill svg { color: var(--c); }
   .conf { width: 36px; height: 4px; border-radius: 2px; background: var(--ui-border); overflow: hidden; }
   .conf span { display: block; height: 100%; background: var(--c); transition: width var(--dur-base) var(--ease-standard); }
-  .demo { font: 500 10px/14px var(--font-ui); padding: 0 4px; border-radius: 4px; background: var(--ui-surface-sunken); color: var(--ui-text-muted); }
+  .wrap { gap: 6px; align-items: center; }
+  .demo { font: 600 11px/16px var(--font-ui); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--ui-border-strong); background: var(--ui-surface-sunken); color: var(--ui-text); cursor: pointer; }
+  .demo:hover { background: var(--ui-accent-subtle); }
+  .demo.err { color: var(--state-lost, #d97706); }
   @keyframes pulse { 50% { opacity: 0.35; } }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }

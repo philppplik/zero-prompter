@@ -71,6 +71,13 @@ pub struct TrackerConfig {
     pub sw: SwParams,
     /// Resync (offline, high-confidence hypothesis; ADR-006): wider search window.
     pub resync: ResyncConfig,
+    /// Near-cursor fast path (ADR-007): when the windowed alignment has too
+    /// little evidence (e.g. the first word after a manual seek), the newest
+    /// spoken word may still advance the cursor if it matches one of the next
+    /// `near_words + 1` script words (exact, or edit distance 1 for words of
+    /// >= 5 letters). 0 disables. Only with an existing anchor (cursor), never
+    /// in `listening`/`lost`.
+    pub near_words: usize,
 }
 
 /// Parameters for [`TrackerEvent::Resync`].
@@ -144,8 +151,25 @@ impl Default for TrackerConfig {
             partial_weight: 0.8,
             sw: SwParams::default(),
             resync: ResyncConfig::default(),
+            near_words: 2,
         }
     }
+}
+
+/// Strict word match for the near-cursor fast path (idea from
+/// ShayneP/local-teleprompter, MIT; re-implemented): identical, or both at
+/// least 5 characters, lengths within 2 and Levenshtein distance <= 1.
+/// Short words must match exactly so "und"/"uns" never advance the cursor.
+pub fn near_word_match(spoken: &str, script: &str) -> bool {
+    if spoken == script {
+        return true;
+    }
+    let a: Vec<char> = spoken.chars().collect();
+    let b: Vec<char> = script.chars().collect();
+    a.len() >= 5
+        && b.len() >= 5
+        && a.len().abs_diff(b.len()) <= 2
+        && crate::similarity::levenshtein(&a, &b) <= 1
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -382,6 +406,7 @@ impl VoiceTracker {
         if query.is_empty() || qtexts == self.last_query {
             return;
         }
+        let new_last_word = qtexts.last() != self.last_query.last();
         self.last_query = qtexts;
 
         let expected = self.cursor.map_or(0, |c| c + 1);
@@ -404,6 +429,11 @@ impl VoiceTracker {
             return;
         }
 
+        // Near-cursor fast path (ADR-007): one fresh word right after an anchor.
+        if new_last_word && self.near_fast_path(&query, expected, t_ms) {
+            return;
+        }
+
         // Nothing near the cursor: global n-gram search (catches far jumps and `lost`).
         if query.len() >= self.cfg.min_matches_global as usize {
             let global =
@@ -419,6 +449,25 @@ impl VoiceTracker {
         if self.state == VoiceState::Tracking {
             self.state = VoiceState::Hold;
         }
+    }
+
+    /// See [`TrackerConfig::near_words`]. Returns true if the cursor moved.
+    fn near_fast_path(&mut self, query: &[QueryWord], expected: usize, t_ms: u64) -> bool {
+        if self.cfg.near_words == 0
+            || self.cursor.is_none()
+            || !matches!(self.state, VoiceState::Tracking | VoiceState::Hold | VoiceState::Resync)
+        {
+            return false;
+        }
+        let Some(word) = query.last() else { return false };
+        let hi = (expected + self.cfg.near_words + 1).min(self.index.len());
+        let Some(pos) = (expected..hi).find(|&p| near_word_match(&word.text, &self.index.words[p]))
+        else {
+            return false;
+        };
+        let confidence = self.cfg.theta.max(self.confidence * 0.9).min(1.0);
+        self.accept(SwHit { end: pos, score: 0.0, confidence, matches: 1 }, t_ms);
+        true
     }
 
     fn accept(&mut self, hit: SwHit, t_ms: u64) {
@@ -543,6 +592,47 @@ mod resync_tests {
         let mut t = tracker();
         t.handle(TrackerEvent::ManualSeek { token }, 0);
         t
+    }
+
+    fn say(t: &mut VoiceTracker, text: &str, t_ms: u64) -> TrackerOutput {
+        t.handle(TrackerEvent::Hypothesis { text: text.into(), is_final: false }, t_ms)
+    }
+
+    #[test]
+    fn near_fast_path_moves_on_first_word_after_seek() {
+        let mut t = at(10);
+        let out = say(&mut t, &words()[11], 3000);
+        assert_eq!(out.cursor_token, Some(11));
+        assert_eq!(out.state, VoiceState::Tracking);
+        // Skipping one script word is still "near".
+        let out = say(&mut t, &format!("{} {}", words()[11], words()[13]), 3100);
+        assert_eq!(out.cursor_token, Some(13));
+    }
+
+    #[test]
+    fn near_fast_path_disabled_by_config_and_without_anchor() {
+        let mut t = at(10);
+        t.set_config(TrackerConfig { near_words: 0, ..TrackerConfig::default() });
+        assert_eq!(say(&mut t, &words()[11], 3000).cursor_token, Some(10));
+        // Listening (no anchor): one word is not enough evidence.
+        let mut t = tracker();
+        assert_eq!(say(&mut t, &words()[0], 100).cursor_token, None);
+    }
+
+    #[test]
+    fn near_fast_path_ignores_far_words() {
+        let mut t = at(10);
+        assert_eq!(say(&mut t, &words()[14], 3000).cursor_token, Some(10));
+    }
+
+    #[test]
+    fn near_word_match_rules() {
+        assert!(near_word_match("hallo", "hallo"));
+        assert!(near_word_match("teleprompter", "teleprompta"));
+        assert!(near_word_match("kanals", "kanal"));
+        assert!(!near_word_match("und", "uns"), "short words must be exact");
+        assert!(!near_word_match("haus", "maus"));
+        assert!(!near_word_match("zeigen", "zeigten2x"));
     }
 
     #[test]

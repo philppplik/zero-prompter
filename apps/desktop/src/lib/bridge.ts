@@ -3,7 +3,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type {
-  AppState, AudioDevice, Command, EngineInfo, ModelRow, ModelSelection, MonitorInfo, ResyncInfo, ScriptMeta,
+  AppState, AudioDevice, Command, DiagReport, EngineInfo, ModelRow, ModelSelection, MonitorInfo, ResyncInfo, ScriptMeta,
   ScrollFrame, UiPrefs, VoiceModelPrefs,
 } from './types';
 
@@ -37,6 +37,11 @@ export const api = {
   openLink: (key: string) => invoke<void>('open_link', { key }),
   buildInfo: () =>
     invoke<{ version: string; cpal: boolean; sherpa: boolean; download: boolean; globalShortcuts: [string, string][] }>('build_info'),
+  diagSnapshot: () => invoke<DiagReport>('diag_snapshot'),
+  diagExportLog: (dest: string) => invoke<number>('diag_export_log', { dest }),
+  diagLogDir: () => invoke<string | null>('diag_log_dir'),
+  diagLogFrontend: (level: 'error' | 'warn' | 'info', message: string) =>
+    invoke<void>('diag_log_frontend', { level, message }),
 };
 
 export const events = {
@@ -51,6 +56,9 @@ export const events = {
   resync: (cb: (r: ResyncInfo) => void) => listen<ResyncInfo>('voice://resync', (e) => cb(e.payload)),
   prefs: (cb: (p: Partial<UiPrefs>) => void) => listen<Partial<UiPrefs>>('prefs://changed', (e) => cb(e.payload)),
   talent: (cb: (visible: boolean) => void) => listen<boolean>('talent://visibility', (e) => cb(e.payload)),
+  /** Every backend error (log + diagnostics panel); shown as toast. */
+  diagError: (cb: (e: { source: string; message: string }) => void) =>
+    listen<{ source: string; message: string }>('diag://error', (e) => cb(e.payload)),
 };
 
 export interface ModelProgress {

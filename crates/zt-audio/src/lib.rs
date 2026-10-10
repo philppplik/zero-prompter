@@ -51,6 +51,11 @@ pub trait AudioSource {
     fn start(&mut self, device_id: Option<&str>, sink: FrameSink) -> Result<(), AudioError>;
     fn stop(&mut self);
     fn is_running(&self) -> bool;
+    /// Human-readable description of the running stream (device, native
+    /// rate/channels/format) for logs and diagnostics.
+    fn describe(&self) -> Option<String> {
+        None
+    }
 }
 
 /// Replays a fixed 16 kHz buffer synchronously in `chunk`-sized frames on `start`.

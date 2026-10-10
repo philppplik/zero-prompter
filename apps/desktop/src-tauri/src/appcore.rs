@@ -284,13 +284,19 @@ pub fn spawn_tick_loop(app: AppHandle, shared: Shared) {
     std::thread::Builder::new()
         .name("zt-tick".into())
         .spawn(move || {
-            let mut last = Instant::now();
+            let start = Instant::now();
+            let mut last = start;
+            let mut rate = zt_core::metrics::RateCounter::default();
             loop {
                 std::thread::sleep(Duration::from_millis(16));
                 let now = Instant::now();
                 let dt = now.duration_since(last).as_millis().clamp(1, 250) as u32;
                 last = now;
                 tick(&app, &shared, dt);
+                // Measured tick rate (target ~60 Hz) for the diagnostics panel.
+                if let Some(hz) = rate.hit(now.duration_since(start).as_millis() as u64) {
+                    crate::diag::state().tick_hz = hz;
+                }
             }
         })
         .expect("spawn tick thread");

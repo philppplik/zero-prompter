@@ -4,7 +4,7 @@
 import { api, errorText, events, type UnlistenFn } from './bridge';
 import { DEFAULT_PREFS, type AppState, type Command, type EngineInfo, type ResyncInfo, type UiPrefs } from './types';
 
-export type SettingsTab = 'appearance' | 'scroll' | 'voice' | 'hotkeys' | 'output' | 'about';
+export type SettingsTab = 'appearance' | 'scroll' | 'voice' | 'hotkeys' | 'output' | 'diagnostics' | 'about';
 
 export interface Toast {
   id: number;
@@ -68,10 +68,12 @@ class Store {
     un.push(await events.level((db) => (this.level = db)));
     un.push(await events.transcript((t) => (this.transcript = t.text)));
     un.push(await events.engine((e) => {
+      // Errors arrive separately via diag://error (one toast per error).
       this.engine = e;
-      if (e.error) this.toast(`Voice: ${e.error}`, 'error');
       for (const n of e.notes ?? []) this.toast(`Voice: ${n}`, 'info');
     }));
+    un.push(await events.diagError((e) => this.toast(`${e.source}: ${e.message}`, 'error', 7000)));
+    this.forwardFrontendErrors();
     un.push(await events.resync((r) => (this.lastResync = r)));
     un.push(await events.prefs((p) => Object.assign(this.prefs, p)));
     un.push(await events.talent((v) => (this.talentVisible = v)));
@@ -92,6 +94,20 @@ class Store {
     frame.position = frame.target = this.position = st.scroll.position;
     frame.version = st.script.version;
     return un;
+  }
+
+  /** Uncaught frontend errors go to the backend log too (no silent failures). */
+  private forwardFrontendErrors(): void {
+    if (typeof window === 'undefined') return;
+    const send = (msg: string) => api.diagLogFrontend('error', msg).catch(() => {});
+    window.addEventListener('error', (e) => send(`${e.message} @ ${e.filename}:${e.lineno}`));
+    window.addEventListener('unhandledrejection', (e) => send(`unhandled rejection: ${errorText(e.reason)}`));
+  }
+
+  /** Opens the settings dialog on a tab (e.g. "Modell laden" CTA -> voice). */
+  openSettings(tab: SettingsTab): void {
+    this.settingsTab = tab;
+    this.settingsOpen = true;
   }
 
   applyPatch(p: Partial<AppState>): void {

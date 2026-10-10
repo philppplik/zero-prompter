@@ -311,6 +311,38 @@ impl Manifest {
     }
 
     /// First installed model of the fallback chain.
+    /// Installed streaming models to try for `lang`, in order. If no model for
+    /// `lang` is installed, falls back to installed streaming models of *other*
+    /// languages (better than demo mode; the caller reports this loudly).
+    /// Only entries satisfying `usable` (e.g. installed + right decoder type)
+    /// are returned. Empty result = no usable streaming model at all.
+    pub fn streaming_plan<'a>(
+        &'a self,
+        lang: &str,
+        preferred: Option<&str>,
+        usable: impl Fn(&ModelEntry) -> bool,
+    ) -> StreamingPlan<'a> {
+        let lang = primary_language(lang);
+        let chain: Vec<&ModelEntry> = self
+            .fallback_chain(&lang, ModelRole::Streaming, preferred)
+            .into_iter()
+            .filter(|m| usable(m))
+            .collect();
+        if !chain.is_empty() {
+            return StreamingPlan { chain, language_fallback: None };
+        }
+        let mut other: Vec<(usize, &ModelEntry)> = self
+            .models
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| m.has_role(ModelRole::Streaming) && usable(m))
+            .collect();
+        other.sort_by_key(|(i, m)| (m.default_rank.unwrap_or(u32::MAX), *i));
+        let chain: Vec<&ModelEntry> = other.into_iter().map(|(_, m)| m).collect();
+        let language_fallback = chain.first().map(|m| m.languages.join("/"));
+        StreamingPlan { chain, language_fallback }
+    }
+
     pub fn select<'a>(
         &'a self,
         lang: &str,
@@ -320,6 +352,16 @@ impl Manifest {
     ) -> Option<&'a ModelEntry> {
         self.fallback_chain(lang, role, preferred).into_iter().find(|m| installed(m))
     }
+}
+
+/// Result of [`Manifest::streaming_plan`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StreamingPlan<'a> {
+    /// Candidates in the order they should be tried.
+    pub chain: Vec<&'a ModelEntry>,
+    /// `Some(languages of chain[0])` when no model for the requested
+    /// language was usable and another language's model is used instead.
+    pub language_fallback: Option<String>,
 }
 
 /// Model ids: non-empty, `[A-Za-z0-9._-]` only.

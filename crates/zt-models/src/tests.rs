@@ -194,6 +194,28 @@ fn default_selection_and_fallback_chain() {
 }
 
 #[test]
+fn streaming_plan_language_fallback() {
+    let m = Manifest::parse(BUNDLED).unwrap();
+    let ids = |p: &StreamingPlan<'_>| p.chain.iter().map(|e| e.id.clone()).collect::<Vec<_>>();
+    // Only the EN 20M model installed, script language German:
+    // use it (reported as language fallback) instead of demo mode.
+    let only_en20 = |e: &ModelEntry| e.id == "zipformer-en-20m-2023-02-17";
+    let p = m.streaming_plan("de", None, only_en20);
+    assert_eq!(ids(&p), ["zipformer-en-20m-2023-02-17"]);
+    assert_eq!(p.language_fallback.as_deref(), Some("en"));
+    // Matching language installed: no fallback flag.
+    let p = m.streaming_plan("de-DE", None, |e| e.id == "zipformer-de-kroko-2025-08-06");
+    assert_eq!(ids(&p), ["zipformer-de-kroko-2025-08-06"]);
+    assert_eq!(p.language_fallback, None);
+    // Resync-only (Parakeet) or VAD-only installs give no streaming model.
+    let p = m.streaming_plan("de", None, |e| {
+        e.id == "parakeet-tdt-0.6b-v3-int8" || e.id == "silero-vad"
+    });
+    assert!(p.chain.is_empty());
+    assert_eq!(p.language_fallback, None);
+}
+
+#[test]
 fn schema_v1_still_accepted_and_roles_derived() {
     let m = Manifest::parse(&manifest_json(ABC_SHA, 3)).unwrap();
     let e = m.get("kroko-de").unwrap();

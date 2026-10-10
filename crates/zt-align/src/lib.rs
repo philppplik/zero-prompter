@@ -17,6 +17,6 @@ pub use index::ScriptIndex;
 pub use normalize::{normalize_hypothesis, normalize_word, Lang};
 pub use sw::{align, QueryWord, SwHit, SwParams};
 pub use tracker::{
-    ResyncConfig, ResyncOutcome, TrackerConfig, TrackerEvent, TrackerOutput, VoiceState,
+    near_word_match, ResyncConfig, ResyncOutcome, TrackerConfig, TrackerEvent, TrackerOutput, VoiceState,
     VoiceTracker,
 };

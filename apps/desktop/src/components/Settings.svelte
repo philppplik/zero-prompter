@@ -1,6 +1,6 @@
 <!--
   Settings modal body (DESIGN §3.5, replaces the former right-hand Inspector):
-  Tabs Darstellung · Scroll · Voice & Modelle · Tastenkürzel · Ausgabe · Über.
+  Tabs Darstellung · Scroll · Voice & Modelle · Tastenkürzel · Ausgabe · Diagnose · Über.
   Core settings go through ReplaceSettings, UI-only prefs through
   store.setPrefs (broadcast to the talent window). Rendered inside <Dialog>,
   so hardware is (re)loaded each time the dialog opens.
@@ -12,6 +12,7 @@
   import HotkeyEditor from './HotkeyEditor.svelte';
   import ModelList from './ModelList.svelte';
   import AboutPanel from './AboutPanel.svelte';
+  import DiagnosticsPanel from './DiagnosticsPanel.svelte';
   import { FOCUS_LINE_MAX, FOCUS_LINE_MIN, store, type SettingsTab } from '../lib/store.svelte';
   import { api, errorText } from '../lib/bridge';
   import { setMode } from '../lib/actions';
@@ -29,12 +30,13 @@
   const prefs = $derived(store.prefs);
   const pt = tokens.type.prompter;
 
-  const TABS: { id: SettingsTab; label: string; icon: 'type' | 'paraNext' | 'mic' | 'keyboard' | 'monitor' | 'info' }[] = [
+  const TABS: { id: SettingsTab; label: string; icon: 'type' | 'paraNext' | 'mic' | 'keyboard' | 'monitor' | 'timer' | 'info' }[] = [
     { id: 'appearance', label: 'Darstellung', icon: 'type' },
     { id: 'scroll', label: 'Scroll', icon: 'paraNext' },
     { id: 'voice', label: 'Voice & Modelle', icon: 'mic' },
     { id: 'hotkeys', label: 'Tastenkürzel', icon: 'keyboard' },
     { id: 'output', label: 'Ausgabe', icon: 'monitor' },
+    { id: 'diagnostics', label: 'Diagnose', icon: 'timer' },
     { id: 'about', label: 'Über', icon: 'info' },
   ];
   const tab = $derived(store.settingsTab);
@@ -307,7 +309,7 @@
                     <button class="btn outline" disabled={st.voice.enabled} onclick={() => setMicTest(!micTest)}>
                       <Icon name="mic" />{micTest ? 'Test beenden' : 'Mikro testen'}
                     </button>
-                    {#if store.engine}<span class="footnote">{store.engine.demo ? 'Demo-Engine' : store.engine.name}</span>{/if}
+                    {#if store.engine}<span class="footnote">{store.engine.demo ? 'Demo (kein Modell)' : store.engine.name}</span>{/if}
                   </div>
                   {#if micTest && store.transcript}<p class="transcript">„{store.transcript}“</p>{/if}
                 </div>
@@ -322,6 +324,8 @@
                 <h3 class="caption">Modelle</h3>
                 <ModelList {models} onchange={refreshHardware} />
               </section>
+            {:else if tab === 'diagnostics'}
+              <DiagnosticsPanel />
             {:else if tab === 'hotkeys'}
               <section>
                 <HotkeyEditor />

@@ -6,6 +6,7 @@
 
 pub mod command;
 pub mod controller;
+pub mod metrics;
 pub mod playback;
 pub mod script;
 pub mod settings;

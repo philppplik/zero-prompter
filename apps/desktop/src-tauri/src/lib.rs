@@ -6,12 +6,14 @@
 //! - `hotkeys`  : global shortcuts
 //! - `persist`  : settings / ui prefs / script library
 //! - `models`   : model manifest / install / remove
+//! - `diag`     : tracing log file, diagnostics snapshot, error reporting
 //!
 //! Windows (tauri.conf.json): `control` (operator UI, index.html) and
 //! `talent` (render-only output, talent.html), both subscribe to the same events.
 
 mod appcore;
 mod commands;
+mod diag;
 mod hotkeys;
 mod models;
 mod persist;
@@ -38,6 +40,7 @@ pub fn run() {
         .plugin(hotkeys::plugin())
         .setup(|app| {
             let handle = app.handle().clone();
+            diag::init_logging(&handle);
             let tokens = Tokens::embedded();
             let settings =
                 persist::load_settings(&handle).unwrap_or_else(|| Settings::from_tokens(&tokens));
@@ -106,6 +109,10 @@ pub fn run() {
             commands::voice_models_selection,
             commands::build_info,
             commands::open_link,
+            commands::diag_snapshot,
+            commands::diag_export_log,
+            commands::diag_log_dir,
+            commands::diag_log_frontend,
         ])
         .run(tauri::generate_context!())
         .expect("error while running zero-teleprompter");

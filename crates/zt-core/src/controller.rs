@@ -42,7 +42,10 @@ pub struct Controller {
 }
 
 /// Time constant for easing scroll position toward the voice target.
-const VOICE_EASE_MS: f64 = 300.0;
+/// 150 ms (was 300): 63 % of a cursor step is on screen after 150 ms, which
+/// keeps "word recognised -> scroll" inside the 300 ms p50 budget (ADR-007)
+/// while still hiding the word-by-word steps.
+pub const VOICE_EASE_MS: f64 = 150.0;
 
 impl Controller {
     pub fn new(tokens: Tokens, settings: Settings) -> Self {
@@ -315,6 +318,26 @@ mod tests {
         assert_eq!(c.state().voice.phase, VoicePhase::Hold);
         c.apply(Command::Voice(VoiceSignal { cursor: Some(0), ..sig })).unwrap();
         assert_eq!(c.state().scroll.target, 4.0);
+    }
+
+    #[test]
+    fn voice_ease_reaches_most_of_a_step_within_budget() {
+        let mut c = ctl();
+        c.apply(Command::ToggleVoice).unwrap();
+        c.apply(Command::Play).unwrap();
+        let sig = VoiceSignal {
+            phase: VoicePhase::Tracking,
+            cursor: Some(3),
+            confidence: 0.9,
+            rate_wps: 2.0,
+        };
+        c.apply(Command::Voice(sig)).unwrap();
+        for _ in 0..10 {
+            c.apply(Command::Tick(16)).unwrap();
+        }
+        // 160 ms at tau = 150 ms -> ~66 % of the way (budget: >= 60 %).
+        let pos = c.state().scroll.position;
+        assert!(pos >= 0.6 * 3.0 && pos < 3.0, "position {pos}");
     }
 
     #[test]

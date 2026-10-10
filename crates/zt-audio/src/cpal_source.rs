@@ -18,6 +18,7 @@ use std::sync::{Arc, Mutex};
 pub struct CpalSource {
     host: cpal::Host,
     stream: Option<cpal::Stream>,
+    desc: Option<String>,
 }
 
 impl std::fmt::Debug for CpalSource {
@@ -28,7 +29,7 @@ impl std::fmt::Debug for CpalSource {
 
 impl Default for CpalSource {
     fn default() -> Self {
-        Self { host: cpal::default_host(), stream: None }
+        Self { host: cpal::default_host(), stream: None, desc: None }
     }
 }
 
@@ -121,12 +122,19 @@ impl AudioSource for CpalSource {
         .map_err(be)?;
         stream.play().map_err(be)?;
         self.stream = Some(stream);
+        let name = device.name().unwrap_or_else(|_| "?".into());
+        self.desc = Some(format!("{name} · {rate} Hz · {channels} ch · {format:?} -> 16 kHz mono"));
         Ok(())
     }
 
     fn stop(&mut self) {
         // Dropping the stream stops capture.
         self.stream = None;
+        self.desc = None;
+    }
+
+    fn describe(&self) -> Option<String> {
+        self.desc.clone()
     }
 
     fn is_running(&self) -> bool {

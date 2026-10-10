@@ -51,7 +51,7 @@ pub fn manifest(app: &AppHandle) -> Result<Manifest, String> {
     // missing hashes are warnings, not errors (ADR-006).
     let m = Manifest::parse(&text).map_err(|e| e.to_string())?;
     for w in m.warnings() {
-        eprintln!("zt: manifest: {w}");
+        tracing::warn!(target: "zt::models", warning = %w, "manifest");
     }
     Ok(m)
 }
@@ -237,6 +237,9 @@ pub fn install(app: &AppHandle, id: &str) -> Result<(), String> {
     std::thread::Builder::new()
         .name("zt-model-dl".into())
         .spawn(move || {
+            let t0 = std::time::Instant::now();
+            tracing::info!(target: "zt::models", model = %id, bytes = entry.total_size(),
+                files = entry.files.len(), "download start");
             let mut last = std::time::Instant::now();
             let mut dl = http::UreqDownloader;
             let res = zt_models::install(&store, &entry, &mut dl, &mut |done, total| {
@@ -257,8 +260,14 @@ pub fn install(app: &AppHandle, id: &str) -> Result<(), String> {
             });
             if res.is_ok() {
                 for v in &helpers {
-                    if let Err(e) = zt_models::install(&store, v, &mut dl, &mut |_, _| {}) {
-                        eprintln!("zt: helper model {} not installed: {e}", v.id);
+                    match zt_models::install(&store, v, &mut dl, &mut |_, _| {}) {
+                        Ok(_) => tracing::info!(target: "zt::models", model = %v.id,
+                            "helper model installed"),
+                        Err(e) => crate::diag::report_error(
+                            &app,
+                            "models",
+                            format!("Hilfsmodell {} nicht installiert: {e}", v.id),
+                        ),
                     }
                 }
             }
@@ -274,17 +283,38 @@ pub fn install(app: &AppHandle, id: &str) -> Result<(), String> {
                             );
                         }
                         for (p, sha) in &report.unverified {
-                            eprintln!("zt: {}/{p} installed UNVERIFIED, sha256 {sha}", entry.id);
+                            tracing::warn!(target: "zt::models", model = %entry.id, file = %p,
+                                sha256 = %sha, "installed UNVERIFIED (no manifest hash)");
                         }
                     }
+                    tracing::info!(target: "zt::models", model = %entry.id,
+                        secs = t0.elapsed().as_secs_f64(), "download complete, sha256 verified");
                     (None, report.unverified)
                 }
-                Err(e) => (Some(e.to_string()), vec![]),
+                Err(e) => {
+                    let msg = format!("Download {} fehlgeschlagen: {e}", entry.id);
+                    tracing::error!(target: "zt::models", model = %entry.id, error = %e,
+                        "download failed");
+                    crate::diag::state().errors.push(crate::diag::ErrorEntry {
+                        at_ms: crate::diag::now_unix_ms(),
+                        source: "models".into(),
+                        message: msg,
+                    });
+                    (Some(e.to_string()), vec![])
+                }
             };
+            let ok = error.is_none();
             let _ = app.emit(
                 EV_PROGRESS,
                 Progress { id, done: total, total, finished: true, error, unverified },
             );
+            // A running voice session picks up the new model right away
+            // (otherwise it would keep the demo engine until restarted).
+            if ok {
+                if let Some(shared) = app.try_state::<crate::appcore::Shared>() {
+                    crate::voice::restart_if_running(&app, &shared);
+                }
+            }
         })
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -391,13 +421,31 @@ pub fn build_engine(
     let store = ModelStore::new(&root);
     let short = primary_language(lang);
     let pref = prefs.streaming.get(&short).map(String::as_str);
-    let chain: Vec<&ModelEntry> = m
-        .fallback_chain(&short, ModelRole::Streaming, pref)
-        .into_iter()
-        .filter(|e| is_installed(&store, e) && e.model_type() == Some(ModelType::OnlineTransducer))
-        .collect();
+    // Streaming chain for the script language; if none is installed, any
+    // installed streaming model of another language (reported, not silent).
+    let plan = m.streaming_plan(&short, pref, |e| {
+        is_installed(&store, e) && e.model_type() == Some(ModelType::OnlineTransducer)
+    });
+    let chain = plan.chain;
+    tracing::info!(
+        target: "zt::engine",
+        language = %short,
+        preferred = ?pref,
+        chain = ?chain.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(),
+        language_fallback = ?plan.language_fallback,
+        root = %root.display(),
+        "streaming model plan"
+    );
     if chain.is_empty() {
         return Ok(None);
+    }
+    let mut notes: Vec<String> = Vec::new();
+    if let Some(other) = &plan.language_fallback {
+        notes.push(format!(
+            "Kein Modell für Sprache „{short}“ installiert – nutze {} ({other}). \
+             Für bessere Erkennung das passende Modell laden.",
+            chain[0].name
+        ));
     }
 
     // Real file names come from the manifest roles (releases use e.g.
@@ -414,16 +462,27 @@ pub fn build_engine(
         path_of(e, "decoder", &mut cfg.decoder);
         path_of(e, "joiner", &mut cfg.joiner);
         path_of(e, "tokens", &mut cfg.tokens);
+        let id = e.id.clone();
         let make = move || -> Result<Box<dyn SpeechEngine>, SttError> {
-            Ok(Box::new(SherpaEngine::new(cfg)?))
+            let t0 = std::time::Instant::now();
+            tracing::info!(target: "zt::engine", model = %id, encoder = %cfg.encoder.display(),
+                tokens = %cfg.tokens.display(), bpe_vocab = ?cfg.bpe_vocab,
+                decoding = %cfg.decoding_method, threads = cfg.num_threads, "creating recognizer");
+            let r = SherpaEngine::new(cfg);
+            match &r {
+                Ok(_) => tracing::info!(target: "zt::engine", model = %id,
+                    ms = t0.elapsed().as_millis() as u64, "recognizer ready"),
+                Err(err) => tracing::error!(target: "zt::engine", model = %id, error = %err,
+                    "recognizer failed"),
+            }
+            Ok(Box::new(r?))
         };
         (e.id.clone(), make)
     });
     let fb = build_with_fallback(candidates).map_err(|errs| {
         errs.iter().map(|(id, e)| format!("{id}: {e}")).collect::<Vec<_>>().join("; ")
     })?;
-    let mut notes: Vec<String> =
-        fb.skipped.iter().map(|(id, e)| format!("{id} failed ({e}), fallback")).collect();
+    notes.extend(fb.skipped.iter().map(|(id, e)| format!("{id} failed ({e}), fallback")));
     if fb.fell_back() {
         notes.push(format!("using {}", fb.chosen));
     }
