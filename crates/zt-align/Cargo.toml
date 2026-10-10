@@ -5,6 +5,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 
 # Intentionally zero runtime dependencies: string similarity (Levenshtein,
 # Jaro-Winkler) is implemented here to keep the crate dependency-free and

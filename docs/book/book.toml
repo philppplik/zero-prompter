@@ -11,7 +11,7 @@ build-dir = "book"
 create-missing = false
 
 [output.html]
-git-repository-url = "https://github.com/zero-teleprompter/zero-teleprompter" # VERIFY: finale Repo-URL
+git-repository-url = "https://github.com/philppplik/zero-prompter"
 no-section-label = false
 
 [output.html.search]
