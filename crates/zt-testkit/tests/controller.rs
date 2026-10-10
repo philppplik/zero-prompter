@@ -78,7 +78,7 @@ fn scroll_mode_table() {
         signal: Option<VoiceSignal>,
         expected: f64,
     }
-    let ease_3 = 3.0 * (1.0 - (-1000.0f64 / 300.0).exp());
+    let ease_3 = 3.0 * (1.0 - (-1000.0f64 / zt_core::controller::VOICE_EASE_MS).exp());
     #[rustfmt::skip]
     let rows = [
         Row { name: "manual never moves",            voice: false, mode: Some(ScrollMode::Manual),         policy: LostPolicy::Stop,          signal: None, expected: 0.0 },

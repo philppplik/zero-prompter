@@ -202,12 +202,21 @@ jobs:
         run: cargo clippy -p zero-teleprompter --all-targets --features sherpa
       - name: test (app)
         run: cargo test -p zero-teleprompter
-      # A partially restored cache (lockfile changed) can hold sherpa-onnx-sys
-      # build-script output pointing to libs that are no longer there; force the
-      # build script to run again (it re-downloads the prebuilt libs if needed).
-      - name: Reset sherpa-onnx-sys build output (stale cache guard)
+      # A partially restored cache (lockfile changed) can contain
+      # target/sherpa-onnx-prebuilt/<archive>/lib without the libraries (the
+      # sherpa build script trusts an existing lib dir). Drop such dirs and the
+      # cached build-script output so the libs are downloaded again.
+      - name: Reset incomplete sherpa-onnx prebuilt (stale cache guard)
         shell: bash
-        run: find target -maxdepth 3 -name 'sherpa-onnx-sys-*' -path '*release*' -prune -exec rm -r {} + || true
+        run: |
+          ls -la target/sherpa-onnx-prebuilt target/sherpa-onnx-prebuilt/*/lib 2>/dev/null | head -n 30 || true
+          for d in target/sherpa-onnx-prebuilt/*/; do
+            [ -d "$d" ] || continue
+            if ! ls "$d"lib/*sherpa-onnx-c-api* >/dev/null 2>&1; then
+              echo "incomplete prebuilt: $d"; rm -r "$d"
+            fi
+          done
+          find target -maxdepth 3 -name 'sherpa-onnx-sys-*' -path '*release*' -prune -exec rm -r {} + || true
       - name: Release build (binary size, informational)
         shell: bash
         run: cargo build -p zero-teleprompter --release --features sherpa && ls -la target/release | head -n 40
