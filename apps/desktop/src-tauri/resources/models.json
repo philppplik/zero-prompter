@@ -1,7 +1,19 @@
 {
   "schemaVersion": 2,
-  "_note": "tokens.txt files are plain git blobs on Hugging Face (no LFS sha256 exposed), so their sha256 is omitted: they are installed size-checked and reported as unverified with the computed hash (ADR-006). TODO before release: pin the reported hashes and pin URLs from main to a commit.",
+  "_note": "All URLs are pinned (Hugging Face: commit hash; GitHub: k2-fsa/sherpa-onnx release asset) and every file carries a SHA-256 (tokens.txt hashed from a download on 2026-10-10). silero-vad is a small helper model (engine sherpaVad) that the app installs automatically together with any speech model; it drives resync segmentation.",
   "models": [
+    {
+      "id": "silero-vad", "defaultRank": 0,
+      "name": "Silero VAD (Segmentierung, automatisch)",
+      "languages": ["de", "en"],
+      "tier": "s",
+      "engine": "sherpaVad",
+      "license": "MIT",
+      "attribution": "Silero VAD by Silero Team (https://github.com/snakers4/silero-vad), MIT; ONNX file from the k2-fsa/sherpa-onnx asr-models release.",
+      "files": [
+        { "path": "silero_vad.onnx", "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx", "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6", "size": 643854, "role": "vad" }
+      ]
+    },
     {
       "id": "zipformer-de-kroko-2025-08-06", "defaultRank": 0,
       "name": "Kroko Streaming Zipformer DE (2025-08-06)",
@@ -11,10 +23,10 @@
       "license": "CC-BY-SA-4.0",
       "attribution": "Kroko ASR community model by Banafo (https://huggingface.co/Banafo/Kroko-ASR), CC-BY-SA; converted for sherpa-onnx by k2-fsa. TODO: confirm exact CC-BY-SA version.",
       "files": [
-        { "path": "encoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/main/encoder.onnx", "sha256": "6e83993d6967ec7a3498b055b7e85ace85b5d64d1b1e8773cb29a43a11f5edb5", "size": 70091557, "role": "encoder" },
-        { "path": "decoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/main/decoder.onnx", "sha256": "94a29592b403c53fa2231b478637da1ab4abcef7f5e46e432098416a4a3ed562", "size": 617489, "role": "decoder" },
-        { "path": "joiner.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/main/joiner.onnx", "sha256": "28356bff070aea51ab1d725a3278e81d19f9300f860d3248a7014292264df15a", "size": 336817, "role": "joiner" },
-        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/main/tokens.txt", "size": 5606, "role": "tokens" }
+        { "path": "encoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/encoder.onnx", "sha256": "6e83993d6967ec7a3498b055b7e85ace85b5d64d1b1e8773cb29a43a11f5edb5", "size": 70091557, "role": "encoder" },
+        { "path": "decoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/decoder.onnx", "sha256": "94a29592b403c53fa2231b478637da1ab4abcef7f5e46e432098416a4a3ed562", "size": 617489, "role": "decoder" },
+        { "path": "joiner.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/joiner.onnx", "sha256": "28356bff070aea51ab1d725a3278e81d19f9300f860d3248a7014292264df15a", "size": 336817, "role": "joiner" },
+        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/tokens.txt", "sha256": "86e8370994ff2c01149ba8c4f8709aa93cdc18914b27a717e291e96faf39a6eb", "size": 5606, "role": "tokens" }
       ]
     },
     {
@@ -26,10 +38,10 @@
       "license": "CC-BY-SA-4.0",
       "attribution": "Kroko ASR community model by Banafo (https://huggingface.co/Banafo/Kroko-ASR), CC-BY-SA; converted for sherpa-onnx by k2-fsa. TODO: confirm exact CC-BY-SA version.",
       "files": [
-        { "path": "encoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/main/encoder.onnx", "sha256": "d4881c57449d581e0770fd53fa66c2fdc6cd167d92ece7c715e603defc96d9d4", "size": 70092599, "role": "encoder" },
-        { "path": "decoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/main/decoder.onnx", "sha256": "455ba38466fce8d5a57e7db68a323b684079ca4d9e1dd93a740d9b2429aae3b1", "size": 617488, "role": "decoder" },
-        { "path": "joiner.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/main/joiner.onnx", "sha256": "d406f616736350e2a7df3e39398b78eb2fc1a2ca6973a19d3853fa3227e25b52", "size": 336817, "role": "joiner" },
-        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/main/tokens.txt", "size": 6310, "role": "tokens" }
+        { "path": "encoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/572aaf4e2e0c603c3fc2a574d096e755a178faa1/encoder.onnx", "sha256": "d4881c57449d581e0770fd53fa66c2fdc6cd167d92ece7c715e603defc96d9d4", "size": 70092599, "role": "encoder" },
+        { "path": "decoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/572aaf4e2e0c603c3fc2a574d096e755a178faa1/decoder.onnx", "sha256": "455ba38466fce8d5a57e7db68a323b684079ca4d9e1dd93a740d9b2429aae3b1", "size": 617488, "role": "decoder" },
+        { "path": "joiner.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/572aaf4e2e0c603c3fc2a574d096e755a178faa1/joiner.onnx", "sha256": "d406f616736350e2a7df3e39398b78eb2fc1a2ca6973a19d3853fa3227e25b52", "size": 336817, "role": "joiner" },
+        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/572aaf4e2e0c603c3fc2a574d096e755a178faa1/tokens.txt", "sha256": "396dbeb5f4858875690716084f54e90d339679d0ba3e6b5b584f3d7589254d2d", "size": 6310, "role": "tokens" }
       ]
     },
     {
@@ -41,10 +53,10 @@
       "license": "Apache-2.0",
       "attribution": "k2-fsa/icefall, LibriSpeech-trained; https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17",
       "files": [
-        { "path": "encoder-epoch-99-avg-1.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/main/encoder-epoch-99-avg-1.int8.onnx", "sha256": "3810755ce7c3ab26b42a8bcf39d191308fa27fb0f53358823ba46141d03b7eb3", "size": 42845182, "role": "encoder" },
-        { "path": "decoder-epoch-99-avg-1.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/main/decoder-epoch-99-avg-1.int8.onnx", "sha256": "21e2a2acd961b3ac72f55be2f10f1a285e1b0b0ba010d7c0b6eab141411b163c", "size": 539499, "role": "decoder" },
-        { "path": "joiner-epoch-99-avg-1.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/main/joiner-epoch-99-avg-1.int8.onnx", "sha256": "e085d73b593cf9b0707f370dbd656d58327d3fe36d80d849202ef81df02cb01e", "size": 259572, "role": "joiner" },
-        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/main/tokens.txt", "size": 5048, "role": "tokens" }
+        { "path": "encoder-epoch-99-avg-1.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/encoder-epoch-99-avg-1.int8.onnx", "sha256": "3810755ce7c3ab26b42a8bcf39d191308fa27fb0f53358823ba46141d03b7eb3", "size": 42845182, "role": "encoder" },
+        { "path": "decoder-epoch-99-avg-1.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/decoder-epoch-99-avg-1.int8.onnx", "sha256": "21e2a2acd961b3ac72f55be2f10f1a285e1b0b0ba010d7c0b6eab141411b163c", "size": 539499, "role": "decoder" },
+        { "path": "joiner-epoch-99-avg-1.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/joiner-epoch-99-avg-1.int8.onnx", "sha256": "e085d73b593cf9b0707f370dbd656d58327d3fe36d80d849202ef81df02cb01e", "size": 259572, "role": "joiner" },
+        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/tokens.txt", "sha256": "49e3c2646595fd907228b3c6787069658f67b17377c60aeb8619c4551b2316fb", "size": 5048, "role": "tokens" }
       ]
     },
     {
@@ -56,10 +68,10 @@
       "license": "CC-BY-4.0",
       "attribution": "parakeet-tdt-0.6b-v3 by NVIDIA (https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), CC-BY-4.0; ONNX int8 conversion by k2-fsa/sherpa-onnx. Note: sherpa-onnx needs modelType \"nemo_transducer\".",
       "files": [
-        { "path": "encoder.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/main/encoder.int8.onnx", "sha256": "acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247", "size": 652184281, "role": "encoder" },
-        { "path": "decoder.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/main/decoder.int8.onnx", "sha256": "179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e", "size": 11845275, "role": "decoder" },
-        { "path": "joiner.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/main/joiner.int8.onnx", "sha256": "3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3", "size": 6355277, "role": "joiner" },
-        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/main/tokens.txt", "size": 93939, "role": "tokens" }
+        { "path": "encoder.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/encoder.int8.onnx", "sha256": "acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247", "size": 652184281, "role": "encoder" },
+        { "path": "decoder.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/decoder.int8.onnx", "sha256": "179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e", "size": 11845275, "role": "decoder" },
+        { "path": "joiner.int8.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/joiner.int8.onnx", "sha256": "3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3", "size": 6355277, "role": "joiner" },
+        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/tokens.txt", "sha256": "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d", "size": 93939, "role": "tokens" }
       ]
     }
   ]

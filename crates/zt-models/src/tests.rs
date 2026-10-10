@@ -134,7 +134,20 @@ const BUNDLED: &str = include_str!("../../../apps/desktop/src-tauri/resources/mo
 #[test]
 fn bundled_manifest_is_valid_and_complete() {
     let m = Manifest::parse(BUNDLED).expect("bundled models.json must parse");
-    assert_eq!(m.models.len(), 4);
+    assert_eq!(m.models.len(), 5);
+    // Every file is pinned and hashed (no unverified files in the release manifest).
+    assert!(m.warnings().is_empty(), "{:?}", m.warnings());
+    for e in &m.models {
+        for f in &e.files {
+            assert!(!f.url.contains("/resolve/main/"), "{}/{} not pinned", e.id, f.path);
+        }
+    }
+    let vad: Vec<_> = m.vad_models().collect();
+    assert_eq!(vad.len(), 1);
+    assert_eq!(vad[0].id, "silero-vad");
+    assert_eq!(vad[0].license, "MIT");
+    assert!(vad[0].file_by_role("vad").is_some());
+    assert!(vad[0].effective_roles().is_empty(), "VAD is never a streaming/resync candidate");
     for id in [
         "zipformer-de-kroko-2025-08-06",
         "zipformer-en-kroko-2025-08-06",
@@ -144,10 +157,6 @@ fn bundled_manifest_is_valid_and_complete() {
         let e = m.get(id).unwrap();
         for role in ["encoder", "decoder", "joiner", "tokens"] {
             assert!(e.file_by_role(role).is_some(), "{id} lacks {role}");
-        }
-        // Only the small plain-git tokens.txt may be unverified.
-        for f in e.unverified_files() {
-            assert_eq!(f.role.as_deref(), Some("tokens"), "{id}/{}", f.path);
         }
     }
     let p = m.get("parakeet-tdt-0.6b-v3-int8").unwrap();

@@ -2,7 +2,7 @@
 //! remove, per-language model choice and engine construction (ADR-006).
 //!
 //! Manifest lookup order: `<app_data>/models/manifest.json` (user/updated) ->
-//! bundled `resources/models.json` (4 entries: Kroko DE, Kroko EN,
+//! bundled `resources/models.json` (Silero VAD helper, Kroko DE, Kroko EN,
 //! Zipformer EN 20M as Apache-2.0 fallback, Parakeet TDT v3 for resync).
 //!
 //! Engine choice: per primary language the user's pick (if installed) else
@@ -27,8 +27,18 @@ const BUNDLED_MANIFEST: &str = include_str!("../resources/models.json");
 /// Computed hashes of files the manifest could not verify (per model dir).
 const UNVERIFIED_FILE: &str = "unverified-sha256.json";
 const PREFS_FILE: &str = "voice-models.json";
-/// Optional Silero VAD model for resync segmentation (else RMS segmentation).
+/// Legacy location of a manually copied Silero VAD model (`<models>/silero_vad.onnx`).
+/// The manifest entry `silero-vad` (engine `sherpaVad`) is preferred.
 pub const SILERO_VAD_FILE: &str = "silero_vad.onnx";
+
+/// Silero VAD model file used for resync segmentation: the first installed
+/// `sherpaVad` manifest entry, else the legacy file; `None` = RMS segmentation.
+fn vad_model_path(m: &Manifest, store: &ModelStore, root: &std::path::Path) -> Option<PathBuf> {
+    m.vad_models()
+        .filter(|e| is_installed(store, e))
+        .find_map(|e| e.file_by_role("vad").map(|f| store.file_path(e, f)))
+        .or_else(|| Some(root.join(SILERO_VAD_FILE)).filter(|p| p.is_file()))
+}
 
 pub fn models_root(app: &AppHandle) -> Result<PathBuf, String> {
     app.path().app_data_dir().map(|d| d.join("models")).map_err(|e| e.to_string())
@@ -194,7 +204,7 @@ pub fn selection(
         streaming_options: ids(m.candidates(&short, ModelRole::Streaming)),
         resync,
         resync_options: ids(m.candidates(&short, ModelRole::Resync)),
-        silero_vad: root.join(SILERO_VAD_FILE).is_file(),
+        silero_vad: vad_model_path(&m, &store, &root).is_some(),
     })
 }
 
@@ -218,6 +228,13 @@ pub fn install(app: &AppHandle, id: &str) -> Result<(), String> {
     let m = manifest(app)?;
     let entry = m.get(id).map_err(|e| e.to_string())?.clone();
     let store = ModelStore::new(models_root(app)?);
+    // Silero VAD is a small mandatory helper: installed together with any
+    // speech model (Kroko/Zipformer/Parakeet) so resync segments by VAD.
+    let helpers: Vec<ModelEntry> = m
+        .vad_models()
+        .filter(|v| v.id != entry.id && !is_installed(&store, v))
+        .cloned()
+        .collect();
     let app = app.clone();
     let id = id.to_string();
     std::thread::Builder::new()
@@ -241,6 +258,13 @@ pub fn install(app: &AppHandle, id: &str) -> Result<(), String> {
                     );
                 }
             });
+            if res.is_ok() {
+                for v in &helpers {
+                    if let Err(e) = zt_models::install(&store, v, &mut dl, &mut |_, _| {}) {
+                        eprintln!("zt: helper model {} not installed: {e}", v.id);
+                    }
+                }
+            }
             let total = entry.total_size();
             let (error, unverified) = match res {
                 Ok(report) => {
@@ -445,14 +469,16 @@ pub fn build_engine(
         }
     };
     // Silero VAD if its model is present, else RMS segmentation (zt-audio).
-    let vad_path = root.join(SILERO_VAD_FILE);
-    let segmenter: Box<dyn Segmenter> = match SileroSegmenter::new(&SileroVadConfig::new(&vad_path))
-    {
-        Ok(s) => Box::new(s),
-        Err(e) => {
-            if vad_path.exists() {
+    let segmenter: Box<dyn Segmenter> = match vad_model_path(&m, &store, &root) {
+        Some(vad_path) => match SileroSegmenter::new(&SileroVadConfig::new(&vad_path)) {
+            Ok(s) => Box::new(s),
+            Err(e) => {
                 notes.push(format!("Silero VAD unavailable ({e}), using RMS segmentation"));
+                Box::new(RmsSegmenter::default())
             }
+        },
+        None => {
+            notes.push("Silero VAD not installed, using RMS segmentation".into());
             Box::new(RmsSegmenter::default())
         }
     };

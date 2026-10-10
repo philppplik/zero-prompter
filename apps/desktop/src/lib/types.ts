@@ -154,6 +154,7 @@ export interface ModelRow {
     name: string;
     languages: string[];
     tier: 's' | 'm' | 'l';
+    engine: 'sherpaOnlineTransducer' | 'sherpaOfflineTransducer' | 'sherpaVad';
     license: string;
     attribution?: string | null;
     defaultRank?: number | null;

@@ -21,6 +21,8 @@
   const mb = (n: number) => `${Math.round(n / 1_000_000)} MB`;
   const fail = (e: unknown) => store.toast(errorText(e), 'error');
   const nameOf = (id: string) => models.find((m) => m.entry.id === id)?.entry.name ?? id;
+  const roleLabel = (m: ModelRow) =>
+    m.entry.engine === 'sherpaVad' ? 'Segmentierung (wird automatisch mitgeladen)' : m.roles.includes('resync') ? 'Resync' : 'Streaming';
   const installed = (id: string) => models.find((m) => m.entry.id === id)?.status === 'installed';
 
   const streamingFor = (lang: string) =>
@@ -115,8 +117,13 @@
     {/if}
     <span class="footnote">
       {selection?.resync
-        ? `Resync: ${nameOf(selection.resync)} · Segmentierung ${selection.sileroVad ? 'Silero VAD' : 'Pegel (RMS)'}`
+        ? `Resync: ${nameOf(selection.resync)}`
         : 'Resync-Modell nicht installiert, nur Streaming aktiv.'}
+    </span>
+  {/if}
+  {#if selection}
+    <span class="footnote">
+      Segmentierung: {selection.sileroVad ? 'Silero VAD aktiv' : 'Pegel (RMS), Silero VAD nicht installiert'}
     </span>
   {/if}
   {#if store.engine?.notes?.length}
@@ -137,7 +144,7 @@
         <div>
           {m.entry.name}
           <span class="footnote">
-            · {m.entry.languages.join(', ')} · {mb(m.totalSize)} · {m.roles.includes('resync') ? 'Resync' : 'Streaming'}
+            · {m.entry.languages.join(', ')} · {mb(m.totalSize)} · {roleLabel(m)}
           </span>
         </div>
         <div class="footnote">

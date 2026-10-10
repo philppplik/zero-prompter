@@ -258,6 +258,13 @@ impl Manifest {
         self.models.iter().filter(move |m| m.languages.iter().any(|l| l == lang))
     }
 
+    /// Helper models for voice-activity detection (engine `sherpaVad`, e.g.
+    /// Silero VAD). Small and language-independent: the app installs them
+    /// automatically together with any speech model.
+    pub fn vad_models(&self) -> impl Iterator<Item = &ModelEntry> {
+        self.models.iter().filter(|m| m.engine == Engine::SherpaVad)
+    }
+
     /// Non-fatal findings, e.g. files that will be installed *unverified*.
     pub fn warnings(&self) -> Vec<String> {
         self.models
