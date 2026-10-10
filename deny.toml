@@ -1,0 +1,45 @@
+# cargo-deny configuration (https://embarkstudios.github.io/cargo-deny/)
+# VERIFY: schema matches the installed cargo-deny version (>= 0.14 uses `version = 2`).
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+# GPL/AGPL/LGPL are intentionally NOT allowed (QPrompt/Imaginary are UX reference only).
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Unlicense",
+    "CC0-1.0",
+    # Tauri / WebView / TLS dependency tree (VERIFY against `cargo deny check licenses`):
+    "MPL-2.0",              # cssparser/selectors via tauri-utils (file-level copyleft, unmodified use)
+    "BSL-1.0",
+    "CDLA-Permissive-2.0",  # webpki-roots (ureq/rustls)
+    "OpenSSL",              # older ring releases
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+deny = [
+    # deprecated/archived, see RESEARCH.md
+    { name = "sherpa-rs" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

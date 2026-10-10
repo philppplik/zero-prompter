@@ -1,0 +1,63 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/zt-core",
+    "crates/zt-align",
+    "crates/zt-audio",
+    "crates/zt-stt",
+    "crates/zt-models",
+    "crates/zt-testkit",
+    "apps/desktop/src-tauri",
+]
+# `cargo build/test` without `--workspace` stays light (no WebView/system deps).
+# The app needs `apps/desktop/dist` (run `npm run build` first) because
+# `tauri::generate_context!` embeds the frontend at compile time.
+default-members = [
+    "crates/zt-core",
+    "crates/zt-align",
+    "crates/zt-audio",
+    "crates/zt-stt",
+    "crates/zt-models",
+    "crates/zt-testkit",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/zero-teleprompter/zero-teleprompter" # VERIFY: final repo URL
+authors = ["zero-teleprompter contributors"]
+
+[workspace.dependencies]
+# Only long-stable, well-known crates. Versions intentionally conservative.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+sha2 = "0.10"
+# Optional adapters (behind feature flags in the respective crates)
+cpal = "0.15"            # VERIFY: bump to latest 0.15.x/0.16 when building
+sherpa-onnx = "=1.13.8"  # API checked against docs.rs 1.13.8 (not compiled); keep pinned
+
+zt-core = { path = "crates/zt-core" }
+zt-align = { path = "crates/zt-align" }
+zt-audio = { path = "crates/zt-audio" }
+zt-stt = { path = "crates/zt-stt" }
+zt-models = { path = "crates/zt-models" }
+zt-testkit = { path = "crates/zt-testkit" }
+
+# Test-only (dev-dependencies). proptest 1.x: stable API (`proptest!`,
+# `prop_assert*!`, `prop_oneof!`, regex string strategies).
+# VERIFY: newest 1.x may raise its MSRV above 1.80; pin e.g. "=1.5.0" if CI on 1.80 fails.
+proptest = { version = "1", default-features = false, features = ["std"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

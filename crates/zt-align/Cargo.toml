@@ -1,0 +1,25 @@
+[package]
+name = "zt-align"
+description = "Pure word-level script/speech alignment and voice state machine for zero-teleprompter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# Intentionally zero runtime dependencies: string similarity (Levenshtein,
+# Jaro-Winkler) is implemented here to keep the crate dependency-free and
+# fully deterministic. `strsim` (MIT) would be a drop-in alternative.
+[dependencies]
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+# Scenario/state-machine tests live in `crates/zt-testkit/tests` (shared
+# speaker + fixtures); only property tests of this crate's pure functions stay here.
+
+[features]
+default = []
+serde = ["dep:serde"]
+
+[lints]
+workspace = true

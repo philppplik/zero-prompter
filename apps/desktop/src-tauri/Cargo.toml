@@ -1,0 +1,47 @@
+[package]
+name = "zero-teleprompter"
+description = "zero-teleprompter desktop app (Tauri 2 adapter around zt-core / zt-align / zt-audio / zt-stt / zt-models)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+# `_lib` suffix avoids a name clash with the bin target on Windows (Tauri 2 template convention).
+name = "zero_teleprompter_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] } # VERIFY: pin to latest 2.x via `cargo update`
+
+[dependencies]
+tauri = { version = "2", features = [] }                 # VERIFY: CONCEPT targets 2.12.x
+tauri-plugin-global-shortcut = "2"                       # VERIFY: handler/ShortcutEvent API
+tauri-plugin-dialog = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+zt-core = { workspace = true }
+zt-align = { workspace = true }
+zt-audio = { workspace = true }
+zt-stt = { workspace = true }
+zt-models = { workspace = true }
+# Blocking HTTP client for model downloads (MIT OR Apache-2.0). Only 2.x API is used.
+ureq = { version = "2", optional = true }                # VERIFY: 2.x API (`set`, `into_reader`)
+
+[features]
+default = ["cpal", "download"]
+# Real microphone capture (needs ALSA headers on Linux).
+cpal = ["zt-audio/cpal"]
+# Real STT via sherpa-onnx (bundles onnxruntime). Without it, voice runs in demo mode (MockEngine).
+sherpa = ["zt-stt/sherpa"]
+# Model download via HTTP.
+download = ["dep:ureq"]
+
+# NOTE: this crate deliberately does NOT inherit `[workspace.lints]`:
+# `unsafe_code = "forbid"` cannot be relaxed for code expanded from Tauri's
+# `generate_context!`/`generate_handler!` macros. Our own code contains no `unsafe`
+# (enforced by review + the `deny` below, which macro output may `allow`).
+[lints.rust]
+unsafe_code = "deny"

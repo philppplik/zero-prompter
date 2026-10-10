@@ -1,0 +1,23 @@
+[package]
+name = "zt-testkit"
+description = "Shared test helpers, builders and alignment fixtures for zero-teleprompter (dev only, never shipped)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# Normal (not dev-) dependencies on purpose: the helpers in `src/` are a
+# library that other crates' integration tests and this crate's `tests/` use.
+# Nothing in the shipped app depends on this crate.
+[dependencies]
+zt-core = { workspace = true }
+zt-align = { workspace = true }
+zt-stt = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

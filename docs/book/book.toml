@@ -1,0 +1,18 @@
+[book]
+title = "zero-teleprompter – Handbuch"
+authors = ["zero-teleprompter contributors"]
+language = "de"
+multilingual = false
+src = "src"
+description = "Nutzer- und Entwicklerhandbuch für zero-teleprompter (v0.1, ungetestet)"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/zero-teleprompter/zero-teleprompter" # VERIFY: finale Repo-URL
+no-section-label = false
+
+[output.html.search]
+enable = true

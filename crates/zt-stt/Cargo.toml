@@ -1,0 +1,25 @@
+[package]
+name = "zt-stt"
+description = "Speech-to-text ports (streaming + offline resync, hybrid orchestrator) with sherpa-onnx adapters and mocks"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+# RMS level for the model-free segmenter (no cpal: default features off there).
+zt-audio = { workspace = true }
+sherpa-onnx = { workspace = true, optional = true }
+
+[features]
+default = []
+# Official k2-fsa sherpa-onnx Rust bindings (Apache-2.0), verified 1.13.8
+# (workspace root should pin sherpa-onnx = "=1.13.8"). Default links static
+# libs; without SHERPA_ONNX_LIB_DIR the build script downloads a prebuilt
+# -lib archive. For shared libs: default-features = false, features = ["shared"].
+# Off by default: pulls in onnxruntime and needs models.
+sherpa = ["dep:sherpa-onnx"]
+
+[lints]
+workspace = true

@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "talent",
+  "description": "Talent output window: render-only. Listens to events and calls a few bridge commands; no dialogs, no filesystem.",
+  "windows": ["talent"],
+  "permissions": [
+    "core:default"
+  ]
+}

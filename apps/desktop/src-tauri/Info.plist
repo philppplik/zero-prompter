@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged into the bundle Info.plist by tauri-bundler (Tauri 2). -->
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>zero-teleprompter hört zu, um dem gesprochenen Text zu folgen. Audio bleibt auf diesem Gerät. / Listens to follow your speech; audio never leaves this device.</string>
+</dict>
+</plist>

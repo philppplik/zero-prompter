@@ -1,0 +1,20 @@
+[package]
+name = "zt-audio"
+description = "Audio capture port (trait) + cpal adapter + 16 kHz mono resampling for zero-teleprompter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+cpal = { workspace = true, optional = true }
+
+[features]
+default = []
+# Real microphone capture via cpal. Off by default so the pure parts build
+# and test without system audio libraries (ALSA headers on Linux).
+cpal = ["dep:cpal"]
+
+[lints]
+workspace = true

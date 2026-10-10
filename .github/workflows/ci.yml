@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1" # weekly: extended property tests
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  # Pure crates: fast, no system deps (default-members excludes the app).
+  core:
+    name: Rust core (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: fmt
+        if: runner.os == 'Linux'
+        run: cargo fmt --all -- --check
+      - name: clippy (crates)
+        run: cargo clippy --all-targets
+      # default-members include zt-testkit, so this runs unit tests, tests/
+      # integration tests (proptest, state-machine tables, alignment fixtures,
+      # MockEngine pipeline) and doctests of all pure crates.
+      - name: test (crates)
+        run: cargo test --all-targets
+      - name: doctests (crates)
+        run: cargo test --doc
+
+  # Minimum supported Rust version (workspace.package.rust-version) incl. dev-deps.
+  msrv:
+    name: MSRV 1.80 (tests)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.80
+      - uses: Swatinem/rust-cache@v2
+      # `+1.80` overrides rust-toolchain.toml (channel = stable).
+      - run: cargo +1.80 test --all-targets
+
+  # Many more proptest cases, weekly and on demand (not on every push).
+  proptest-extended:
+    name: Property tests (extended)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    env:
+      PROPTEST_CASES: "8192"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --release -p zt-align -p zt-core -p zt-testkit
+      - name: Keep failing seeds
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proptest-regressions
+          path: "**/proptest-regressions/**"
+
+  # Adapters behind feature flags (cpal needs ALSA headers on Linux).
+  adapters:
+    name: Adapters cpal/sherpa (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux audio deps
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - run: cargo build -p zt-audio --features cpal
+      # sherpa-onnx binding is unverified (// VERIFY in zt-stt/src/sherpa.rs) -> non-blocking for now.
+      - run: cargo build -p zt-stt --features sherpa
+        continue-on-error: true
+
+  frontend:
+    name: Frontend (check, test, build)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # No lockfile committed yet (authored offline) -> `npm install`; switch to `npm ci` once package-lock.json exists.
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/desktop/dist
+
+  app:
+    name: Tauri app (${{ matrix.os }})
+    needs: frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Linux deps (WebKitGTK 4.1, ALSA)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/desktop/dist
+      - name: Icons
+        working-directory: apps/desktop
+        run: |
+          npm install --no-audit --no-fund
+          npx tauri icon app-icon.png
+      - name: clippy (app)
+        run: cargo clippy -p zero-teleprompter --all-targets
+      - name: test (app)
+        run: cargo test -p zero-teleprompter
+      - name: Release build (binary size, informational)
+        shell: bash
+        run: cargo build -p zero-teleprompter --release && ls -la target/release | head -n 40
+
+  licenses:
+    name: Licenses (cargo-deny + npm)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses bans sources advisories
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: npm licence allow-list (no GPL/AGPL/LGPL)
+        working-directory: apps/desktop
+        run: |
+          npm install --no-audit --no-fund
+          npx --yes license-checker-rseidelsohn --production --onlyAllow "MIT;Apache-2.0;ISC;BSD-2-Clause;BSD-3-Clause;0BSD;OFL-1.1;CC0-1.0;Unlicense;MIT OR Apache-2.0;Apache-2.0 OR MIT" --excludePrivatePackages
