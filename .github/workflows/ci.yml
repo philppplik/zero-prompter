@@ -35,7 +35,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      # sherpa-onnx-sys unpacks its prebuilt libs to target/sherpa-onnx-prebuilt;
+      # cache it too, else a restored build-script output points to a missing dir.
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-rust
+          cache-directories: target/sherpa-onnx-prebuilt
       - name: fmt
         if: runner.os == 'Linux'
         # Prints an applicable unified diff on failure (git apply).
@@ -62,7 +67,12 @@ jobs:
         run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@1.80
+      # sherpa-onnx-sys unpacks its prebuilt libs to target/sherpa-onnx-prebuilt;
+      # cache it too, else a restored build-script output points to a missing dir.
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-rust
+          cache-directories: target/sherpa-onnx-prebuilt
       # Cargo.lock is committed and generated MSRV-aware (lockfiles.yml).
       # `+1.80` overrides rust-toolchain.toml (channel = stable).
       - run: cargo +1.80 test --all-targets --locked
@@ -81,7 +91,12 @@ jobs:
         shell: bash
         run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
+      # sherpa-onnx-sys unpacks its prebuilt libs to target/sherpa-onnx-prebuilt;
+      # cache it too, else a restored build-script output points to a missing dir.
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-rust
+          cache-directories: target/sherpa-onnx-prebuilt
       - run: cargo test --release -p zt-align -p zt-core -p zt-testkit
       - name: Keep failing seeds
         if: failure()
@@ -105,7 +120,12 @@ jobs:
         shell: bash
         run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
+      # sherpa-onnx-sys unpacks its prebuilt libs to target/sherpa-onnx-prebuilt;
+      # cache it too, else a restored build-script output points to a missing dir.
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-rust
+          cache-directories: target/sherpa-onnx-prebuilt
       - name: Linux audio deps
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
@@ -153,7 +173,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+      # sherpa-onnx-sys unpacks its prebuilt libs to target/sherpa-onnx-prebuilt;
+      # cache it too, else a restored build-script output points to a missing dir.
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-rust
+          cache-directories: target/sherpa-onnx-prebuilt
       - uses: actions/setup-node@v7
         with:
           node-version: 22

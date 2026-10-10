@@ -6,6 +6,13 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 
 > Noch nie kompiliert oder ausgeführt (Erstellung ohne Toolchain). Siehe README → „Erste Schritte nach dem Klonen“.
 
+### Behoben (2026-10-11)
+- Windows (x64/ARM64): Die App startete auf frischen Systemen nicht („VCRUNTIME140.dll was not found“). Die MSVC-Laufzeit wird jetzt statisch gelinkt (`.cargo/config.toml`, `+crt-static`); CI/Release prüfen per `dumpbin /dependents` (`scripts/check-crt.ps1`), dass keine `VCRUNTIME*/MSVCP*`-DLL importiert wird.
+
+### Geändert (2026-10-11)
+- Release-Builds aller Plattformen enthalten echte Spracherkennung (Feature `sherpa`, sherpa-onnx 1.13.8, statisch gelinkt inkl. onnxruntime – keine zusätzlichen DLLs/dylibs/.so). Ohne installiertes Modell startet die App weiterhin im Demo-Modus.
+- `repository`-URL: https://github.com/philppplik/zero-prompter
+
 ### Hinzugefügt (2026-10-10, Release-Vorbereitung)
 - Silero VAD (MIT) als Modell `silero-vad` im Katalog. Es wird mit jedem Sprachmodell automatisch mitgeladen und für die Resync-Segmentierung genutzt; ohne das Modell segmentiert die App über den Pegel (RMS). Der Inspector zeigt „Segmentierung: Silero VAD aktiv“.
 - Alle Modell-URLs sind auf Commits bzw. Release-Assets gepinnt, und alle Dateien haben einen SHA-256 (auch `tokens.txt`).

@@ -49,7 +49,7 @@ npm run tauri build            # Installer unter target/release/bundle/
 Ohne weitere Flags enthält der Build die Features `cpal` (Mikrofon) und `download` (Modelldownload). Mit echter Spracherkennung baust du so:
 
 ```bash
-npm run tauri -- build --features sherpa   # VERIFY: Flag-Weitergabe der Tauri-CLI 2
+npm run tauri -- build --features sherpa   # echte Spracherkennung (Release-Builds haben das immer)
 ```
 
 ## Speicherorte

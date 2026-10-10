@@ -54,7 +54,12 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      # sherpa-onnx-sys unpacks its prebuilt libs to target/sherpa-onnx-prebuilt;
+      # cache it too, else a restored build-script output points to a missing dir.
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-rust
+          cache-directories: target/sherpa-onnx-prebuilt
 
       - name: Linux deps (WebKitGTK 4.1, ALSA)
         if: runner.os == 'Linux'
@@ -130,7 +135,12 @@ jobs:
         with:
           node-version: 22
       - uses: dtolnay/rust-toolchain@stable
+      # sherpa-onnx-sys unpacks its prebuilt libs to target/sherpa-onnx-prebuilt;
+      # cache it too, else a restored build-script output points to a missing dir.
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-rust
+          cache-directories: target/sherpa-onnx-prebuilt
       - name: Build Store installer
         working-directory: apps/desktop
         shell: bash
