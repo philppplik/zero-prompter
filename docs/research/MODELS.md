@@ -32,11 +32,27 @@ for each file.
   re-anchors the position after a slip. It is large (about 670 MB) and needs
   `model_type = "nemo_transducer"` in sherpa-onnx.
 
+### Integration in the app (ADR-006)
+
+| Role | Engine (sherpa-onnx 1.13.8) | Manifest |
+|---|---|---|
+| Streaming DE / EN | `OnlineRecognizer`, transducer (encoder/decoder/joiner/tokens) | `modelType: online_transducer`, `roles: ["streaming"]`, `defaultRank` 0 = default |
+| Fallback EN | same, tried automatically when the preferred model fails to load | `defaultRank: 1` |
+| Resync | `OfflineRecognizer`, `model_config.transducer` + `model_type = "nemo_transducer"` | `modelType: offline_nemo_transducer`, `roles: ["resync"]` |
+
+The user picks a streaming model per primary language (or "automatic") and
+switches resync on in the Inspector (`voice-models.json`). Resync segments
+come from Silero VAD if `<data>/models/silero_vad.onnx` exists, otherwise from
+the model-free RMS segmenter.
+
 Teleprompter tracking matches against a known script, so a moderate WER is
 acceptable. Latency and robustness matter more.
 
 ## Open points (not verified)
-- SHA-256 of all `tokens.txt` files (not LFS). The manifest will not validate until they are filled.
+- SHA-256 of all `tokens.txt` files (not LFS). Since manifest schema v2 the hash is
+  optional: such files are size-checked, their SHA-256 is computed after download and
+  stored as `unverified-sha256.json` in the model folder, and the UI marks them as
+  unverified. Pin the reported hashes before a release.
 - The exact CC-BY-SA version for Kroko, and whether the share-alike terms are acceptable.
 - The licence of `zipformer-en-2023-06-26`.
 - Measured latency/RTF on the target CPU.

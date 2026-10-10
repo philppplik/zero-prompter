@@ -51,6 +51,12 @@ Abgleich Sprache ↔ Skript **ohne Abhängigkeiten** (serde nur über das option
 | `MockEngine::new(events)`, `MockEngine::reading(text, start_s, wps)` | deterministische Engine für Tests und Demo |
 | `SherpaEngine::new(SherpaConfig)`, `SherpaConfig::zipformer(dir, name)` (Feature `sherpa`) | gegen sherpa-onnx 1.13.8 (docs.rs) geschrieben. `SherpaConfig` hat neu `bpe_vocab`, `modeling_unit`, `max_active_paths` (Standard 4). Hotwords gehen über `hotwords_buf`, der Recognizer wird dafür neu erzeugt |
 | `build_hotwords(words, min_len, max, score)` | seltene, lange Wörter als Hotwords. Die App ruft `(…, 5, 200, 1.5)` auf |
+| `SttEvent::Resync { text, age_ms }` | Offline-Ergebnis eines Segments (ADR-006) |
+| `trait OfflineEngine { name, transcribe(&[f32]) }`, `MockOfflineEngine` | Offline-Port für Resync, Mock mit Verzögerung |
+| `SherpaOfflineEngine::new(SherpaOfflineConfig::parakeet(dir, name))` (Feature `sherpa`) | `OfflineRecognizer`, `model_type = "nemo_transducer"` |
+| `trait Segmenter`, `RmsSegmenter`, `SileroSegmenter` (Feature `sherpa`) | schneidet Sprachsegmente für den Resync |
+| `HybridEngine::{streaming_only, with_resync}` | Orchestrator, selbst eine `SpeechEngine`; Resync auf Thread `zt-resync`, begrenzte Queue, verwirft statt zu blockieren |
+| `build_with_fallback(candidates)` | erster erfolgreich gebauter Kandidat gewinnt, Fehler gesammelt |
 
 ## zt-models
 

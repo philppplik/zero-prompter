@@ -7,6 +7,8 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 > Noch nie kompiliert oder ausgeführt (Erstellung ohne Toolchain). Siehe README → „Erste Schritte nach dem Klonen“.
 
 ### Hinzugefügt
+- Hybride Spracherkennung (ADR-006): Streaming-Modell pro Sprache (Standard Kroko DE/EN, Fallback Zipformer EN 20M) mit automatischer Fallback-Kette, optionaler Offline-Resync mit Parakeet TDT 0.6B v3 (`OfflineRecognizer`, `nemo_transducer`) auf eigenem Thread, der den Tracker neu verankert. Inspector: Modellwahl pro Sprache und Resync-Schalter.
+- Manifest v2: `modelType`, `roles`, `defaultRank`, optionaler `sha256`; Dateien ohne Hash werden nach dem Download gehasht und als unverifiziert angezeigt.
 - Cargo-Workspace mit den reinen Kern-Crates `zt-core`, `zt-align`, `zt-audio`, `zt-stt`, `zt-models` und dem Test-Crate `zt-testkit` (ADR-005, hexagonal).
 - `zt-core`: Skriptmodell (Absätze, Regieanweisungen in `[...]`), Automat Wiedergabe × Modus mit Countdown, Scroll-Modi Manuell, Konstant, Sprachaktiviert und Voice-Tracking, Lost-Policy, manueller Override, Settings und Themes aus `docs/design/tokens.json`.
 - `zt-align`: Normalisierung für Deutsch und Englisch (Umlaut-Folding, Zahlen zu Wörtern, Füllwörter), Wortähnlichkeit (Levenshtein, Jaro-Winkler), gefenstertes Smith-Waterman, `VoiceTracker` mit Hysterese und den Zuständen idle, listening, tracking, hold, lost, resync.
