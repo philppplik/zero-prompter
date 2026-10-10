@@ -1,0 +1,36 @@
+name: Lockfiles
+
+# Regenerates Cargo.lock (MSRV-aware resolver) and apps/desktop/package-lock.json
+# on a runner and commits them to the current branch. Run manually after
+# dependency changes: `gh workflow run lockfiles.yml`.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # Picks every dependency compatible with rust-version = 1.80 where one exists.
+      - name: Cargo.lock
+        run: cargo generate-lockfile
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+      - name: package-lock.json
+        working-directory: apps/desktop
+        run: npm install --package-lock-only --no-audit --no-fund
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock apps/desktop/package-lock.json
+          if git diff --cached --quiet; then echo "lockfiles unchanged"; exit 0; fi
+          git commit -m "chore: regenerate Cargo.lock and package-lock.json (CI)"
+          git push
