@@ -48,11 +48,15 @@ fn offline_resync_reanchors_a_stuck_streaming_tracker() {
     .unwrap();
 
     let mut t = 0u64;
-    let mut seen_resync = false;
+    // (time, state right after the resync event was handled)
+    let mut resync_at: Option<(u64, VoiceState)> = None;
     let mut feed = |engine: &mut HybridEngine, tracker: &mut VoiceTracker, t: u64| {
         for ev in engine.poll() {
-            seen_resync |= matches!(ev, SttEvent::Resync { .. });
+            let is_resync = matches!(ev, SttEvent::Resync { .. });
             tracker.handle(tracker_event(ev), t);
+            if is_resync && resync_at.is_none() {
+                resync_at = Some((t, tracker.state()));
+            }
         }
         tracker.handle(TrackerEvent::Tick, t);
     };
@@ -68,10 +72,12 @@ fn offline_resync_reanchors_a_stuck_streaming_tracker() {
     t += 50;
     feed(&mut engine, &mut tracker, t);
 
-    assert!(seen_resync);
+    // The segment may be decoded while audio is still fed, so the eased
+    // Resync phase can already be over here: check the state at the event.
+    let (t_resync, state) = resync_at.expect("resync event emitted");
+    assert_eq!(state, VoiceState::Resync);
     assert_eq!(tracker.output().cursor_token, Some(131));
-    assert_eq!(tracker.state(), VoiceState::Resync);
-    t += 400;
-    tracker.handle(TrackerEvent::Tick, t);
+    let t_end = t.max(t_resync) + 400;
+    tracker.handle(TrackerEvent::Tick, t_end);
     assert_eq!(tracker.state(), VoiceState::Tracking);
 }
