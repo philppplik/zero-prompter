@@ -124,7 +124,7 @@ fn table_versprecher_similarity() {
         ("mikrofom", "mikrofon", true),
         ("geschwindichkeit", "geschwindigkeit", true),
         ("festplate", "festplatte", true),
-        ("und", "uns", false), // short words are strict
+        ("und", "uns", false),   // short words are strict
         ("haus", "maus", false), // different initial: no Jaro-Winkler bonus
         ("kanal", "software", false),
     ];

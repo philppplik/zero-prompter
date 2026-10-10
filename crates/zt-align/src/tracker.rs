@@ -154,11 +154,16 @@ pub enum TrackerEvent {
     Stop,
     /// STT hypothesis. Partials carry the full current utterance text and
     /// replace the previous partial; a final commits it.
-    Hypothesis { text: String, is_final: bool },
+    Hypothesis {
+        text: String,
+        is_final: bool,
+    },
     VadSpeech,
     VadSilence,
     /// Operator click on a word / "resync here" / paragraph jump.
-    ManualSeek { token: usize },
+    ManualSeek {
+        token: usize,
+    },
     /// Time advance (call regularly, e.g. every 50 ms).
     Tick,
     /// High-confidence hypothesis of a finished speech segment from the
@@ -166,7 +171,10 @@ pub enum TrackerEvent {
     /// immediately (no 2x jump confirmation), see [`VoiceTracker::resync`].
     /// `age_ms`: time between the end of the segment and this event (decode
     /// latency); widens the tolerated lag by `rate_wps * age`.
-    Resync { text: String, age_ms: u64 },
+    Resync {
+        text: String,
+        age_ms: u64,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -398,9 +406,11 @@ impl VoiceTracker {
 
         // Nothing near the cursor: global n-gram search (catches far jumps and `lost`).
         if query.len() >= self.cfg.min_matches_global as usize {
-            let global = align(&query, &self.index.words, 0..n, expected, &self.cfg.sw).filter(|h| {
-                h.confidence >= self.cfg.theta_global && h.matches >= self.cfg.min_matches_global
-            });
+            let global =
+                align(&query, &self.index.words, 0..n, expected, &self.cfg.sw).filter(|h| {
+                    h.confidence >= self.cfg.theta_global
+                        && h.matches >= self.cfg.min_matches_global
+                });
             if let Some(hit) = global {
                 self.consider_jump(hit, t_ms);
                 return;
@@ -511,7 +521,9 @@ mod resync_tests {
 
     /// 300 distinct pseudo-words; neighbours differ in the first syllable.
     fn words() -> Vec<String> {
-        (0..300).map(|i| format!("{}{}{}", SYL[i % 8], SYL[(i / 8) % 8], SYL[(i / 64) % 8])).collect()
+        (0..300)
+            .map(|i| format!("{}{}{}", SYL[i % 8], SYL[(i / 8) % 8], SYL[(i / 64) % 8]))
+            .collect()
     }
 
     fn tracker() -> VoiceTracker {

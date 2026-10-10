@@ -18,7 +18,17 @@ fn words() -> Vec<String> {
 }
 
 fn chunk(loud: bool) -> Vec<f32> {
-    (0..CHUNK).map(|i| if loud && i % 2 == 0 { 0.3 } else if loud { -0.3 } else { 0.0 }).collect()
+    (0..CHUNK)
+        .map(|i| {
+            if loud && i % 2 == 0 {
+                0.3
+            } else if loud {
+                -0.3
+            } else {
+                0.0
+            }
+        })
+        .collect()
 }
 
 #[test]

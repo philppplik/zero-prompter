@@ -29,10 +29,7 @@ fn bindings() -> Vec<(Shortcut, &'static str, Command)> {
 
 /// (label, command name) pairs for the shortcut overlay / about page.
 pub fn describe() -> Vec<(String, String)> {
-    bindings()
-        .into_iter()
-        .map(|(_, label, cmd)| (label.to_string(), format!("{cmd:?}")))
-        .collect()
+    bindings().into_iter().map(|(_, label, cmd)| (label.to_string(), format!("{cmd:?}"))).collect()
 }
 
 /// Builds the plugin with a handler that maps shortcuts to commands.

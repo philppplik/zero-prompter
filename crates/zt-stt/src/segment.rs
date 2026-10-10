@@ -137,7 +137,9 @@ impl RmsSegmenter {
         let end = self.pos; // absolute index after this frame
         if !self.in_speech {
             self.preroll.extend(frame.iter().copied());
-            let keep = ms_to_samples(self.cfg.preroll_ms) + ms_to_samples(self.cfg.min_speech_ms) + frame.len();
+            let keep = ms_to_samples(self.cfg.preroll_ms)
+                + ms_to_samples(self.cfg.min_speech_ms)
+                + frame.len();
             while self.preroll.len() > keep {
                 self.preroll.pop_front();
             }

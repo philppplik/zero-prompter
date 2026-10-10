@@ -178,7 +178,8 @@ fn default_selection_and_fallback_chain() {
         "zipformer-en-kroko-2025-08-06"
     );
     // Kroko EN not installed -> falls back to the Apache-2.0 20M model.
-    let sel = m.select("en-US", ModelRole::Streaming, None, |e| e.id != "zipformer-en-kroko-2025-08-06");
+    let sel =
+        m.select("en-US", ModelRole::Streaming, None, |e| e.id != "zipformer-en-kroko-2025-08-06");
     assert_eq!(sel.unwrap().id, "zipformer-en-20m-2023-02-17");
     assert!(m.select("fr", ModelRole::Streaming, None, |_| true).is_none());
 }
@@ -189,5 +190,8 @@ fn schema_v1_still_accepted_and_roles_derived() {
     let e = m.get("kroko-de").unwrap();
     assert_eq!(e.model_type(), Some(ModelType::OnlineTransducer));
     assert_eq!(e.effective_roles(), [ModelRole::Streaming]);
-    assert!(Manifest::parse(&manifest_json(ABC_SHA, 3).replace("\"schemaVersion\":1", "\"schemaVersion\":9")).is_err());
+    assert!(Manifest::parse(
+        &manifest_json(ABC_SHA, 3).replace("\"schemaVersion\":1", "\"schemaVersion\":9")
+    )
+    .is_err());
 }

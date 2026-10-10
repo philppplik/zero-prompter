@@ -91,7 +91,11 @@ pub fn align(
             let up = h[(i - 1) * cols + j] + p.gap_hyp;
             let left = h[i * cols + j - 1] + p.gap_script;
             let start_of = |idx: usize, h: &[f32], st: &[u16]| {
-                if h[idx] > 0.0 { st[idx] } else { i as u16 }
+                if h[idx] > 0.0 {
+                    st[idx]
+                } else {
+                    i as u16
+                }
             };
             let (val, mc, start) = if diag >= up && diag >= left {
                 let pi = (i - 1) * cols + j - 1;

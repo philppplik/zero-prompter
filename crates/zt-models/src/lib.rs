@@ -264,7 +264,10 @@ impl Manifest {
             .iter()
             .flat_map(|m| {
                 m.unverified_files().map(move |f| {
-                    format!("{}/{}: no sha256 in manifest (unverified, size-checked only)", m.id, f.path)
+                    format!(
+                        "{}/{}: no sha256 in manifest (unverified, size-checked only)",
+                        m.id, f.path
+                    )
                 })
             })
             .collect()

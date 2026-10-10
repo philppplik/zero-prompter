@@ -163,7 +163,11 @@ pub struct Selection {
     pub silero_vad: bool,
 }
 
-pub fn selection(app: &AppHandle, lang: &str, prefs: &VoiceModelPrefs) -> Result<Selection, String> {
+pub fn selection(
+    app: &AppHandle,
+    lang: &str,
+    prefs: &VoiceModelPrefs,
+) -> Result<Selection, String> {
     let m = manifest(app)?;
     let root = models_root(app)?;
     let store = ModelStore::new(&root);

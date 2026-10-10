@@ -211,9 +211,12 @@ fn run(
     let mut mic_err = None;
     if let Some(src) = source.as_mut() {
         let tx2 = tx.clone();
-        match src.start(device.as_deref(), Box::new(move |f: &[f32]| {
-            let _ = tx2.try_send(f.to_vec());
-        })) {
+        match src.start(
+            device.as_deref(),
+            Box::new(move |f: &[f32]| {
+                let _ = tx2.try_send(f.to_vec());
+            }),
+        ) {
             Ok(()) => mic_ok = true,
             Err(e) => mic_err = Some(e.to_string()),
         }
@@ -250,17 +253,13 @@ fn run(
         for ev in engine.poll() {
             let tev = match ev {
                 SttEvent::Partial(text) => {
-                    let _ = app.emit(
-                        EV_TRANSCRIPT,
-                        Transcript { text: text.clone(), is_final: false },
-                    );
+                    let _ =
+                        app.emit(EV_TRANSCRIPT, Transcript { text: text.clone(), is_final: false });
                     TrackerEvent::Hypothesis { text, is_final: false }
                 }
                 SttEvent::Final(text) => {
-                    let _ = app.emit(
-                        EV_TRANSCRIPT,
-                        Transcript { text: text.clone(), is_final: true },
-                    );
+                    let _ =
+                        app.emit(EV_TRANSCRIPT, Transcript { text: text.clone(), is_final: true });
                     TrackerEvent::Hypothesis { text, is_final: true }
                 }
                 SttEvent::Vad(true) => TrackerEvent::VadSpeech,

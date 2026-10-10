@@ -39,10 +39,8 @@ impl MockEngine {
             utter.push(w);
             events.push(ScriptedEvent { at_sample: at, event: SttEvent::Partial(utter.join(" ")) });
             if w.ends_with(['.', '!', '?']) {
-                events.push(ScriptedEvent {
-                    at_sample: at,
-                    event: SttEvent::Final(utter.join(" ")),
-                });
+                events
+                    .push(ScriptedEvent { at_sample: at, event: SttEvent::Final(utter.join(" ")) });
                 utter.clear();
             }
         }

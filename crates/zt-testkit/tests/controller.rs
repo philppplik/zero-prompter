@@ -32,19 +32,25 @@ fn patch_flags_table() {
         (Command::ToggleMirrorH, patch(|p| p.output = true)),
         (Command::SetFullscreen(true), patch(|p| p.output = true)),
         (Command::SetScrollMode(ScrollMode::Manual), patch(|p| p.scroll = true)),
-        (Command::ToggleVoice, patch(|p| {
-            p.voice = true;
-            p.scroll = true;
-        })),
+        (
+            Command::ToggleVoice,
+            patch(|p| {
+                p.voice = true;
+                p.scroll = true;
+            }),
+        ),
         (Command::SetTheme("daylight".into()), patch(|p| p.settings = true)),
         (Command::SetFontSize(80), patch(|p| p.settings = true)),
         (Command::SeekToken(2), patch(|p| p.scroll = true)),
         (Command::JumpParagraph(1), patch(|p| p.scroll = true)),
         (Command::EnterLive, patch(|p| p.playback = true)),
-        (Command::LoadScript("a b".into()), patch(|p| {
-            p.script = true;
-            p.scroll = true;
-        })),
+        (
+            Command::LoadScript("a b".into()),
+            patch(|p| {
+                p.script = true;
+                p.scroll = true;
+            }),
+        ),
         // voice off -> ignored
         (Command::Voice(sig(VoicePhase::Tracking, Some(1))), StatePatch::default()),
         // stopped -> nothing
@@ -332,9 +338,11 @@ fn command() -> impl Strategy<Value = Command> {
         (0usize..20).prop_map(Command::SeekToken),
         (0usize..20).prop_map(Command::ResyncHere),
         mode.prop_map(Command::SetScrollMode),
-        (phase, prop::option::of(0usize..10), 0.0f32..=1.0).prop_map(|(phase, cursor, confidence)| {
-            Command::Voice(VoiceSignal { phase, cursor, confidence, rate_wps: 2.0 })
-        }),
+        (phase, prop::option::of(0usize..10), 0.0f32..=1.0).prop_map(
+            |(phase, cursor, confidence)| {
+                Command::Voice(VoiceSignal { phase, cursor, confidence, rate_wps: 2.0 })
+            }
+        ),
         (0u32..500).prop_map(Command::Tick),
         "[a-z ]{0,30}".prop_map(Command::EditScript),
     ]

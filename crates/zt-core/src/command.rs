@@ -46,7 +46,10 @@ pub enum Command {
     SeekToken(TokenId),
     /// Operator "resync here" / click on word: hard cursor set + voice override.
     ResyncHere(TokenId),
-    SetMirror { h: bool, v: bool },
+    SetMirror {
+        h: bool,
+        v: bool,
+    },
     ToggleMirrorH,
     SetFullscreen(bool),
     SetScrollMode(ScrollMode),

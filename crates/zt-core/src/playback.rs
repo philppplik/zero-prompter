@@ -23,7 +23,10 @@ pub enum PlaybackState {
     #[default]
     Stopped,
     /// Seconds remaining (shown) and ms left in the current second.
-    Countdown { remaining: u8, ms_left: u32 },
+    Countdown {
+        remaining: u8,
+        ms_left: u32,
+    },
     Playing,
     Paused,
     Ended,

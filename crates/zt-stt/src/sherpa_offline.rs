@@ -182,7 +182,8 @@ impl Segmenter for SileroSegmenter {
             return None;
         }
         let seg = self.vad.front()?;
-        let out = Segment { start_sample: seg.start().max(0) as u64, samples: seg.samples().to_vec() };
+        let out =
+            Segment { start_sample: seg.start().max(0) as u64, samples: seg.samples().to_vec() };
         drop(seg);
         self.vad.pop();
         Some(out)

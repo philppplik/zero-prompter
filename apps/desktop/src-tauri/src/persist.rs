@@ -92,7 +92,11 @@ pub struct ScriptMeta {
 fn title_of(text: &str) -> String {
     let first = text.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("Ohne Titel");
     let t: String = first.trim_start_matches('#').trim().chars().take(60).collect();
-    if t.is_empty() { "Ohne Titel".into() } else { t }
+    if t.is_empty() {
+        "Ohne Titel".into()
+    } else {
+        t
+    }
 }
 
 pub fn save_script(app: &AppHandle, id: &str, text: &str) -> Result<ScriptMeta, String> {

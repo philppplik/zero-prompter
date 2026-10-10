@@ -10,8 +10,8 @@
 //! Windows (tauri.conf.json): `control` (operator UI, index.html) and
 //! `talent` (render-only output, talent.html), both subscribe to the same events.
 
-mod commands;
 mod appcore;
+mod commands;
 mod hotkeys;
 mod models;
 mod persist;

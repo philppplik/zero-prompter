@@ -52,21 +52,18 @@ impl Script {
         let mut in_cue = false;
         let mut word_start: Option<usize> = None;
 
-        let flush_word = |start: usize,
-                          end: usize,
-                          tokens: &mut Vec<Token>,
-                          para: usize,
-                          in_cue: bool| {
-            let text = &source[start..end];
-            let is_cue = in_cue || text.starts_with('[') || text.ends_with(']');
-            tokens.push(Token {
-                id: tokens.len(),
-                text: text.to_string(),
-                range: start..end,
-                paragraph: para,
-                is_cue,
-            });
-        };
+        let flush_word =
+            |start: usize, end: usize, tokens: &mut Vec<Token>, para: usize, in_cue: bool| {
+                let text = &source[start..end];
+                let is_cue = in_cue || text.starts_with('[') || text.ends_with(']');
+                tokens.push(Token {
+                    id: tokens.len(),
+                    text: text.to_string(),
+                    range: start..end,
+                    paragraph: para,
+                    is_cue,
+                });
+            };
 
         for (i, ch) in source.char_indices() {
             if ch.is_whitespace() {

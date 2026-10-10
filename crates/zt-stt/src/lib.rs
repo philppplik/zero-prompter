@@ -37,7 +37,9 @@ mod sherpa_offline;
 #[cfg(feature = "sherpa")]
 pub use sherpa::{SherpaConfig, SherpaEngine};
 #[cfg(feature = "sherpa")]
-pub use sherpa_offline::{SherpaOfflineConfig, SherpaOfflineEngine, SileroSegmenter, SileroVadConfig};
+pub use sherpa_offline::{
+    SherpaOfflineConfig, SherpaOfflineEngine, SileroSegmenter, SileroVadConfig,
+};
 
 pub const SAMPLE_RATE: u32 = 16_000;
 

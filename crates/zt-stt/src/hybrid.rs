@@ -119,8 +119,7 @@ impl HybridEngine {
                     } else {
                         Ok(String::new())
                     };
-                    let done =
-                        Done { text, end_sample: job.closed_at, generation: job.generation };
+                    let done = Done { text, end_sample: job.closed_at, generation: job.generation };
                     let _ = done_tx.send(done);
                     inf.fetch_sub(1, Ordering::SeqCst);
                 }
@@ -185,7 +184,8 @@ impl Resync {
         while let Some(seg) = self.segmenter.pop() {
             self.stats.segments += 1;
             let Some(tx) = self.tx.as_ref() else { return };
-            let job = Job { seg, closed_at: fed, generation: self.generation.load(Ordering::SeqCst) };
+            let job =
+                Job { seg, closed_at: fed, generation: self.generation.load(Ordering::SeqCst) };
             self.in_flight.fetch_add(1, Ordering::SeqCst);
             match tx.try_send(job) {
                 Ok(()) => {}
