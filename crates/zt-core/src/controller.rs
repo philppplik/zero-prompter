@@ -337,7 +337,7 @@ mod tests {
         }
         // 160 ms at tau = 150 ms -> ~66 % of the way (budget: >= 60 %).
         let pos = c.state().scroll.position;
-        assert!(pos >= 0.6 * 3.0 && pos < 3.0, "position {pos}");
+        assert!((0.6 * 3.0..3.0).contains(&pos), "position {pos}");
     }
 
     #[test]

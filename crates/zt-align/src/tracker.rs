@@ -628,7 +628,7 @@ mod resync_tests {
     #[test]
     fn near_word_match_rules() {
         assert!(near_word_match("hallo", "hallo"));
-        assert!(near_word_match("teleprompter", "teleprompta"));
+        assert!(near_word_match("teleprompter", "teleprompten"));
         assert!(near_word_match("kanals", "kanal"));
         assert!(!near_word_match("und", "uns"), "short words must be exact");
         assert!(!near_word_match("haus", "maus"));

@@ -202,6 +202,12 @@ jobs:
         run: cargo clippy -p zero-teleprompter --all-targets --features sherpa
       - name: test (app)
         run: cargo test -p zero-teleprompter
+      # A partially restored cache (lockfile changed) can hold sherpa-onnx-sys
+      # build-script output pointing to libs that are no longer there; force the
+      # build script to run again (it re-downloads the prebuilt libs if needed).
+      - name: Reset sherpa-onnx-sys build output (stale cache guard)
+        shell: bash
+        run: find target -maxdepth 3 -name 'sherpa-onnx-sys-*' -path '*release*' -prune -exec rm -r {} + || true
       - name: Release build (binary size, informational)
         shell: bash
         run: cargo build -p zero-teleprompter --release --features sherpa && ls -la target/release | head -n 40
