@@ -57,6 +57,7 @@ const TABLE: &[Row] = &[
     (Live, S::Paused,  E::Pause,      Some((Live, S::Paused))),
     (Live, S::Paused,  E::Stop,       Some((Live, S::Stopped))),
     (Live, S::Paused,  E::EnterEdit,  Some((Edit, S::Stopped))),
+    (Live, S::Paused,  E::EnterLive,  Some((Live, S::Paused))),
     (Live, S::Paused,  E::ReachedEnd, None),
     // ---- Live / Ended
     (Live, S::Ended,   E::Toggle,     Some((Live, CD))),          // restart
@@ -64,6 +65,7 @@ const TABLE: &[Row] = &[
     (Live, S::Ended,   E::Pause,      None),
     (Live, S::Ended,   E::Stop,       Some((Live, S::Stopped))),
     (Live, S::Ended,   E::EnterEdit,  Some((Edit, S::Stopped))),
+    (Live, S::Ended,   E::EnterLive,  Some((Live, S::Ended))),
     (Live, S::Ended,   E::ReachedEnd, None),
 ];
 
