@@ -26,7 +26,7 @@ jobs:
         os: [ubuntu-22.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -50,19 +50,13 @@ jobs:
     name: MSRV 1.80 (tests)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@1.80
       - uses: Swatinem/rust-cache@v2
-      # No Cargo.lock is committed; newest transitive deps (e.g. getrandom 0.4)
-      # need edition 2024. Resolve with the MSRV-aware resolver (cargo >= 1.84)
-      # so every dependency is picked compatible with rust-version = 1.80.
-      - name: MSRV-compatible lockfile
-        run: cargo +stable generate-lockfile
-        env:
-          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+      # Cargo.lock is committed and generated MSRV-aware (lockfiles.yml).
       # `+1.80` overrides rust-toolchain.toml (channel = stable).
-      - run: cargo +1.80 test --all-targets
+      - run: cargo +1.80 test --all-targets --locked
 
   # Many more proptest cases, weekly and on demand (not on every push).
   proptest-extended:
@@ -72,13 +66,13 @@ jobs:
     env:
       PROPTEST_CASES: "8192"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --release -p zt-align -p zt-core -p zt-testkit
       - name: Keep failing seeds
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: proptest-regressions
           path: "**/proptest-regressions/**"
@@ -92,7 +86,7 @@ jobs:
         os: [ubuntu-22.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Linux audio deps
@@ -110,16 +104,15 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
-      # No lockfile committed yet (authored offline) -> `npm install`; switch to `npm ci` once package-lock.json exists.
-      - run: npm install --no-audit --no-fund
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
       - run: npm run check
       - run: npm test
       - run: npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: apps/desktop/dist
@@ -133,27 +126,27 @@ jobs:
         os: [ubuntu-22.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
       - name: Linux deps (WebKitGTK 4.1, ALSA)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: frontend-dist
           path: apps/desktop/dist
       - name: Icons
         working-directory: apps/desktop
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx tauri icon app-icon.png
       - name: clippy (app)
         run: cargo clippy -p zero-teleprompter --all-targets
@@ -167,15 +160,15 @@ jobs:
     name: Licenses (cargo-deny + npm)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check licenses bans sources advisories
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
       - name: npm licence allow-list (no GPL/AGPL/LGPL)
         working-directory: apps/desktop
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx --yes license-checker-rseidelsohn --production --onlyAllow "MIT;Apache-2.0;ISC;BSD-2-Clause;BSD-3-Clause;0BSD;OFL-1.1;CC0-1.0;Unlicense;MIT OR Apache-2.0;Apache-2.0 OR MIT" --excludePrivatePackages

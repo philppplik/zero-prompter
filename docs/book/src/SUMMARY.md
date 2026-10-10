@@ -20,6 +20,7 @@
 - [Datenfluss](dev/dataflow.md)
 - [Aligner-Algorithmus](dev/aligner.md)
 - [Build & Release](dev/build-release.md)
+- [Microsoft Store](dev/ms-store.md)
 - [Tests](dev/testing.md)
 - [Contributing](dev/contributing.md)
 - [Code-Style](dev/code-style.md)

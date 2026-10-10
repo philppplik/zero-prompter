@@ -26,19 +26,20 @@ Die Icons (`icons/icon.icns` u. a.) sind nicht eingecheckt. `npx tauri icon` erz
 | Job | Plattformen | Inhalt |
 |---|---|---|
 | `core` | Ubuntu 22.04, Windows, macOS | fmt (nur Linux), clippy, `cargo test --all-targets`, Doctests. `RUSTFLAGS=-D warnings` |
-| `msrv` | Ubuntu | `cargo +1.80 test --all-targets` |
+| `msrv` | Ubuntu | `cargo +1.80 test --all-targets --locked` |
 | `proptest-extended` | Ubuntu, wöchentlich und manuell | `PROPTEST_CASES=8192`. Fehlschlagende Seeds werden als Artefakt gesichert |
 | `adapters` | alle drei | Build mit `cpal`, Build mit `sherpa` (**continue-on-error**) |
-| `frontend` | Ubuntu | `npm install` (noch kein Lockfile), check, test, build. `dist` als Artefakt |
+| `frontend` | Ubuntu | `npm ci` (Lockfile eingecheckt), check, test, build. `dist` als Artefakt |
 | `app` | alle drei | Icons, clippy, Test und Release-Build der App |
 | `licenses` | Ubuntu | `cargo-deny` (licenses, bans, sources, advisories) und npm-Lizenz-Allowlist ohne GPL, AGPL oder LGPL |
 
 ## Release (`.github/workflows/release.yml`)
 
-Auslöser: ein Tag `v*` oder manueller Start. `tauri-apps/tauri-action@v0` baut:
+Auslöser: ein Tag `v*` oder manueller Start. `tauri-apps/tauri-action@v1` baut:
 - macOS arm64 und x64,
 - Linux x64,
-- Windows x64,
+- Windows x64 und ARM64 (nativer Runner `windows-11-arm`),
+- zusätzlich Store-Installer `*_store-setup.exe` (x64, ARM64) mit Offline-WebView2, siehe [Microsoft Store](ms-store.md),
 
 und legt alles als **Draft-Release** ab.
 
@@ -49,6 +50,10 @@ Checkliste für ein Release:
 2. `CHANGELOG.md`: den Abschnitt „Unreleased“ datieren.
 3. `THIRD_PARTY_NOTICES.md` und `THIRD_PARTY_MODELS.md` prüfen und `cargo deny check` ausführen.
 4. Tag `vX.Y.Z` pushen. Den Draft prüfen, dann veröffentlichen.
+
+## Lockfiles
+
+`Cargo.lock` und `apps/desktop/package-lock.json` sind eingecheckt. Nach Änderungen an Abhängigkeiten: `gh workflow run lockfiles.yml`. Der Workflow erzeugt beide Dateien MSRV-bewusst (`CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback`) und committet sie.
 
 ## Feature-Matrix der App
 

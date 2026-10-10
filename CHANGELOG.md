@@ -6,6 +6,12 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 
 > Noch nie kompiliert oder ausgeführt (Erstellung ohne Toolchain). Siehe README → „Erste Schritte nach dem Klonen“.
 
+### Hinzugefügt (2026-10-10, Release-Vorbereitung)
+- Silero VAD (MIT) als Modell `silero-vad` im Katalog. Es wird mit jedem Sprachmodell automatisch mitgeladen und für die Resync-Segmentierung genutzt; ohne das Modell segmentiert die App über den Pegel (RMS). Der Inspector zeigt „Segmentierung: Silero VAD aktiv“.
+- Alle Modell-URLs sind auf Commits bzw. Release-Assets gepinnt, und alle Dateien haben einen SHA-256 (auch `tokens.txt`).
+- `Cargo.lock` und `package-lock.json` sind eingecheckt (Workflow `lockfiles.yml`). CI nutzt `npm ci` und `--locked` (MSRV).
+- Release: Windows ARM64 (`aarch64-pc-windows-msvc`) und Store-Installer `*_store-setup.exe` mit Offline-WebView2 (`tauri.microsoftstore.conf.json`), Anleitung in `docs/book/src/dev/ms-store.md`.
+- Actions aktualisiert (checkout/setup-node/upload-artifact v7, download-artifact v8, tauri-action v1, Node 22), keine Node-20-Warnungen mehr. `thiserror` 2.
 ### Hinzugefügt
 - Hybride Spracherkennung (ADR-006): Streaming-Modell pro Sprache (Standard Kroko DE/EN, Fallback Zipformer EN 20M) mit automatischer Fallback-Kette, optionaler Offline-Resync mit Parakeet TDT 0.6B v3 (`OfflineRecognizer`, `nemo_transducer`) auf eigenem Thread, der den Tracker neu verankert. Inspector: Modellwahl pro Sprache und Resync-Schalter.
 - Manifest v2: `modelType`, `roles`, `defaultRank`, optionaler `sha256`; Dateien ohne Hash werden nach dem Download gehasht und als unverifiziert angezeigt.

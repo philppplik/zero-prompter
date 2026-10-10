@@ -1,7 +1,10 @@
 name: Release
 
-# Builds installers for Windows (MSI/NSIS), macOS (arm64 + x64 DMG) and Linux
-# (AppImage/deb/rpm) and attaches them to a draft GitHub release.
+# Builds installers for Windows x64 + ARM64 (MSI/NSIS), macOS (arm64 + x64 DMG)
+# and Linux (AppImage/deb/rpm) and attaches them to a draft GitHub release.
+# The `store` job adds Microsoft-Store-ready NSIS installers (offline WebView2,
+# tauri.microsoftstore.conf.json) per Windows architecture, see
+# docs/book/src/dev/ms-store.md.
 on:
   push:
     tags: ['v*']
@@ -33,13 +36,19 @@ jobs:
             os: windows-latest
             target: ''
             args: ''
+          # Native ARM64 runner (aarch64-pc-windows-msvc): avoids cross-compiling
+          # C dependencies (ring, cpal) from x64.
+          - name: Windows ARM64
+            os: windows-11-arm
+            target: ''
+            args: ''
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -56,7 +65,7 @@ jobs:
       - name: Frontend deps + icons
         working-directory: apps/desktop
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx tauri icon app-icon.png
 
       # Signing is optional. Empty APPLE_* variables make the bundler try to
@@ -80,7 +89,7 @@ jobs:
             fi
           done
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -89,7 +98,64 @@ jobs:
           # not create a tag named after the branch.
           tagName: v__VERSION__
           releaseName: 'zero-teleprompter v__VERSION__'
-          releaseBody: 'Siehe CHANGELOG. Installer für Windows, macOS und Linux.'
+          releaseBody: 'Siehe CHANGELOG. Installer für Windows (x64, ARM64), macOS und Linux. Dateien mit `_store` sind für den Microsoft Store (WebView2 offline enthalten).'
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+  # Microsoft Store (MSI/EXE listing): NSIS installer with the offline WebView2
+  # installer embedded, built with tauri.microsoftstore.conf.json merged in.
+  store:
+    name: Store installer (${{ matrix.arch }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: windows-latest
+          - arch: arm64
+            os: windows-11-arm
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build Store installer
+        working-directory: apps/desktop
+        shell: bash
+        run: |
+          npm ci --no-audit --no-fund
+          npx tauri icon app-icon.png
+          npx tauri build --bundles nsis --config src-tauri/tauri.microsoftstore.conf.json
+      - name: Rename
+        shell: bash
+        run: |
+          version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          mkdir store-out
+          cp "$(ls target/release/bundle/nsis/*-setup.exe | head -n 1)" "store-out/zero-teleprompter_${version}_${{ matrix.arch }}_store-setup.exe"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: store-${{ matrix.arch }}
+          path: store-out/*
+
+  store-upload:
+    name: Attach Store installers to draft
+    needs: store
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: store-*
+          path: store-out
+          merge-multiple: true
+      - name: Upload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          gh release upload "v${version}" store-out/* --clobber
