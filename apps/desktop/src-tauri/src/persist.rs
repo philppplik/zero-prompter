@@ -155,7 +155,7 @@ pub fn list_scripts(app: &AppHandle) -> Result<Vec<ScriptMeta>, String> {
             words: text.split_whitespace().count(),
         });
     }
-    out.sort_by(|a, b| b.modified_ms.cmp(&a.modified_ms));
+    out.sort_by_key(|a| std::cmp::Reverse(a.modified_ms));
     Ok(out)
 }
 

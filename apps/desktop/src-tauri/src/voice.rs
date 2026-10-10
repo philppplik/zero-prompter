@@ -187,6 +187,8 @@ fn make_source() -> Option<Box<dyn AudioSource>> {
     None
 }
 
+// Thread entry: plain values moved in from start, a struct would add nothing.
+#[allow(clippy::too_many_arguments)]
 fn run(
     app: AppHandle,
     shared: Shared,
