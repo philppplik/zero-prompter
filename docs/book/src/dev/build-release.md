@@ -53,7 +53,7 @@ Checkliste für ein Release:
 
 ## Lockfiles
 
-`Cargo.lock` und `apps/desktop/package-lock.json` sind eingecheckt. Nach Änderungen an Abhängigkeiten: `gh workflow run lockfiles.yml`. Der Workflow erzeugt beide Dateien MSRV-bewusst (`CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback`) und committet sie.
+`Cargo.lock` und `apps/desktop/package-lock.json` sind eingecheckt. Nach Änderungen an Abhängigkeiten: `gh workflow run lockfiles.yml`. Der Workflow erzeugt beide Dateien MSRV-bewusst (`CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback`) und committet sie. Die npm-Pakete `@tauri-apps/api` und `@tauri-apps/plugin-dialog` sind per `~` auf dieselbe Minor-Version gepinnt wie die Rust-Crates `tauri` und `tauri-plugin-dialog` im Lockfile, sonst bricht `tauri build` mit einem Versionskonflikt ab.
 
 ## Feature-Matrix der App
 
