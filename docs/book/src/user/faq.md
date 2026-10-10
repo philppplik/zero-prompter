@@ -13,9 +13,23 @@ Deutsch und Englisch, für die Normalisierung und die Wahl des Modells. Jeder Sp
 
 ## Probleme
 
-**Voice bewegt den Text, obwohl ich nichts sage.**
-Dann läuft der **Demo-Modus**: Die App wurde ohne Feature `sherpa` gebaut, oder es ist kein Modell für die eingestellte Sprache installiert. Der Einstellungen-Dialog zeigt das an. Siehe [Voice-Tracking](voice-tracking.md).
+**Voice bewegt den Text, obwohl ich nichts sage („Demo“).**
+Dann läuft der **Demo-Modus**: Es ist kein Streaming-Modell installiert (Parakeet und Silero VAD allein reichen nicht), oder der Build enthält keine Spracherkennung. Klicke auf „Demo · Modell laden“ neben dem Voice-Status und lade z. B. „Kroko Streaming Zipformer DE“. Eine laufende Voice-Sitzung übernimmt das Modell nach dem Download automatisch. Siehe [Voice-Tracking](voice-tracking.md).
 
+**„Modellfehler“ oder „Sprachmodell konnte nicht geladen werden“.**
+Ein Modell ist installiert, lässt sich aber nicht öffnen (beschädigte oder fehlende Datei, zu wenig Speicher). Die Meldung nennt die Datei. Entferne das Modell unter Voice & Modelle und lade es neu. Details stehen im Diagnose-Tab und im Log.
+
+**„Mikrofon liefert keine Daten“ / „nur digitale Stille“.**
+Das Gerät wurde geöffnet, liefert aber nichts. Unter Windows meist: Einstellungen → Datenschutz und Sicherheit → Mikrofon → „Desktop-Apps den Zugriff auf das Mikrofon erlauben“ ist aus, oder das Mikrofon ist stummgeschaltet. Auf macOS: Systemeinstellungen → Datenschutz → Mikrofon. Danach Mikrofontest erneut starten.
+
+**Sprache synchronisiert nicht, obwohl ein Modell geladen ist.**
+1. Einstellungen → **Diagnose** öffnen und Voice starten.
+2. „Engine“ muss den Modellnamen zeigen, „Audio“ ein Gerät, der Pegel beim Sprechen deutlich über −40 dBFS liegen.
+3. „Erkannt“ zeigt, was die Spracherkennung hört. Passt das nicht zum Skript, stimmt die Sprache nicht (Voice & Modelle → Sprache).
+4. Bleibt es unklar: **Log exportieren** und die Datei dem Fehlerbericht anhängen.
+
+**Wo liegen die Logs?**
+Im App-Log-Ordner (Pfad steht im Diagnose-Tab), Dateien `zero-teleprompter.JJJJ-MM-TT.log`, 7 Tage. Mit der Umgebungsvariable `ZT_LOG=debug` wird jede Hypothese mit Zeitstempel und Latenz protokolliert.
 **Die Modellliste ist leer.**
 Das ist so gewollt. Das mitgelieferte Manifest enthält in v0.1 keine Einträge, weil keine ungeprüften URLs oder Hashes ausgeliefert werden sollen.
 

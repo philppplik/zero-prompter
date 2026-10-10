@@ -139,7 +139,8 @@ pub fn init_logging(app: &AppHandle) {
     use tracing_subscriber::EnvFilter;
 
     let dir = app.path().app_log_dir().ok();
-    let filter = EnvFilter::try_from_env("ZT_LOG").unwrap_or_else(|_| EnvFilter::new(DEFAULT_FILTER));
+    let filter =
+        EnvFilter::try_from_env("ZT_LOG").unwrap_or_else(|_| EnvFilter::new(DEFAULT_FILTER));
     let stderr = tracing_subscriber::fmt::layer().with_writer(std::io::stderr).with_ansi(false);
     let file_layer = dir.as_ref().and_then(|d| {
         std::fs::create_dir_all(d).ok()?;
@@ -308,7 +309,8 @@ mod tests {
         let d = std::env::temp_dir().join(format!("zt-diag-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
-        let files = ["zero-teleprompter.2026-10-02.log", "zero-teleprompter.2026-10-01.log", "x.txt"];
+        let files =
+            ["zero-teleprompter.2026-10-02.log", "zero-teleprompter.2026-10-01.log", "x.txt"];
         for n in files {
             std::fs::write(d.join(n), "x").unwrap();
         }

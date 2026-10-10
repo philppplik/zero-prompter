@@ -75,7 +75,7 @@ pub struct TrackerConfig {
     /// little evidence (e.g. the first word after a manual seek), the newest
     /// spoken word may still advance the cursor if it matches one of the next
     /// `near_words + 1` script words (exact, or edit distance 1 for words of
-    /// >= 5 letters). 0 disables. Only with an existing anchor (cursor), never
+    /// at least 5 letters). 0 disables. Only with an existing anchor (cursor), never
     /// in `listening`/`lost`.
     pub near_words: usize,
 }

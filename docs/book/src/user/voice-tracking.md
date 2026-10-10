@@ -7,10 +7,19 @@ Beim Voice-Tracking hört die App über das Mikrofon zu, erkennt die gesprochene
 | Baustein | Woher |
 |---|---|
 | Mikrofon | Build-Feature `cpal` (Standard) |
-| Spracherkennung | Build-Feature `sherpa` (Standard **aus**) und ein installiertes Streaming-Modell (Zipformer-Transducer) für die eingestellte Sprache |
+| Spracherkennung | Build-Feature `sherpa` (in allen Release-Builds enthalten) und ein installiertes Streaming-Modell (Zipformer-Transducer) |
 
-Fehlt eines davon, läuft Voice im **Demo-Modus**. Eine Mock-Engine „liest“ dann das Skript mit etwa 2,3 Wörtern pro Sekunde. So lässt sich die Oberfläche ohne Modell ausprobieren. Der Einstellungen-Dialog zeigt per Event `voice://engine` an, welche Engine läuft und ob ein Mikrofon aktiv ist.
+Welche Engine läuft, entscheidet die App beim Start von Voice oder Mikrofontest ([ADR-007](../../../adr/ADR-007-voice-pipeline-tuning.md)):
 
+| Situation | Was passiert |
+|---|---|
+| Streaming-Modell für die eingestellte Sprache installiert | echte Erkennung mit diesem Modell |
+| nur ein Streaming-Modell einer **anderen** Sprache installiert | dieses Modell wird genutzt, ein Hinweis erscheint |
+| **kein** Streaming-Modell installiert (Parakeet und Silero VAD zählen nicht, sie sind Hilfsmodelle) | **Demo-Modus**: eine Mock-Engine „liest“ das Skript mit ca. 2,3 Wörtern/s. Neben dem Status erscheint „Demo · Modell laden“ und führt direkt zu Voice & Modelle |
+| Build ohne Spracherkennung (Feature `sherpa`) | Demo-Modus mit Hinweis |
+| Modell installiert, lässt sich aber nicht laden | **kein** Demo: Fehlermeldung, Badge „Modellfehler · Details“ (öffnet den Diagnose-Tab), der Text bewegt sich nicht von selbst |
+
+Nach einem Modell-Download startet eine laufende Voice-Sitzung automatisch neu und nutzt das neue Modell.
 > `resources/models.json` enthält vier Modelle (Kroko DE/EN, Zipformer EN 20M als Fallback, Parakeet TDT 0.6B v3 für Resync), Details und Quellen in [`docs/research/MODELS.md`](../../../research/MODELS.md). Für `tokens.txt` steht kein SHA-256 im Manifest: Diese Dateien werden nur auf Größe geprüft, ihr Hash wird nach dem Download berechnet und in den Einstellungen als „unverifiziert“ angezeigt. Die URLs zeigen auf `main` und sind noch nicht auf Commits gepinnt. Das Kroko-DE-Modell hat eine ungeklärte Lizenz (siehe [LEGAL.md](../../../legal/LEGAL.md)) und darf bis zur Klärung nicht ausgeliefert werden. Alternativ lässt sich ein eigenes Manifest als `<Datenordner>/models/manifest.json` ablegen. Erlaubt sind nur HTTPS-URLs mit SHA-256-Prüfung.
 >
 > Hotwords (Skriptbegriffe) wirken nur mit `modified_beam_search` und Transducer-Modellen. Bei BPE-Modellen braucht es zusätzlich `bpe.vocab` (nicht `bpe.model`), sonst meldet `set_hotwords` `Unsupported`.
@@ -57,3 +66,28 @@ Der Schalter **Resync im Hintergrund** (Stufe L, standardmäßig aus) lädt zus�
 - Ein Headset oder Richtmikrofon nah am Mund verbessert die Erkennung deutlich.
 - Seltene Wörter aus dem Skript (Namen, Fachbegriffe) gibt die App der Spracherkennung als Hotwords mit, sofern die Engine das unterstützt.
 - Zahlen kannst du als Ziffern schreiben („2026“). Die App vergleicht sie mit der gesprochenen Form.
+
+## Diagnose und Logs
+
+Einstellungen (`Ctrl+,`) → **Diagnose** zeigt live:
+
+- Pegel und **Mikrofontest**, Audiogerät mit nativem Format (z. B. `48000 Hz · 1 ch · F32 -> 16 kHz mono`), Frames/s und die Tick-Rate (Soll ~60 Hz);
+- aktive Engine, installierte Streaming-Modelle in Fallback-Reihenfolge, Tracker-Zustand und Konfidenz, letzte Hypothese;
+- **Latenzen p50/p95** über die letzten 200 Messungen;
+- die letzten Fehler und Hinweise;
+- **Log exportieren**: speichert alle Logdateien plus einen JSON-Schnappschuss in eine Datei, die du einem Fehlerbericht anhängen kannst.
+
+Logdateien liegen im App-Log-Ordner (Windows `%LOCALAPPDATA%\<App-ID>\logs`, macOS `~/Library/Logs/<App-ID>`, Linux `~/.local/share/<App-ID>/logs`), Name `zero-teleprompter.JJJJ-MM-TT.log`, täglich rotiert, 7 Tage. Mehr Details: Umgebungsvariable `ZT_LOG=debug` (oder z. B. `ZT_LOG=info,zt::stt=debug` für jede Partial-Hypothese).
+
+### Latenzkette
+
+Ziel: gesprochenes Wort → Scrollbeginn unter 300 ms (p50), höchstens 1 s.
+
+| Messpunkt im Diagnose-Tab | misst |
+|---|---|
+| Sprechbeginn → erste Hypothese | erster lauter Audio-Chunk bis zur ersten Partial (enthält den Modell-Lookahead) |
+| Audio-Chunk → Hypothese | Aufnahmezeit des Chunks bis Partial (Warteschlange + Dekodieren) |
+| Hypothese → Cursor | Abgleich im Tracker |
+| Audio → Cursor (gesamt) | Aufnahme bis Cursor-Event; danach startet die Scroll-Bewegung im nächsten Tick (≤ 16 ms) mit einer Zeitkonstante von 150 ms |
+
+Geschätzte Kette (noch nicht auf Zielhardware gemessen): Audio-Callback ~10 ms → Modell-Chunk Ø ~160 ms + Rechnen 20–60 ms → Tracker < 1 ms → Tick ≤ 16 ms ≈ 230 ms p50. Die gemessenen Werte zeigt der Diagnose-Tab.

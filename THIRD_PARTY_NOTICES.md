@@ -9,6 +9,16 @@ repository, plus runtime dependencies with notable licences.
 
 ## Ideas / algorithms (re-implemented, no code copied)
 
+### ShayneP/local-teleprompter
+- URL: https://github.com/ShayneP/local-teleprompter
+- Licence: MIT
+- Copyright: see upstream LICENSE
+- Used for: near-cursor fast path in word tracking (the newest spoken word
+  may advance the cursor if it matches one of the next three script words)
+  and the strict fuzzy rule (exact, or both words >= 5 characters, length
+  difference <= 2, Levenshtein distance <= 1). Re-implemented from the
+  description in Rust, no code copied. Rationale: ADR-007.
+- Where: `crates/zt-align/src/tracker.rs` (`near_word_match`, `near_fast_path`).
 ### EdNutting/autocue
 - URL: https://github.com/EdNutting/autocue
 - Licence: MIT

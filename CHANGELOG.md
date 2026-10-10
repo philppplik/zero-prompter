@@ -14,6 +14,18 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 ### Hinzugefügt (2026-10-11)
 - Einstellungen → **Über**: Version (`getVersion`), Build-Commit, Lizenz, Links zu Repo, Third-Party-Notices, Modelllizenzen und Changelog (Befehl `open_link` mit fester Link-Liste), Credits.
 
+### Behoben (2026-10-11, Voice)
+- „Sprache synchronisieren klappt nicht, UI zeigt Demo“: Konnte ein installiertes Modell nicht geladen werden, fiel die App still in den Demo-Modus (Mock-Engine liest das Skript selbst vor). Jetzt: Fehlermeldung + Log, keine Selbstbewegung. Ist nur ein Modell einer anderen Sprache installiert, wird es genutzt (mit Hinweis) statt Demo. Nach einem Modell-Download startet eine laufende Voice-Sitzung neu. „Demo“ erscheint nur noch ohne Streaming-Modell, mit Button „Modell laden“ (ADR-007).
+- Mikrofon-Watchdog: meldet „keine Daten“ bzw. „nur digitale Stille“ (Windows-Mikrofon-Datenschutz) nach 3 s.
+- Abstürze des Voice-Threads werden gemeldet statt verschluckt.
+
+### Hinzugefügt (2026-10-11, Diagnose)
+- Strukturiertes Logging mit `tracing` in eine täglich rotierende Datei im App-Log-Ordner (`ZT_LOG` für den Filter), Events für Audio, VAD, STT-Partials/Finals, Tracker, Engine-Auswahl, Modell-Downloads, Frontend-Fehler.
+- Einstellungen → **Diagnose**: Pegel, Engine/Modell, Audioformat, Frames/s, Tick-Rate, Tracker-Zustand, Latenzen p50/p95 (Sprechbeginn→Hypothese, Audio→Hypothese, Hypothese→Cursor, Audio→Cursor), letzte Fehler, Log-Export, Mikrofontest.
+
+### Geändert (2026-10-11, Latenz)
+- Scroll-Ease im Voice-Tracking 300 → 150 ms.
+- Tracker-Nahpfad: das erste passende Wort nach Seek/Sprung bewegt den Cursor sofort (Idee aus ShayneP/local-teleprompter, MIT). Begründung und Latenzkette in ADR-007.
 ### Behoben (2026-10-11)
 - Windows (x64/ARM64): Die App startete auf frischen Systemen nicht („VCRUNTIME140.dll was not found“). Die MSVC-Laufzeit wird jetzt statisch gelinkt (`.cargo/config.toml`, `+crt-static`); CI/Release prüfen per `dumpbin /dependents` (`scripts/check-crt.ps1`), dass keine `VCRUNTIME*/MSVCP*`-DLL importiert wird.
 
