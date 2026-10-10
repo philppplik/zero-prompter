@@ -4,6 +4,8 @@
 import { api, errorText, events, type UnlistenFn } from './bridge';
 import { DEFAULT_PREFS, type AppState, type Command, type EngineInfo, type ResyncInfo, type UiPrefs } from './types';
 
+export type SettingsTab = 'appearance' | 'scroll' | 'voice' | 'hotkeys' | 'output';
+
 export interface Toast {
   id: number;
   text: string;
@@ -33,6 +35,11 @@ class Store {
   paletteOpen = $state(false);
   shortcutsOpen = $state(false);
   onboardingOpen = $state(false);
+  /** Script library drawer (hidden by default, Ctrl+B / pill). */
+  sidebarOpen = $state(false);
+  /** Settings modal (Ctrl+, / pill) and its active tab. */
+  settingsOpen = $state(false);
+  settingsTab = $state<SettingsTab>('appearance');
   scriptId = $state<string | null>(null);
   modelProgress = $state<Record<string, { done: number; total: number; error: string | null; finished: boolean }>>({});
 

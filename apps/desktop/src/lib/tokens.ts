@@ -69,7 +69,7 @@ export function applyUiTokens(root: HTMLElement = document.documentElement): voi
   for (const [k, v] of Object.entries(raw.motion.easing)) if (typeof v === 'string') vars.push(`--ease-${kebab(k)}:${v}`);
   for (const [k, v] of Object.entries(raw.state)) vars.push(`--state-${k}:${v.color}`);
   for (const [k, v] of Object.entries(raw.layout)) if (typeof v === 'number') vars.push(`--layout-${kebab(k)}:${v < 1 ? v : v + 'px'}`);
-  vars.push(`--font-ui:'Inter Variable',${raw.type.fontUi}`, `--font-mono:'JetBrains Mono Variable',${raw.type.fontMono}`);
+  vars.push(`--font-ui:${raw.type.fontUi}`, `--font-mono:${raw.type.fontMono}`);
   vars.push(`--focus-ring-width:${raw.focus.ringWidth}px`, `--focus-ring-offset:${raw.focus.ringOffset}px`);
   css.push(`:root{${vars.join(';')}}`);
   let el = document.getElementById('zt-tokens') as HTMLStyleElement | null;

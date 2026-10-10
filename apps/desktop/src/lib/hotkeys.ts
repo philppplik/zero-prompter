@@ -65,6 +65,8 @@ export const EXTRA_BINDINGS: Record<string, string> = {
   toggleMirrorV: 'Shift+M',
   toggleMode: 'Ctrl+E',
   openFile: 'Ctrl+O',
+  toggleSidebar: 'Ctrl+B',
+  openSettings: 'Ctrl+,',
   fontBigger: 'Ctrl+=',
   fontSmaller: 'Ctrl+-',
   theme1: 'Ctrl+1',

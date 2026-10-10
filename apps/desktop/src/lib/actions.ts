@@ -124,11 +124,15 @@ export function runHotkeyAction(id: string): boolean {
     case 'shortcutOverlay': store.shortcutsOpen = !store.shortcutsOpen; break;
     case 'toggleMode': toggleMode(); break;
     case 'openFile': openFileDialog(); break;
+    case 'toggleSidebar': store.sidebarOpen = !store.sidebarOpen; break;
+    case 'openSettings': store.settingsOpen = !store.settingsOpen; break;
     case 'fontBigger': nudgeFont(4); break;
     case 'fontSmaller': nudgeFont(-4); break;
     case 'escape':
       if (store.paletteOpen) store.paletteOpen = false;
       else if (store.shortcutsOpen) store.shortcutsOpen = false;
+      else if (store.settingsOpen) store.settingsOpen = false;
+      else if (store.sidebarOpen) store.sidebarOpen = false;
       else if (counting) store.send({ type: 'stop' });
       else if (st.output.fullscreen) api.setTalentFullscreen(false).catch(() => {});
       else return false;
@@ -173,6 +177,8 @@ export function paletteActions(): Action[] {
     { id: 'toggleMirrorV', group: 'Ausgabe', label: 'Vertikal spiegeln', keywords: 'mirror', run: () => { runHotkeyAction('toggleMirrorV'); } },
     { id: 'talent', group: 'Ausgabe', label: store.talentVisible ? 'Talent-Fenster schließen' : 'Talent-Fenster öffnen', keywords: 'output monitor', run: toggleTalent },
     { id: 'toggleFullscreen', group: 'Ausgabe', label: 'Talent-Vollbild umschalten', run: toggleFullscreen },
+    { id: 'toggleSidebar', group: 'Skripte', label: store.sidebarOpen ? 'Skripte ausblenden' : 'Skripte & Gliederung anzeigen', keywords: 'sidebar bibliothek outline', run: () => { store.sidebarOpen = !store.sidebarOpen; } },
+    { id: 'openSettings', group: 'Hilfe', label: 'Einstellungen…', keywords: 'settings optionen inspector voice modelle', run: () => { store.settingsOpen = true; } },
     { id: 'openFile', group: 'Skripte', label: 'Skript öffnen…', keywords: 'import datei', run: openFileDialog },
     { id: 'shortcuts', group: 'Hilfe', label: 'Tastenkürzel anzeigen', run: () => { store.shortcutsOpen = true; } },
     { id: 'onboarding', group: 'Hilfe', label: 'Einführung erneut starten', keywords: 'onboarding hilfe', run: () => { store.onboardingOpen = true; } },
@@ -193,6 +199,8 @@ export function paletteActions(): Action[] {
 export const ACTION_SHORTCUT: Record<string, string> = {
   toggleMode: 'Ctrl+E',
   openFile: 'Ctrl+O',
+  toggleSidebar: 'Ctrl+B',
+  openSettings: 'Ctrl+,',
   fontBigger: 'Ctrl+=',
   fontSmaller: 'Ctrl+-',
   toggleMirrorV: 'Shift+M',

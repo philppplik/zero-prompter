@@ -20,7 +20,12 @@
     chevron: 'M6 4l4 4-4 4',
     timer: 'M8 14a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM8 6.5V9l1.5 1M6.5 1.5h3',
     x: 'M4 4l8 8M12 4l-8 8',
-    settings: 'M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4',
+    // Sliders (settings) – replaces the former sun-like gear glyph.
+    settings: 'M2.5 4.5h6M11.5 4.5h2M2.5 11.5h2M7.5 11.5h6M10 3v3M6 10v3',
+    type: 'M3 4.5V3h10v1.5M8 3v10M6 13h4',
+    sidebar: 'M2.5 3.5h11v9h-11zM6 3.5v9',
+    command: 'M5.5 6.5h5v3h-5zM5.5 6.5V5a1.5 1.5 0 1 0-1.5 1.5zM10.5 6.5V5a1.5 1.5 0 1 1 1.5 1.5zM5.5 9.5V11a1.5 1.5 0 1 1-1.5-1.5zM10.5 9.5V11a1.5 1.5 0 1 0 1.5-1.5z',
+    exit: 'M6 3.5H3.5v9H6M9.5 5.5 12 8l-2.5 2.5M12 8H6',
     keyboard: 'M1.5 4.5h13v7h-13zM4 7h.01M6.5 7h.01M9 7h.01M11.5 7h.01M5 9.5h6',
     edit: 'M10.5 2.5l3 3L6 13H3v-3z',
     live: 'M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM4.5 4.5a5 5 0 0 0 0 7M11.5 4.5a5 5 0 0 1 0 7',

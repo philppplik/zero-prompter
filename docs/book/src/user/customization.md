@@ -1,6 +1,6 @@
 # Anpassung
 
-Alle Einstellungen findest du im **Inspector** auf der rechten Seite. Es gibt zwei Speicherorte:
+Alle Einstellungen findest du im Dialog **Einstellungen**: `Ctrl+,` (macOS `⌘,`) oder das Regler-Symbol in der Aktions-Pille oben rechts. Bereiche: Darstellung, Scroll, Voice & Modelle, Tastenkürzel, Ausgabe; `Esc` oder ein Klick daneben schließt ihn. Die Skript-Bibliothek mit Gliederung öffnest du mit `Ctrl+B` (Seitenleisten-Symbol in der Pille), alle Aktionen mit `Ctrl+K`. Es gibt zwei Speicherorte:
 
 - **Kern-Einstellungen** (`settings.json`): Theme, Schriftgröße, Tempo, Countdown, Voice-Verhalten und Tastenbelegung. Gilt für beide Fenster.
 - **UI-Präferenzen** (`ui-prefs.json`): Schriftart, Zeilenbreite, Marker-Stil, Farben, Dimmen und Erscheinungsbild der Oberfläche. Die App überträgt sie per `prefs://changed` an beide Fenster.
@@ -25,8 +25,8 @@ Es gibt sechs Prompter-Themes aus `docs/design/tokens.json`. Alle erreichen WCAG
 | Schriftgröße | 24–300 px (`Ctrl+=` / `Ctrl+-` je ±4) | 72 px |
 | Schriftart | Atkinson Hyperlegible, Inter, System, Serif, Mono | Atkinson |
 | Zeilenbreite | 16–60 `ch` (Schieberegler) | 32 ch |
-| Zeilenhöhe | 1,0–2,4 im Inspector (der Kern akzeptiert 1,0–3,0) | 1,4 |
-| Fokus-/Leselinie | Inspector und Ziehen in der Vorschau: 5–70 % der Fensterhöhe. Der Kern begrenzt auf 10–90 %, Werte unter 10 % werden also auf 10 % angehoben (bekannte Inkonsistenz) | 35 % |
+| Zeilenhöhe | 1,0–2,4 in den Einstellungen (der Kern akzeptiert 1,0–3,0) | 1,4 |
+| Fokus-/Leselinie | Einstellungen und Ziehen in der Vorschau: 5–70 % der Fensterhöhe. Der Kern begrenzt auf 10–90 %, Werte unter 10 % werden also auf 10 % angehoben (bekannte Inkonsistenz) | 35 % |
 
 ## Lesemarker und Farben
 
@@ -42,8 +42,12 @@ Es gibt sechs Prompter-Themes aus `docs/design/tokens.json`. Alle erreichen WCAG
 
 ## Tastenbelegung
 
-Im Inspector unter Tasten klickst du auf eine Belegung und drückst die neue Kombination. Umbelegen lassen sich nur die Aktionen in `Settings.hotkeys`, die Liste steht unter [Tastenkürzel](shortcuts.md). Die übrigen App-Tasten und die globalen Hotkeys sind in v0.1 fest.
+In den Einstellungen unter Tastenkürzel klickst du auf eine Belegung und drückst die neue Kombination. Umbelegen lassen sich nur die Aktionen in `Settings.hotkeys`, die Liste steht unter [Tastenkürzel](shortcuts.md). Die übrigen App-Tasten und die globalen Hotkeys sind in v0.1 fest.
 
 ## Bewegung reduzieren
 
-Mit „Bewegung reduzieren“ im Inspector (`reducedMotion`) oder der Systemeinstellung `prefers-reduced-motion` schaltet der Prompter weiche Übergänge wie Resync-Ease, Puls und Countdown-Animation ab oder verkürzt sie.
+Mit „Bewegung reduzieren“ in den Einstellungen (`reducedMotion`) oder der Systemeinstellung `prefers-reduced-motion` schaltet der Prompter weiche Übergänge wie Resync-Ease, Puls und Countdown-Animation ab oder verkürzt sie. Das gilt auch für die Animationen der Oberfläche (Dialoge, Palette, Drawer, Hinweise).
+
+## Oberfläche (UI-Theme)
+
+Die Bedienoberfläche nutzt das tweakcn-Theme *Minimal Neutral*: neutrale Grautöne, Radius 1rem, Schriften DM Sans und Geist Mono (lokal gebündelt). Die Werte stehen in `docs/design/tokens.json` unter `ui`. Die sechs Prompter-Themes des Talent-Fensters sind davon unabhängig.

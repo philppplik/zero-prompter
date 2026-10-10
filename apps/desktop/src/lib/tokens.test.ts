@@ -130,6 +130,28 @@ describe('applyUiTokens / setUiTheme', () => {
     expect(css).not.toMatch(/undefined|NaN/);
   });
 
+  it('maps the tweakcn "Minimal Neutral" UI theme (fonts, card radius, card gradient)', () => {
+    applyUiTokens();
+    const css = doc.styles[0].textContent;
+    expect(css).toContain("--font-ui:'DM Sans Variable'");
+    expect(css).toContain("--font-mono:'Geist Mono Variable'");
+    expect(css).toContain('--radius-card:24px');
+    expect(css).toContain('--radius-lg:16px'); // tweakcn --radius: 1rem
+    expect(css).toContain('--ui-card-from:');
+    expect(css).toContain('--dur-panel:');
+    expect(css).toContain('--ease-emphasized:');
+    expect(Object.keys(tokens.ui.light).sort()).toEqual(Object.keys(tokens.ui.dark).sort());
+  });
+
+  it.each([
+    ['light', tokens.ui.light],
+    ['dark', tokens.ui.dark],
+  ] as const)('%s UI text meets AA on background, surface and accent', (_mode, ui) => {
+    expect(contrastRatio(ui.text, ui.bg)).toBeGreaterThanOrEqual(7);
+    expect(contrastRatio(ui.textMuted, ui.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(ui.textOnAccent, ui.accent)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it.each([
     ['dark', 'dark'],
     ['light', 'light'],

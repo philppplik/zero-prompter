@@ -14,7 +14,7 @@ Deutsch und Englisch, für die Normalisierung und die Wahl des Modells. Jeder Sp
 ## Probleme
 
 **Voice bewegt den Text, obwohl ich nichts sage.**
-Dann läuft der **Demo-Modus**: Die App wurde ohne Feature `sherpa` gebaut, oder es ist kein Modell für die eingestellte Sprache installiert. Der Inspector zeigt das an. Siehe [Voice-Tracking](voice-tracking.md).
+Dann läuft der **Demo-Modus**: Die App wurde ohne Feature `sherpa` gebaut, oder es ist kein Modell für die eingestellte Sprache installiert. Der Einstellungen-Dialog zeigt das an. Siehe [Voice-Tracking](voice-tracking.md).
 
 **Die Modellliste ist leer.**
 Das ist so gewollt. Das mitgelieferte Manifest enthält in v0.1 keine Einträge, weil keine ungeprüften URLs oder Hashes ausgeliefert werden sollen.
@@ -33,7 +33,7 @@ Die App ist nicht sicher genug oder wartet auf die zweite Bestätigung eines Spr
 - Windows: Einstellungen → Datenschutz → Mikrofon → „Desktop-Apps den Zugriff erlauben“.
 - Linux: ALSA- bzw. PipeWire-Gerät prüfen.
 
-Dann im Inspector unter Voice das Gerät wählen.
+Dann in den Einstellungen unter Voice & Modelle das Gerät wählen.
 
 **Globale Hotkeys gehen nicht.**
 Die Kombination ist schon belegt (das steht dann im Log `zt: global shortcut … unavailable`), oder du nutzt Wayland. Bei fokussiertem Fenster funktionieren die App-Tasten weiterhin.

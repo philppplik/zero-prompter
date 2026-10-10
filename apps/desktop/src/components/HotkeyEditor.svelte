@@ -1,5 +1,5 @@
 <!--
-  Hotkey list with click-to-record and duplicate detection (Inspector section
+  Hotkey list with click-to-record and duplicate detection (Settings tab
   "Tastenkürzel", DESIGN §3.5). Writes through ReplaceSettings.
 -->
 <script lang="ts">

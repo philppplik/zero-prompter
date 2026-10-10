@@ -101,7 +101,7 @@
       <h1 id="ob-title">Sprachmodell</h1>
       <p class="lead">Für Voice-Tracking brauchst du ein lokales Modell (einmaliger Download).</p>
       {#if models.length === 0}
-        <p class="footnote">Kein Modellkatalog in diesem Build. Voice läuft im Demo-Modus; Modelle kannst du später im Inspector laden.</p>
+        <p class="footnote">Kein Modellkatalog in diesem Build. Voice läuft im Demo-Modus; Modelle kannst du später in den Einstellungen (Strg/⌘ + ,) laden.</p>
       {/if}
       {#each models as m (m.entry.id)}
         {@const p = store.modelProgress[m.entry.id]}

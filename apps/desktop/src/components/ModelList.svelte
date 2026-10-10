@@ -1,5 +1,5 @@
 <!--
-  Speech model catalogue with install / resume / remove (Inspector section
+  Speech model catalogue with install / resume / remove (Settings tab
   "Voice"), plus the hybrid STT choice (ADR-006): streaming model per primary
   language (automatic = manifest default + fallback chain) and the optional
   offline resync switch (tier L, Parakeet). `onchange` lets the parent reload

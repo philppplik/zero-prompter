@@ -22,17 +22,21 @@ Namensschema: `ui.*` (Chrome), `prompter.<theme>.*`, `state.*`, `type.*`, `space
 
 ### 2.1 UI-Farben (Chrome)
 
+Quelle: tweakcn-Theme **„Minimal Neutral“** (`tweakcn.com/themes/cmho4nr9l000h04l1gu419ckw`), oklch → sRGB-Hex umgerechnet. Mapping shadcn → UI-Token: background → `bg`, card → `surface`, muted/input → `surfaceSunken`, border → `border`, secondary → `borderStrong`, foreground → `text`, muted-foreground → `textMuted`, primary → `accent`, primary-foreground → `textOnAccent`, accent → `accentSubtle`, ring → `focusRing`, destructive → `danger`. Die Prompter-Themes (2.3) sind davon unabhängig.
+
 | Token | Light | Dark | Kontrast (auf bg) |
 |---|---|---|---|
-| `ui.bg` | `#FBFBFC` | `#0E0F12` | – |
-| `ui.surface` | `#FFFFFF` | `#16171B` | – |
-| `ui.surfaceRaised` | `#FFFFFF` | `#1E2025` | – |
-| `ui.surfaceSunken` | `#F3F3F5` | `#0A0B0D` | – |
-| `ui.border` / `borderStrong` | `#E4E4E8` / `#C9CAD1` | `#2A2C33` / `#3A3D46` | Strong ≥ 3:1 für UI-Grenzen bei Inputs |
-| `ui.text` | `#1B1C20` | `#E8E8EA` | 16,46 : 1 / 14,64 : 1 (AAA) |
-| `ui.textMuted` | `#5E6370` | `#9BA1AB` | 5,81 : 1 / 6,89 : 1 (AA) |
-| `ui.accent` | `#6E56CF` | `#8E7BFF` | Weiß auf Akzent 5,39 : 1 (AA) |
-| `ui.focusRing` | `#6E56CF` | `#A495FF` | ≥ 3:1 gegen Umgebung (2.4.11) |
+| `ui.bg` | `#FFFFFF` | `#171717` | – |
+| `ui.surface` | `#FDFDFD` | `#0E0E0E` | – |
+| `ui.surfaceRaised` | `#FFFFFF` | `#1F1F1F` | Dialoge, Pille, Palette |
+| `ui.surfaceSunken` | `#F5F5F5` | `#262626` | Hover, Inputs |
+| `ui.border` / `borderStrong` | `#EEEEEE` / `#D4D4D4` | `#262626` / `#404040` | Hairlines; Strong für Inputs |
+| `ui.text` | `#0A0A0A` | `#FAFAFA` | ≥ 18 : 1 (AAA) |
+| `ui.textMuted` | `#737373` | `#A3A3A3` | 4,7 : 1 / 7,6 : 1 (AA) |
+| `ui.accent` (primary) | `#171717` | `#E5E5E5` | Text auf Akzent ≥ 15 : 1 |
+| `ui.accentSubtle` | `#EEEEEE` | `#404040` | aktive/pressed Flächen |
+| `ui.focusRing` | `#A3A3A3` | `#737373` | Ring + 3-px-Halo |
+| `ui.cardFrom` → `cardTo` | `#FFFFFF` → `#F4F4F5` | `#1F1F1F` → `#121212` | Verlauf der Hauptkarte |
 
 ### 2.2 Zustandsfarben (Voice)
 
@@ -60,7 +64,7 @@ Regel: Gelesener Text (dimmed) muss ≥ 3 : 1 bleiben (Wiederauffinden nach Rüc
 
 ### 2.4 Typografie
 
-UI: Inter / Segoe UI Variable / SF Pro. Prompter: **Atkinson Hyperlegible Next** 500. Mono: JetBrains Mono (Timecodes, WPM).
+UI: **DM Sans** (Variable, via `@fontsource-variable/dm-sans`). Mono: **Geist Mono** (Timecodes, WPM, Kbd). Beide lokal gebündelt, kein CDN. Prompter: **Atkinson Hyperlegible Next** 500 (wählbar: Inter, System, Serif, JetBrains Mono).
 
 | Rolle | px / Zeile | Gewicht | Verwendung |
 |---|---|---|---|
@@ -83,17 +87,17 @@ Zahlen immer `font-variant-numeric: tabular-nums`.
 
 ### 2.6 Radii
 
-`xs 4` (Kbd, Tags) · `sm 6` (Buttons, Inputs) · `md 8` (Karten, Segmented) · `lg 12` (Popover, Palette) · `xl 16` (Dialoge, Onboarding) · `pill 999` (Statusindikator, Toggles).
+`xs 4` (Kbd, Tags) · `sm 8` (Buttons, Inputs) · `md 10` (Kacheln, Listen-Items) · `lg 16` (= tweakcn `--radius: 1rem`; Vorschau) · `xl 20` (Dialoge, Palette, Drawer) · `card 24` (Hauptkarte) · `pill 999` (Aktions-Pille, Segmented, Toasts, Statusindikator).
 
 ### 2.7 Elevation
 
 | Stufe | Verwendung | Shadow |
 |---|---|---|
 | 0 | flache Flächen | none |
-| 1 | Karten, Inputs | `0 1px 2px /6% + 1px Hairline` |
-| 2 | Toolbar-Popover, Tooltips | `0 4px 12px /10%` |
-| 3 | Command Palette, Menüs | `0 12px 32px /18%` |
-| 4 | Modale Dialoge, Onboarding | `0 24px 64px /28%` |
+| 1 | Pille, Inputs, Logo | tweakcn `shadow-sm` (`0 1px 3px /10%, 0 1px 2px -1px /10%`) |
+| 2 | Hauptkarte, Tooltips | tweakcn `shadow-lg` (`… 0 4px 6px -1px /10%`) |
+| 3 | Live-Karte, Toasts | tweakcn `shadow-xl` + weicher 40-px-Schatten |
+| 4 | Dialoge, Palette, Drawer | `0 24px 64px -12px /30%` |
 
 Im Dark-Mode zusätzlich Oberflächen-Aufhellung (surface → surfaceRaised) statt stärkerer Schatten.
 
@@ -108,7 +112,10 @@ Im Dark-Mode zusätzlich Oberflächen-Aufhellung (surface → surfaceRaised) sta
 | resync | ≤ 300 ms | Feder k=170, d=26 | Voice-Sprung |
 | countdown | 1000 ms/Ziffer | scale .9→1 + fade | 3-2-1 |
 
-`prefers-reduced-motion`: Resync springt hart, kein Pulsieren, Countdown nur Crossfade, Popover ohne Scale. Scrollen selbst bleibt (Funktion).
+| panel | 260 ms | emphasized `(.32,.72,0,1)` | Dialog (scale .96→1 + fade), Palette, Drawer (fly x −24), Toasts (fly y 12 + flip) |
+
+UI-Transitions laufen über `src/lib/motion.ts` (`dur()`, `EASE.*` aus tokens.json, Bezier-Solver für Svelte-Transitions); Ausgang immer `fast` + exit-Kurve. Microinteractions: Press `scale(.96)` (Play `.92`, Hover `1.04`), Hover-Flächen 120 ms.
+`prefers-reduced-motion` **oder** die Einstellung „Bewegung reduzieren“: alle UI-Transitions 0 ms. Prompter: Resync springt hart, kein Pulsieren, Countdown nur Crossfade, Popover ohne Scale. Scrollen selbst bleibt (Funktion).
 Scroll-Rendering: `transform: translate3d(0,-y,0)` auf einem Layer, Position aus `requestAnimationFrame` mit Zeitdelta (nicht Frame-basiert), Subpixel aus, auf Linux Pixel-Snapping.
 
 ---
@@ -116,12 +123,12 @@ Scroll-Rendering: `transform: translate3d(0,-y,0)` auf einem Layer, Position aus
 ## 3. Komponenten
 
 ### 3.1 Control-Fenster
-Dreispaltig: Sidebar 240 · Hauptbereich flex · Inspector 300; Titlebar 38, Toolbar 44, Transport 56. Min. 960×600; unter 1180 px klappt die Sidebar ein, unter 1000 px wird der Inspector zum Overlay-Sheet.
+Minimal, viel Weißraum: Topbar 64 (links nur App-Logo; rechts Voice-Status, **Aktions-Pille** und runder **X**-Button), darunter eine große Karte (radius `card` 24, Verlauf `cardFrom → cardTo`, max. 1200 px) mit Kopfzeile (Skripttitel · Scroll-Modus · `Edit | Live`) und Editor bzw. Live-Vorschau, darunter die Transport-Leiste 56. Keine permanente Sidebar und kein Inspector: Skripte/Gliederung als Drawer von links (`Ctrl+B`), Einstellungen als Modal (`Ctrl+,`). Alle Flex/Grid-Ketten mit `min-height: 0`, damit Panels intern scrollen. X: in Live = Live beenden, in Edit = Fenster schließen. Min. 960×600.
 Modi: **Edit** (Editor) / **Live** (1:1-Vorschau, verkleinert). Zustände: leer (Drop-Zone + „Ctrl+V zum Einfügen“), geladen, live, Talent-Fenster getrennt (Banner „Ausgabe nicht verbunden – Monitor wählen“).
 
 ### 3.2 Toolbar
-Links: Skriptname (editierbar), Segmented `Edit | Live`. Mitte: Scroll-Modus `Manuell | Konstant | Voice`. Rechts: Voice-Statusindikator, Spiegelung, Ausgabe-Monitor, `⌘K`.
-Buttons: 28 px hoch (Hit-Target 32 via Padding), Zustände default / hover (surfaceSunken) / pressed (−1 % Scale, 120 ms) / active (accentSubtle + accent-Text) / focus-visible (2-px-Ring, Offset 2) / disabled (40 % Opazität, `aria-disabled`).
+Aktions-Pille (40 px, radius pill, surfaceRaised + elevation 1): Skripte (Sidebar-Icon, `Ctrl+B`) · „Befehle“ + `⌘K` · Talent-Ausgabe (Monitor-Icon, grüner Punkt wenn aktiv) · Einstellungen (Regler-Icon, `Ctrl+,`). Spiegeln, Themes usw. über Palette/Einstellungen/Tasten.
+Buttons: 28 px hoch (Hit-Target 32 via Padding), Zustände default / hover (surfaceSunken) / pressed (−4 % Scale, 120 ms) / active (accentSubtle + text) / focus-visible (2-px-Ring, Offset 2) / disabled (40 % Opazität, `aria-disabled`).
 
 ### 3.3 Transport-Leiste
 Play/Pause (primär, 40 px rund), Zurück zum Anfang, Absatz ±, WPM-Stepper (− 140 +, Mono), Fortschritt (Balken + `03:12 / 07:40` Restzeit), Countdown-Toggle.
@@ -130,8 +137,8 @@ Play/Pause (primär, 40 px rund), Zurück zum Anfang, Absatz ±, WPM-Stepper (�
 600 px breit, 20 % von oben, radius lg, elevation 3, Eingabe callout 15 px. Gruppen: Zuletzt · Wiedergabe · Darstellung · Themes · Ausgabe · Voice · Hilfe. Jede Zeile: Icon 16, Label, rechts Shortcut-Kbd. Fuzzy-Match mit fett markierten Treffern.
 Zustände: leer (Zuletzt + Vorschläge), Ergebnisse, kein Treffer („Keine Aktion für ‚xyz‘“), Unterseite (z. B. Theme-Liste mit Live-Vorschau beim Hovern), Ladezustand (Modelle). ↑/↓ navigiert, Enter ausführt, Esc schließt / geht eine Ebene zurück, Tab = Unterseite.
 
-### 3.5 Settings-Panel / Inspector
-Sektionen (Accordion, Zustand gemerkt): **Darstellung** (Theme-Kacheln mit Kontrast-Badge, Font, Größe-Slider 24–300, Spaltenbreite ch, Zeilenabstand, Gelesen-Opazität), **Scroll** (Modus, WPM, Ease), **Lesemarker** (Stil, Position %), **Voice** (Sprache, Modell, Mikro + Pegel, Verhalten bei lost: Stop | Konstant), **Ausgabe** (Monitor, Vollbild, Spiegel H/V).
+### 3.5 Einstellungen (Modal, ersetzt den Inspector)
+840 × 640 px (max. Viewport − 32), radius xl, elevation 4, Scrim mit 6-px-Blur. Links vertikale Tabs (`role=tablist`, Pfeiltasten/Home/End), rechts scrollender Tab-Inhalt. Tabs: **Darstellung** (Theme-Kacheln, Schrift, Größe 24–300, Spaltenbreite, Zeilenabstand, Dimmen, Farben + Kontrast, Lesemarker, Oberfläche Hell/Dunkel/System, Frametime), **Scroll** (Modus, WPM, Countdown, Bewegung reduzieren), **Voice & Modelle** (Sprache, Mikro + Pegel + Test, Verhalten bei lost, Modellliste), **Tastenkürzel** (HotkeyEditor), **Ausgabe** (Monitor, Talent-Fenster, Vollbild, Spiegel H/V). Esc/Klick daneben schließt, Fokus-Trap, Fokus kehrt zum Auslöser zurück (`Dialog.svelte`, auch für die Kürzel-Übersicht).
 Felder: Label caption oben, Control, Hilfetext footnote. Slider mit numerischem Feld daneben. Validierungsfehler inline in `state.lost`-Farbe + Icon + Text.
 
 ### 3.6 Talent-Fenster

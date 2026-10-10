@@ -5,7 +5,7 @@
 ## Was in v0.1 geht
 
 - **Globale Hotkeys** (`Ctrl+Shift+…`, siehe [Tastenkürzel](shortcuts.md)). Damit steuerst du den Prompter, während OBS, Folien oder eine Videokonferenz im Vordergrund sind.
-- **Presenter-Clicker und Fußpedale**, die sich als Tastatur ausgeben: Wenn das Gerät `PgUp`/`PgDn`, Pfeiltasten oder `Space` sendet, funktioniert es bei fokussiertem Control-Fenster ohne weitere Einrichtung. Bei Bedarf belegst du die Aktionen im Inspector passend um.
+- **Presenter-Clicker und Fußpedale**, die sich als Tastatur ausgeben: Wenn das Gerät `PgUp`/`PgDn`, Pfeiltasten oder `Space` sendet, funktioniert es bei fokussiertem Control-Fenster ohne weitere Einrichtung. Bei Bedarf belegst du die Aktionen in den Einstellungen passend um.
 
 ## Geplant
 

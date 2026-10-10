@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bindingMap, chordOf, normalizeChord } from './hotkeys';
+import { bindingMap, chordOf, EXTRA_BINDINGS, normalizeChord } from './hotkeys';
 
 const ev = (key: string, o: Partial<KeyboardEvent> = {}) =>
   ({ key, code: '', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...o }) as KeyboardEvent;
@@ -15,6 +15,8 @@ describe('chordOf', () => {
     [ev('ArrowUp'), 'ArrowUp'],
     [ev('+', { ctrlKey: true }), 'Ctrl+='],
     [ev('1', { ctrlKey: true, altKey: true }), 'Ctrl+Alt+1'],
+    [ev(',', { ctrlKey: true }), 'Ctrl+,'], // settings
+    [ev('b', { ctrlKey: true }), 'Ctrl+B'], // script drawer
   ])('%#: -> %s', (e, chord) => {
     expect(chordOf(e)).toBe(chord);
   });
@@ -40,6 +42,14 @@ describe('normalizeChord', () => {
 
   it('agrees with chordOf for recorded events', () => {
     expect(normalizeChord('shift+ctrl+k')).toBe(chordOf(ev('k', { ctrlKey: true, shiftKey: true })));
+  });
+});
+
+describe('EXTRA_BINDINGS', () => {
+  it('binds the settings modal and the script drawer', () => {
+    const m = bindingMap({}, EXTRA_BINDINGS);
+    expect(m.get(chordOf(ev(',', { ctrlKey: true })))).toBe('openSettings');
+    expect(m.get(chordOf(ev('b', { metaKey: true })))).toBe('toggleSidebar');
   });
 });
 

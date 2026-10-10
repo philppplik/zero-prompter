@@ -26,10 +26,12 @@ Unter macOS steht `Ctrl` für `⌘`. Die App behandelt Meta wie Ctrl, sodass ein
 | `Shift+M` | vertikal spiegeln |
 | `Ctrl+E` | Edit- und Live-Modus umschalten |
 | `Ctrl+O` | Skript öffnen |
+| `Ctrl+B` | Skripte & Gliederung (Drawer) ein/aus |
+| `Ctrl+,` | Einstellungen öffnen/schließen |
 | `Ctrl+=` / `Ctrl+-` | Schrift ±4 px |
 | `Ctrl+1` … `Ctrl+6` | Theme 1–6 |
 | `Ctrl+↑` | zum Anfang (Alternative für Mac-Tastaturen ohne `Home`) |
-| `Esc` | schließt der Reihe nach: Palette, dann Übersicht. Bricht danach den Countdown ab bzw. beendet zuletzt das Vollbild |
+| `Esc` | schließt der Reihe nach: Palette, Übersicht, Einstellungen, Skripte-Drawer. Bricht danach den Countdown ab bzw. beendet zuletzt das Vollbild |
 
 ## Global (systemweit, auch wenn eine andere App den Fokus hat)
 

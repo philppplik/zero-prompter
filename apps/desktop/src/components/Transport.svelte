@@ -103,9 +103,9 @@
   .transport {
     height: var(--layout-transport);
     display: flex; align-items: center; gap: 20px;
-    padding: 0 16px;
-    border-top: 1px solid var(--ui-border);
-    background: var(--ui-surface);
+    width: 100%; max-width: 1200px; margin: 0 auto;
+    padding: 0 24px;
+    background: transparent;
   }
   .group { display: flex; align-items: center; gap: 4px; }
   .t { width: 32px; height: 32px; }
@@ -116,13 +116,14 @@
     transition: background var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
   }
   .play:hover { background: var(--ui-accent-hover); }
-  .play:active { transform: scale(.97); }
+  .play:hover:not(:disabled) { transform: scale(1.04); box-shadow: var(--elev-2); }
+  .play:active:not(:disabled) { transform: scale(.92); }
   .play:disabled { opacity: .4; cursor: default; }
   .wpm input { text-align: center; }
   .progress-wrap { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
   .progress { flex: 1; height: 6px; border-radius: 3px; background: var(--ui-surface-sunken); border: 1px solid var(--ui-border); cursor: pointer; position: relative; }
   .progress::after { content: ''; position: absolute; inset: -9px 0; }
-  .bar { height: 100%; border-radius: 3px; background: var(--ui-accent); }
+  .bar { height: 100%; border-radius: 3px; background: var(--ui-accent); transition: width var(--dur-fast) linear; }
   .time { font-size: 13px; }
   .words { white-space: nowrap; }
   @media (max-width: 1100px) { .words { display: none; } }

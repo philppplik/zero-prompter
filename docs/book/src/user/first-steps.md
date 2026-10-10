@@ -13,22 +13,24 @@ Den Assistenten startest du jederzeit erneut über die Befehlspalette (`Ctrl+K` 
 
 ## Das Control-Fenster
 
-```
-┌ Sidebar ─────┬ Editor / Vorschau ─────────────┬ Inspector ─────┐
-│ Skripte      │                                │ Darstellung    │
-│ Gliederung   │                                │ Scroll, Marker │
-│              │                                │ Voice, Ausgabe │
-├──────────────┴─── Transport: ⏮ ◀¶ ▶ ¶▶ · WPM · Position · Zeit · Countdown ┤
+```n[Logo]                                [Skripte | Befehle ⌘K | Ausgabe | Einstellungen]  (X)
+╭──────────────────────────────────────────────────────────────╮
+│ Skripttitel                 Manuell·Konstant·Voice  Edit·Live │
+│                                                              │
+│              Editor  /  Live-Vorschau (große Karte)          │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+   Transport: ⏮ ◀¶ ▶ ¶▶ · WPM · Position · Zeit · Countdown
 ```
 
-- **Sidebar:** Skriptbibliothek (neu, öffnen, löschen) und eine Gliederung nach Absätzen. Ein Klick auf einen Absatz springt dorthin.
+- **Skripte** (`Ctrl+B`, Drawer von links, standardmäßig verborgen): Skriptbibliothek (neu, öffnen, löschen) und eine Gliederung nach Absätzen. Ein Klick auf einen Absatz springt dorthin.
 - **Editor / Vorschau:** Im Edit-Modus schreibst du Text, Markdown ist erlaubt. Im Live-Modus siehst du die Prompter-Vorschau. Umschalten mit `Ctrl+E`.
-- **Inspector:** Einstellungen, siehe [Anpassung](customization.md).
+- **Einstellungen** (`Ctrl+,`, Regler-Symbol oben rechts): Modal-Dialog, siehe [Anpassung](customization.md).
 - **Transport:** Zum Anfang, Absatz zurück/vor, Play/Pause, Tempo, Positionsleiste, Restzeit/Gesamtdauer und Countdown-Dauer.
 
 ## Skript laden
 
-- **Öffnen:** `Ctrl+O` oder Ordner-Symbol in der Sidebar. Erlaubt sind `.txt`, `.md`, `.markdown` und `.text`, höchstens 8 MB. Dateien in UTF-8 (auch mit BOM) werden gelesen. Andere Kodierungen interpretiert die App als Latin-1, statt abzubrechen.
+- **Öffnen:** `Ctrl+O` oder Datei-Symbol im Skripte-Drawer (`Ctrl+B`). Erlaubt sind `.txt`, `.md`, `.markdown` und `.text`, höchstens 8 MB. Dateien in UTF-8 (auch mit BOM) werden gelesen. Andere Kodierungen interpretiert die App als Latin-1, statt abzubrechen.
 - **Drag-and-Drop** einer Datei auf das Fenster.
 - **Neu:** „+“ in der Sidebar.
 
@@ -45,7 +47,7 @@ Importierte Skripte kopiert die App als `<name>-<zeitstempel>.md` in die Bibliot
 1. `Ctrl+E` wechselt in den **Live-Modus**. Während der Wiedergabe ist der Text gesperrt.
 2. Tempo einstellen: `↑`/`↓` je ±5 WPM, Bereich 40–400.
 3. `Leertaste` startet den Countdown (Standard 3 s, im Transport umschaltbar). `Esc` bricht ihn ab.
-4. **Talent-Fenster:** Befehlspalette → „Talent-Fenster öffnen“ oder Monitor im Inspector wählen. `F` schaltet Vollbild.
+4. **Talent-Fenster:** Befehlspalette → „Talent-Fenster öffnen“ oder Monitor in den Einstellungen unter Ausgabe wählen. `F` schaltet Vollbild.
 5. **Spiegeln:** `M` horizontal, `Shift+M` vertikal.
 6. `Home` springt zum Anfang (im Live-Modus: Stop).
 
