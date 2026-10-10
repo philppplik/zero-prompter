@@ -1,9 +1,9 @@
 //! Hybrid orchestrator (ADR-006): streaming engine + optional offline resync.
 //!
 //! ```text
-//! audio Ã¢â€â‚¬Ã¢â€Â¬Ã¢â€â‚¬> streaming engine Ã¢â€â‚¬Ã¢â€â‚¬> Partial/Final/Vad        (same thread, low latency)
-//!        Ã¢â€â€Ã¢â€â‚¬> segmenter Ã¢â€â‚¬Ã¢â€â‚¬(bounded try_send)Ã¢â€â‚¬Ã¢â€â‚¬> worker thread: OfflineEngine::transcribe
-//!                                               Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬(channel)Ã¢â€â‚¬Ã¢â€â‚¬> SttEvent::Resync
+//! audio --+--> streaming engine --> Partial/Final/Vad   (same thread, low latency)
+//!         +--> segmenter --(bounded try_send)--> worker thread: OfflineEngine::transcribe
+//!                                           +--(channel)--> SttEvent::Resync
 //! ```
 //!
 //! The streaming path never waits for the offline engine: segments are
@@ -16,7 +16,7 @@ use crate::{
     Hotword, OfflineEngine, Segment, Segmenter, SpeechEngine, SttError, SttEvent, SAMPLE_RATE,
 };
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::mpsc::{channel, sync_channel, Receiver, SyncSender, TryRecvError, TrySendError};
+use std::sync::mpsc::{channel, sync_channel, Receiver, SyncSender, TrySendError};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -216,32 +216,28 @@ impl SpeechEngine for HybridEngine {
         let mut out = self.streaming.poll();
         let Some(r) = self.resync.as_mut() else { return out };
         let current = r.generation.load(Ordering::SeqCst);
-        loop {
-            match r.rx.try_recv() {
-                Ok(done) => {
-                    if done.generation != current {
-                        r.stats.stale += 1;
-                        continue;
-                    }
-                    match done.text {
-                        Ok(text) => {
-                            r.stats.decoded += 1;
-                            let text = text.trim().to_string();
-                            if text.split_whitespace().count() >= r.opts.min_words {
-                                let age = self.fed.saturating_sub(done.end_sample);
-                                out.push(SttEvent::Resync {
-                                    text,
-                                    age_ms: age * 1000 / SAMPLE_RATE as u64,
-                                });
-                            }
-                        }
-                        Err(e) => {
-                            r.stats.errors += 1;
-                            self.errors.push(e);
-                        }
+        // Empty or disconnected both end the drain.
+        while let Ok(done) = r.rx.try_recv() {
+            if done.generation != current {
+                r.stats.stale += 1;
+                continue;
+            }
+            match done.text {
+                Ok(text) => {
+                    r.stats.decoded += 1;
+                    let text = text.trim().to_string();
+                    if text.split_whitespace().count() >= r.opts.min_words {
+                        let age = self.fed.saturating_sub(done.end_sample);
+                        out.push(SttEvent::Resync {
+                            text,
+                            age_ms: age * 1000 / SAMPLE_RATE as u64,
+                        });
                     }
                 }
-                Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
+                Err(e) => {
+                    r.stats.errors += 1;
+                    self.errors.push(e);
+                }
             }
         }
         out

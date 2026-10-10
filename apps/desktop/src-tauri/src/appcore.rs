@@ -2,10 +2,10 @@
 //! the voice tracker, and the one mutation path `dispatch()` used by Tauri
 //! commands, global hotkeys, the tick loop and the voice pipeline.
 //!
-//! Events (CONCEPT Â§8.3):
-//! - `state://patch`  â€” changed sub-trees of `AppState` (camelCase JSON)
-//! - `scroll://frame` â€” position/target/velocity in token units, max ~60 Hz
-//! - `voice://word`   â€” cursor token + confidence when the voice cursor moves
+//! Events (CONCEPT §8.3):
+//! - `state://patch`  - changed sub-trees of `AppState` (camelCase JSON)
+//! - `scroll://frame` - position/target/velocity in token units, max ~60 Hz
+//! - `voice://word`   - cursor token + confidence when the voice cursor moves
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -216,7 +216,7 @@ pub fn dispatch(app: &AppHandle, shared: &Shared, cmd: Command) -> Result<(), St
             g.rebuild_index();
         }
         // Only tracker-relevant settings touch the tracker. Recreating it on every
-        // settings patch (theme, font size, â€¦) would reset cursor + state mid-take.
+        // settings patch (theme, font size, ...) would reset cursor + state mid-take.
         if patch.settings {
             let cfg = tracker_config(&g.ctl.state().settings);
             if cfg != *g.tracker.config() {

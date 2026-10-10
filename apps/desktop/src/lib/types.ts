@@ -168,7 +168,7 @@ export interface ModelRow {
   unverified: [string, string | null][];
 }
 
-/** Per-language model choice + resync switch (backend oice-models.json, ADR-006). */
+/** Per-language model choice + resync switch (backend `voice-models.json`, ADR-006). */
 export interface VoiceModelPrefs {
   /** primary language -> streaming model id; missing = automatic */
   streaming: Record<string, string>;

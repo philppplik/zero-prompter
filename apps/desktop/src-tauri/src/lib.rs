@@ -2,7 +2,7 @@
 //!
 //! - `appcore`  : Controller + VoiceTracker behind one mutex, the single `dispatch` path, tick loop
 //! - `voice`    : mic -> STT -> tracker thread
-//! - `commands` : `#[tauri::command]`s (CONCEPT Â§8.3)
+//! - `commands` : `#[tauri::command]`s (CONCEPT §8.3)
 //! - `hotkeys`  : global shortcuts
 //! - `persist`  : settings / ui prefs / script library
 //! - `models`   : model manifest / install / remove

@@ -8,7 +8,7 @@
 //!   `voice://level` and `voice://transcript`.
 //!
 //! Without the `sherpa` feature (or without an installed model) the engine is
-//! `MockEngine::reading(script)` Ã¢â‚¬â€ a deterministic demo that "reads" the script
+//! `MockEngine::reading(script)` - a deterministic demo that "reads" the script
 //! at ~2.3 words/s, so the full UI path can be exercised on any machine.
 //!
 //! With models (ADR-006) the engine is a zt_stt::HybridEngine: the streaming
@@ -68,7 +68,7 @@ pub struct EngineInfo {
     pub error: Option<String>,
     /// Offline resync running (ADR-006).
     pub resync: bool,
-    /// Fallback / resync notes, e.g. "zipformer-en-krokoâ€¦ failed, fallback".
+    /// Fallback / resync notes, e.g. "zipformer-en-kroko-2025-08-06 failed, fallback".
     pub notes: Vec<String>,
 }
 

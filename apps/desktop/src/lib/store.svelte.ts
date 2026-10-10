@@ -74,7 +74,7 @@ class Store {
         if (!p.finished) return;
         if (p.error) this.toast(`Download fehlgeschlagen: ${p.error}`, 'error');
         else if (p.unverified?.length)
-          this.toast(`Modell installiert Â· ${p.unverified.length} Datei(en) unverifiziert (kein Hash im Manifest)`, 'info');
+          this.toast(`Modell installiert · ${p.unverified.length} Datei(en) unverifiziert (kein Hash im Manifest)`, 'info');
         else this.toast('Modell installiert', 'info');
       }),
     );
