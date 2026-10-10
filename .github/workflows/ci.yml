@@ -14,6 +14,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # RUSTFLAGS overrides .cargo/config.toml -> Windows jobs re-add +crt-static.
   RUSTFLAGS: -D warnings
 
 jobs:
@@ -27,6 +28,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -51,6 +56,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@1.80
       - uses: Swatinem/rust-cache@v2
@@ -67,6 +76,10 @@ jobs:
       PROPTEST_CASES: "8192"
     steps:
       - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --release -p zt-align -p zt-core -p zt-testkit
@@ -87,15 +100,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Linux audio deps
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       - run: cargo build -p zt-audio --features cpal
-      # sherpa-onnx binding is unverified (// VERIFY in zt-stt/src/sherpa.rs) -> non-blocking for now.
       - run: cargo build -p zt-stt --features sherpa
-        continue-on-error: true
 
   frontend:
     name: Frontend (check, test, build)
@@ -105,6 +120,10 @@ jobs:
         working-directory: apps/desktop
     steps:
       - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -127,6 +146,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -150,17 +173,27 @@ jobs:
           npx tauri icon app-icon.png
       - name: clippy (app)
         run: cargo clippy -p zero-teleprompter --all-targets
+      - name: clippy (app, sherpa)
+        run: cargo clippy -p zero-teleprompter --all-targets --features sherpa
       - name: test (app)
         run: cargo test -p zero-teleprompter
       - name: Release build (binary size, informational)
         shell: bash
-        run: cargo build -p zero-teleprompter --release && ls -la target/release | head -n 40
+        run: cargo build -p zero-teleprompter --release --features sherpa && ls -la target/release | head -n 40
+      - name: No VC++ runtime imports (dumpbin)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/check-crt.ps1 target/release/zero-teleprompter.exe
 
   licenses:
     name: Licenses (cargo-deny + npm)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check licenses bans sources advisories

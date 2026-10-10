@@ -1,0 +1,8 @@
+# Static MSVC CRT on Windows (x64 + ARM64).
+# Why: without it the app needs VCRUNTIME140.dll / MSVCP140.dll, which are not
+# present on fresh Windows installs (seen on Windows 11 ARM64). Also required by
+# sherpa-onnx-sys: its Windows prebuilt libs are only shipped as "static-MT"
+# (/MT, static CRT); mixing them with the default /MD CRT fails to link.
+# NOTE: an explicit RUSTFLAGS env var overrides this table (see ci.yml).
+[target.'cfg(all(windows, target_env = "msvc"))']
+rustflags = ["-C", "target-feature=+crt-static"]

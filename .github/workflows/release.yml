@@ -23,25 +23,25 @@ jobs:
           - name: macOS arm64
             os: macos-latest
             target: aarch64-apple-darwin
-            args: --target aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --features sherpa
           - name: macOS x64
             os: macos-latest
             target: x86_64-apple-darwin
-            args: --target x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --features sherpa
           - name: Linux x64
             os: ubuntu-22.04
             target: ''
-            args: ''
+            args: --features sherpa
           - name: Windows x64
             os: windows-latest
             target: ''
-            args: ''
+            args: --features sherpa
           # Native ARM64 runner (aarch64-pc-windows-msvc): avoids cross-compiling
           # C dependencies (ring, cpal) from x64.
           - name: Windows ARM64
             os: windows-11-arm
             target: ''
-            args: ''
+            args: --features sherpa
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -103,6 +103,13 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+      # Regression guard for "VCRUNTIME140.dll was not found": the exe must not
+      # import the VC++ runtime (static CRT via .cargo/config.toml).
+      - name: Verify no VC++ runtime imports (dumpbin)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/check-crt.ps1 target/release/zero-teleprompter.exe
+
   # Microsoft Store (MSI/EXE listing): NSIS installer with the offline WebView2
   # installer embedded, built with tauri.microsoftstore.conf.json merged in.
   store:
@@ -130,7 +137,10 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npx tauri icon app-icon.png
-          npx tauri build --bundles nsis --config src-tauri/tauri.microsoftstore.conf.json
+          npx tauri build --bundles nsis --config src-tauri/tauri.microsoftstore.conf.json --features sherpa
+      - name: Verify no VC++ runtime imports (dumpbin)
+        shell: pwsh
+        run: ./scripts/check-crt.ps1 target/release/zero-teleprompter.exe
       - name: Rename
         shell: bash
         run: |
