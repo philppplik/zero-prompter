@@ -11,6 +11,17 @@ ignore = [
     # proc-macro-error: unmaintained (not a vulnerability), only transitively via
     # the Tauri/GTK3 build tree (glib-macros, gtk3-macros); no alternative until Tauri drops GTK3.
     { id = "RUSTSEC-2024-0370", reason = "transitive via tauri/gtk3, build-time proc-macro only" },
+    # unic-* (unmaintained, no fix): transitive via tauri-utils -> urlpattern.
+    { id = "RUSTSEC-2025-0075", reason = "unic-char-range via tauri-utils/urlpattern, no upgrade available" },
+    { id = "RUSTSEC-2025-0080", reason = "unic-common via tauri-utils/urlpattern, no upgrade available" },
+    { id = "RUSTSEC-2025-0081", reason = "unic-char-property via tauri-utils/urlpattern, no upgrade available" },
+    { id = "RUSTSEC-2025-0098", reason = "unic-ucd-version via tauri-utils/urlpattern, no upgrade available" },
+    { id = "RUSTSEC-2025-0100", reason = "unic-ucd-ident via tauri-utils/urlpattern, no upgrade available" },
+    # quick-xml < 0.41 (DoS on untrusted XML): pinned by Tauri deps (plist etc.); the app parses no untrusted XML. Revisit on Tauri update.
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml via tauri tree, no untrusted XML input" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml via tauri tree, no untrusted XML input" },
+    # time < 0.3.47 (stack exhaustion when parsing): fixed version needs a newer Rust than MSRV 1.80; lockfile is MSRV-resolved. No untrusted time strings parsed.
+    { id = "RUSTSEC-2026-0009", reason = "time held back by MSRV-aware lockfile; no untrusted format parsing" },
 ]
 
 [licenses]

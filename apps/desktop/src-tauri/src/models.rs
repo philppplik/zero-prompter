@@ -230,11 +230,8 @@ pub fn install(app: &AppHandle, id: &str) -> Result<(), String> {
     let store = ModelStore::new(models_root(app)?);
     // Silero VAD is a small mandatory helper: installed together with any
     // speech model (Kroko/Zipformer/Parakeet) so resync segments by VAD.
-    let helpers: Vec<ModelEntry> = m
-        .vad_models()
-        .filter(|v| v.id != entry.id && !is_installed(&store, v))
-        .cloned()
-        .collect();
+    let helpers: Vec<ModelEntry> =
+        m.vad_models().filter(|v| v.id != entry.id && !is_installed(&store, v)).cloned().collect();
     let app = app.clone();
     let id = id.to_string();
     std::thread::Builder::new()
