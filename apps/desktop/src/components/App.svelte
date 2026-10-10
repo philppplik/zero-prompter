@@ -1,6 +1,7 @@
 <!--
   Control window (CONCEPT §4.1, DESIGN §3.1/§4.1):
-  Minimal layout: top bar (logo · action pill · close), one large rounded card
+  Minimal layout: top bar (logo · action pill · window controls; drag region),
+  left rail (scripts drawer toggle), one large rounded card
   (Edit: editor, Live: 1:1 talent preview), transport. Scripts drawer (Ctrl+B)
   and settings modal (Ctrl+,) are hidden by default.
 -->
@@ -9,6 +10,7 @@
   import { getCurrentWebview } from '@tauri-apps/api/webview';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import Toolbar from './Toolbar.svelte';
+  import Rail from './Rail.svelte';
   import Sidebar from './Sidebar.svelte';
   import Editor from './Editor.svelte';
   import Settings from './Settings.svelte';
@@ -161,6 +163,8 @@
   <div class="shell" in:fade={{ duration: dur('slow'), easing: EASE.enter }}>
     <Toolbar onlost={() => store.toast('Klicke in der Vorschau auf das Wort, an dem du gerade bist (oder R)')} />
 
+    <Rail />
+
     <main class="stage" aria-label={store.live ? 'Live-Vorschau' : 'Editor'}>
       <div class="card" class:live={store.live}>
         <div class="card-head">
@@ -213,13 +217,14 @@
       </div>
     </main>
 
-    <Transport />
+    <div class="transport-slot"><Transport /></div>
   </div>
 
   {#if store.sidebarOpen}
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="drawer-scrim" onclick={() => (store.sidebarOpen = false)} transition:fade={{ duration: dur('base'), easing: EASE.standard }}></div>
     <div
+      id="scripts-drawer"
       class="drawer"
       in:fly={{ x: -24, opacity: 0, duration: dur('panel'), easing: EASE.emphasized }}
       out:fly={{ x: -16, opacity: 0, duration: dur('fast'), easing: EASE.exit }}
@@ -245,8 +250,15 @@
 <Toasts />
 
 <style>
-  .shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; background: var(--ui-bg); }
-  .stage { min-height: 0; display: flex; padding: 0 24px; }
+  .shell {
+    display: grid; height: 100vh; background: var(--ui-bg);
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .shell > :global(header) { grid-column: 1 / -1; }
+  .shell > :global(nav.rail) { grid-column: 1; grid-row: 2 / 4; }
+  .stage { grid-column: 2; min-height: 0; display: flex; padding: 0 24px 0 12px; }
+  .transport-slot { grid-column: 2; min-width: 0; }
   .card {
     flex: 1; min-width: 0; min-height: 0;
     display: flex; flex-direction: column;
@@ -279,7 +291,7 @@
   .banner.lost { border-color: var(--state-lost); color: var(--ui-text); }
   .drawer-scrim { position: fixed; inset: 0; z-index: 40; background: var(--ui-overlay); }
   .drawer {
-    position: fixed; z-index: 41; left: 12px; top: 12px; bottom: 12px;
+    position: fixed; z-index: 41; left: 68px; top: 68px; bottom: 12px;
     display: flex; min-height: 0;
     border-radius: var(--radius-xl); overflow: hidden;
     box-shadow: var(--elev-4); border: 1px solid var(--ui-border);

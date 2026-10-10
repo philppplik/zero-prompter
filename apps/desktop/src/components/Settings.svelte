@@ -1,6 +1,6 @@
 <!--
   Settings modal body (DESIGN §3.5, replaces the former right-hand Inspector):
-  Tabs Darstellung · Scroll · Voice & Modelle · Tastenkürzel · Ausgabe.
+  Tabs Darstellung · Scroll · Voice & Modelle · Tastenkürzel · Ausgabe · Über.
   Core settings go through ReplaceSettings, UI-only prefs through
   store.setPrefs (broadcast to the talent window). Rendered inside <Dialog>,
   so hardware is (re)loaded each time the dialog opens.
@@ -11,6 +11,7 @@
   import Icon from './Icon.svelte';
   import HotkeyEditor from './HotkeyEditor.svelte';
   import ModelList from './ModelList.svelte';
+  import AboutPanel from './AboutPanel.svelte';
   import { FOCUS_LINE_MAX, FOCUS_LINE_MIN, store, type SettingsTab } from '../lib/store.svelte';
   import { api, errorText } from '../lib/bridge';
   import { setMode } from '../lib/actions';
@@ -28,12 +29,13 @@
   const prefs = $derived(store.prefs);
   const pt = tokens.type.prompter;
 
-  const TABS: { id: SettingsTab; label: string; icon: 'type' | 'paraNext' | 'mic' | 'keyboard' | 'monitor' }[] = [
+  const TABS: { id: SettingsTab; label: string; icon: 'type' | 'paraNext' | 'mic' | 'keyboard' | 'monitor' | 'info' }[] = [
     { id: 'appearance', label: 'Darstellung', icon: 'type' },
     { id: 'scroll', label: 'Scroll', icon: 'paraNext' },
     { id: 'voice', label: 'Voice & Modelle', icon: 'mic' },
     { id: 'hotkeys', label: 'Tastenkürzel', icon: 'keyboard' },
     { id: 'output', label: 'Ausgabe', icon: 'monitor' },
+    { id: 'about', label: 'Über', icon: 'info' },
   ];
   const tab = $derived(store.settingsTab);
 
@@ -351,6 +353,8 @@
                 <label class="check"><input type="checkbox" checked={st.output.mirrorV} onchange={() => store.send({ type: 'setMirror', value: { h: st.output.mirrorH, v: !st.output.mirrorV } })} /> Vertikal spiegeln</label>
                 <button class="btn outline" style="margin-top:8px" onclick={refreshHardware}>Monitore & Geräte neu laden</button>
               </section>
+            {:else if tab === 'about'}
+              <AboutPanel />
             {/if}
           </div>
         {/key}

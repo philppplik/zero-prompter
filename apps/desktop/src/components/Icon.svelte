@@ -30,6 +30,14 @@
     edit: 'M10.5 2.5l3 3L6 13H3v-3z',
     live: 'M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM4.5 4.5a5 5 0 0 0 0 7M11.5 4.5a5 5 0 0 1 0 7',
     trash: 'M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.7 9h5.6l.7-9',
+    info: 'M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8 7.5V11M8 5h.01',
+    external: 'M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3.5h-9v-9H6',
+    // Window controls (custom title bar, Windows/Linux).
+    winMin: 'M3.5 8h9',
+    winMax: 'M3.5 3.5h9v9h-9z',
+    winRestore: 'M3.5 5.5h7v7h-7zM5.5 5.5v-2h7v7h-2',
+    panelOpen: 'M2.5 3.5h11v9h-11zM6 3.5v9M8.5 6.5 10 8l-1.5 1.5',
+    panelClose: 'M2.5 3.5h11v9h-11zM6 3.5v9M10 6.5 8.5 8l1.5 1.5',
   } as const;
   let { name, size = 16 }: Props = $props();
 </script>

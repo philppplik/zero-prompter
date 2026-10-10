@@ -26,7 +26,7 @@ Unter macOS steht `Ctrl` für `⌘`. Die App behandelt Meta wie Ctrl, sodass ein
 | `Shift+M` | vertikal spiegeln |
 | `Ctrl+E` | Edit- und Live-Modus umschalten |
 | `Ctrl+O` | Skript öffnen |
-| `Ctrl+B` | Skripte & Gliederung (Drawer) ein/aus |
+| `Ctrl+B` | Skripte & Gliederung (Drawer) ein/aus – auch über das Symbol in der linken Leiste |
 | `Ctrl+,` | Einstellungen öffnen/schließen |
 | `Ctrl+=` / `Ctrl+-` | Schrift ±4 px |
 | `Ctrl+1` … `Ctrl+6` | Theme 1–6 |

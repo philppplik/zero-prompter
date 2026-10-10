@@ -105,6 +105,7 @@ pub fn run() {
             commands::voice_models_set,
             commands::voice_models_selection,
             commands::build_info,
+            commands::open_link,
         ])
         .run(tauri::generate_context!())
         .expect("error while running zero-teleprompter");

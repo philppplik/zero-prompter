@@ -280,3 +280,26 @@ pub fn build_info() -> BuildInfo {
         global_shortcuts: crate::hotkeys::describe(),
     }
 }
+
+/// Opens one of a fixed set of project links in the system browser ("Über"
+/// tab). Only known keys are accepted, so the webview cannot launch arbitrary
+/// URLs or programs. Uses the OS launcher directly (no opener plugin needed).
+#[tauri::command]
+pub fn open_link(key: String) -> CmdResult<()> {
+    const REPO: &str = "https://github.com/philppplik/zero-prompter";
+    let url = match key.as_str() {
+        "repo" => REPO.to_string(),
+        "notices" => format!("{REPO}/blob/main/THIRD_PARTY_NOTICES.md"),
+        "models" => format!("{REPO}/blob/main/THIRD_PARTY_MODELS.md"),
+        "license" => format!("{REPO}#license"),
+        "changelog" => format!("{REPO}/blob/main/CHANGELOG.md"),
+        other => return Err(format!("unknown link: {other}")),
+    };
+    #[cfg(target_os = "windows")]
+    let mut cmd = std::process::Command::new("explorer.exe");
+    #[cfg(target_os = "macos")]
+    let mut cmd = std::process::Command::new("open");
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let mut cmd = std::process::Command::new("xdg-open");
+    cmd.arg(&url).spawn().map(|_| ()).map_err(|e| e.to_string())
+}

@@ -34,6 +34,7 @@ export const api = {
   voiceModelsGet: () => invoke<VoiceModelPrefs>('voice_models_get'),
   voiceModelsSet: (prefs: VoiceModelPrefs) => invoke<void>('voice_models_set', { prefs }),
   voiceModelsSelection: (lang: string | null) => invoke<ModelSelection>('voice_models_selection', { lang }),
+  openLink: (key: string) => invoke<void>('open_link', { key }),
   buildInfo: () =>
     invoke<{ version: string; cpal: boolean; sherpa: boolean; download: boolean; globalShortcuts: [string, string][] }>('build_info'),
 };

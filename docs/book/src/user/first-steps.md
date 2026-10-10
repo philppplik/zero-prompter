@@ -13,19 +13,21 @@ Den Assistenten startest du jederzeit erneut über die Befehlspalette (`Ctrl+K` 
 
 ## Das Control-Fenster
 
-```n[Logo]                                [Skripte | Befehle ⌘K | Ausgabe | Einstellungen]  (X)
-╭──────────────────────────────────────────────────────────────╮
-│ Skripttitel                 Manuell·Konstant·Voice  Edit·Live │
-│                                                              │
-│              Editor  /  Live-Vorschau (große Karte)          │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-   Transport: ⏮ ◀¶ ▶ ¶▶ · WPM · Position · Zeit · Countdown
+```
+[Logo]                          [Befehle ⌘K | Ausgabe | Einstellungen]   _ ▢ ✕
+[≡] ╭──────────────────────────────────────────────────────────────╮
+    │ Skripttitel                 Manuell·Konstant·Voice  Edit·Live │
+    │                                                              │
+    │              Editor  /  Live-Vorschau (große Karte)          │
+    │                                                              │
+    ╰──────────────────────────────────────────────────────────────╯
+       Transport: ⏮ ◀¶ ▶ ¶▶ · WPM · Position · Zeit · Countdown
 ```
 
-- **Skripte** (`Ctrl+B`, Drawer von links, standardmäßig verborgen): Skriptbibliothek (neu, öffnen, löschen) und eine Gliederung nach Absätzen. Ein Klick auf einen Absatz springt dorthin.
+- **Titelleiste:** Unter Windows und Linux hat das Fenster keine System-Titelleiste mehr. Die obere Leiste ist der Ziehbereich (Doppelklick = maximieren/wiederherstellen), rechts sitzen Minimieren, Maximieren/Wiederherstellen und Schließen. **✕ beendet die App.** Im Live-Modus erscheint zusätzlich „Live beenden“. Unter macOS bleiben die nativen Ampel-Knöpfe oben links.
+- **Skripte** (`Ctrl+B` oder Symbol in der schmalen Leiste links, Drawer standardmäßig verborgen): Skriptbibliothek (neu, öffnen, löschen) und eine Gliederung nach Absätzen. Ein Klick auf einen Absatz springt dorthin.
 - **Editor / Vorschau:** Im Edit-Modus schreibst du Text, Markdown ist erlaubt. Im Live-Modus siehst du die Prompter-Vorschau. Umschalten mit `Ctrl+E`.
-- **Einstellungen** (`Ctrl+,`, Regler-Symbol oben rechts): Modal-Dialog, siehe [Anpassung](customization.md).
+- **Einstellungen** (`Ctrl+,`, Regler-Symbol oben rechts): Modal-Dialog, siehe [Anpassung](customization.md). Der Bereich **Über** zeigt Version, Build, Lizenz (MIT OR Apache-2.0) und Links zu Quellcode, Third-Party-Notices und Modelllizenzen.
 - **Transport:** Zum Anfang, Absatz zurück/vor, Play/Pause, Tempo, Positionsleiste, Restzeit/Gesamtdauer und Countdown-Dauer.
 
 ## Skript laden

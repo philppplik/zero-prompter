@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { execSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,8 +11,19 @@ const here = dirname(fileURLToPath(import.meta.url));
 const host = process.env.TAURI_DEV_HOST;
 const repoRoot = resolve(here, '../..');
 
+// Build commit for the "Über" tab: CI sets GITHUB_SHA, locally ask git.
+function commit(): string {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 12);
+  try {
+    return execSync('git rev-parse --short=12 HEAD', { cwd: here, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return '';
+  }
+}
+
 export default defineConfig({
   plugins: [svelte()],
+  define: { __APP_COMMIT__: JSON.stringify(commit()) },
   clearScreen: false,
   server: {
     port: 1420,

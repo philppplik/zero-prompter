@@ -6,6 +6,14 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 
 > Noch nie kompiliert oder ausgeführt (Erstellung ohne Toolchain). Siehe README → „Erste Schritte nach dem Klonen“.
 
+### Geändert (2026-10-11, Fenster & Navigation)
+- Windows/Linux: Control-Fenster ohne System-Titelleiste (`decorations: false`, `shadow: true` → unter Windows 11 abgerundete Ecken und Schatten über DWM). Eigene Fenstersteuerung oben rechts (Minimieren, Maximieren/Wiederherstellen, Schließen = App beenden); die Top-Bar ist Ziehbereich, Doppelklick maximiert. macOS behält die nativen Ampel-Knöpfe (`tauri.macos.conf.json`, `titleBarStyle: Overlay`).
+- Skripte-Drawer: Umschalter in einer schmalen, animierten Leiste links statt in der oberen Aktionsleiste (`Ctrl+B` unverändert).
+- Capabilities `control`: `core:window:allow-minimize`, `allow-toggle-maximize`, `allow-internal-toggle-maximize`, `allow-is-maximized`, `allow-start-dragging`.
+
+### Hinzugefügt (2026-10-11)
+- Einstellungen → **Über**: Version (`getVersion`), Build-Commit, Lizenz, Links zu Repo, Third-Party-Notices, Modelllizenzen und Changelog (Befehl `open_link` mit fester Link-Liste), Credits.
+
 ### Behoben (2026-10-11)
 - Windows (x64/ARM64): Die App startete auf frischen Systemen nicht („VCRUNTIME140.dll was not found“). Die MSVC-Laufzeit wird jetzt statisch gelinkt (`.cargo/config.toml`, `+crt-static`); CI/Release prüfen per `dumpbin /dependents` (`scripts/check-crt.ps1`), dass keine `VCRUNTIME*/MSVCP*`-DLL importiert wird.
 

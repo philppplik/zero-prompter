@@ -1,17 +1,18 @@
 <!--
   Top bar (DESIGN §3.2, minimal layout): app logo left; right a pill-shaped
-  action control (scripts · command palette · output · settings), the voice
-  status and a close/exit button. Everything else lives in the palette (Ctrl+K),
-  the settings modal (Ctrl+,) or the script drawer (Ctrl+B).
+  action control (command palette · output · settings), the voice status, a
+  "Live beenden" button in Live and the custom window controls. The whole bar
+  is a drag region (double-click = maximise). The scripts drawer toggle lives
+  in the left rail (Ctrl+B).
 -->
 <script lang="ts">
-  import { getCurrentWindow } from '@tauri-apps/api/window';
   import Icon from './Icon.svelte';
   import VoiceIndicator from './VoiceIndicator.svelte';
   import logo from '../../app-icon.png';
   import { store } from '../lib/store.svelte';
   import { toggleTalent } from '../lib/actions';
-  import { isTauri } from '../lib/bridge';
+  import WindowControls from './WindowControls.svelte';
+  import { platformOf } from '../lib/about';
   import { displayChord } from '../lib/hotkeys';
 
   interface Props {
@@ -21,36 +22,23 @@
 
   const st = $derived(store.state);
 
-  async function closeOrExit() {
-    // In Live the X leaves Live (safe, reversible); in Edit it closes the window.
-    if (store.live) {
-      if (store.running) await store.send({ type: 'stop' });
-      store.send({ type: 'enterEdit' });
-      return;
-    }
-    if (!isTauri) return;
-    try {
-      await getCurrentWindow().close();
-    } catch {
-      store.toast('Fenster bitte über die Titelleiste schließen', 'error');
-    }
+  // macOS keeps native traffic lights over the (overlay) title bar → leave room.
+  const mac = platformOf(typeof navigator === 'undefined' ? '' : navigator.userAgent) === 'macos';
+
+  async function exitLive() {
+    if (store.running) await store.send({ type: 'stop' });
+    store.send({ type: 'enterEdit' });
   }
 </script>
 
-<header class="top">
-  <div class="brand" title="zero-teleprompter">
-    <img src={logo} alt="zero-teleprompter" width="28" height="28" draggable="false" />
+<header class="top" class:mac data-tauri-drag-region>
+  <div class="brand" title="zero-teleprompter" data-tauri-drag-region>
+    <img src={logo} alt="zero-teleprompter" width="28" height="28" draggable="false" data-tauri-drag-region />
   </div>
 
-  <div class="right">
+  <div class="right" data-tauri-drag-region>
     <VoiceIndicator {onlost} />
     <div class="pill" role="toolbar" aria-label="Aktionen">
-      <button
-        class="seg-btn icon"
-        aria-label="Skripte & Gliederung ({displayChord('Ctrl+B')})"
-        title="Skripte ({displayChord('Ctrl+B')})"
-        aria-pressed={store.sidebarOpen}
-        onclick={() => (store.sidebarOpen = !store.sidebarOpen)}><Icon name="sidebar" /></button>
       <button class="seg-btn cmd" onclick={() => (store.paletteOpen = true)} aria-label="Befehle suchen ({displayChord('Ctrl+K')})">
         <Icon name="search" /><span class="ph">Befehle</span><span class="kbd">{displayChord('Ctrl+K')}</span>
       </button>
@@ -67,11 +55,10 @@
         aria-haspopup="dialog"
         onclick={() => (store.settingsOpen = true)}><Icon name="settings" /></button>
     </div>
-    <button
-      class="close"
-      aria-label={store.live ? 'Live beenden' : 'Fenster schließen'}
-      title={store.live ? 'Live beenden' : 'Schließen'}
-      onclick={closeOrExit}><Icon name="x" /></button>
+    {#if store.live}
+      <button class="close" aria-label="Live beenden" title="Live beenden" onclick={exitLive}><Icon name="exit" /></button>
+    {/if}
+    <WindowControls />
   </div>
 </header>
 
@@ -79,9 +66,11 @@
   .top {
     height: 64px;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 0 20px;
+    padding: 0 12px 0 20px;
     background: transparent;
+    user-select: none;
   }
+  .top.mac { padding-left: 84px; }
   .brand { display: flex; align-items: center; }
   .brand img { width: 28px; height: 28px; border-radius: 8px; box-shadow: var(--elev-1); user-select: none; }
   .right { display: flex; align-items: center; gap: 10px; min-width: 0; }

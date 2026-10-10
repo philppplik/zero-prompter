@@ -4,7 +4,7 @@
 import { api, errorText, events, type UnlistenFn } from './bridge';
 import { DEFAULT_PREFS, type AppState, type Command, type EngineInfo, type ResyncInfo, type UiPrefs } from './types';
 
-export type SettingsTab = 'appearance' | 'scroll' | 'voice' | 'hotkeys' | 'output';
+export type SettingsTab = 'appearance' | 'scroll' | 'voice' | 'hotkeys' | 'output' | 'about';
 
 export interface Toast {
   id: number;

@@ -1,12 +1,17 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "control",
-  "description": "Operator window: events, window basics, file-open dialog. App commands are invoked via the Rust bridge.",
+  "description": "Operator window: events, window basics incl. custom title bar (drag, minimise, maximise, close), file-open dialog. App commands are invoked via the Rust bridge.",
   "windows": ["control"],
   "permissions": [
     "core:default",
     "core:window:allow-set-title",
     "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-start-dragging",
     "dialog:allow-open",
     "dialog:allow-ask"
   ]
