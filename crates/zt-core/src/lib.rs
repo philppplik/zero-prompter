@@ -16,5 +16,7 @@ pub use command::{Command, ScrollMode, VoiceSignal};
 pub use controller::{Controller, CoreError, StatePatch};
 pub use playback::{Playback, PlaybackEvent, PlaybackState, UiMode};
 pub use script::{Paragraph, Script, Token, TokenId};
-pub use settings::{LostPolicy, PrompterTheme, Settings, StateStyle, ThemeSet, Tokens};
+pub use settings::{
+    LostPolicy, PrompterTheme, Settings, StateStyle, TextAlign, TextTransform, ThemeSet, Tokens,
+};
 pub use state::{AppState, OutputState, ScrollState, VoicePhase, VoiceView};

@@ -18,7 +18,8 @@
   import { setMode } from '../lib/actions';
   import { displayChord } from '../lib/hotkeys';
   import { dur, EASE } from '../lib/motion';
-  import { contrastRatio, FONT_LABELS, THEME_IDS, THEME_LABELS, THEMES, tokens } from '../lib/tokens';
+  import { contrastRatio, prompterVars, THEME_IDS, THEME_LABELS, THEMES, tokens, TYPO_RANGES } from '../lib/tokens';
+  import { effectiveWeight, FONT_IDS, FONTS, sanitizeFontName, weightHint } from '../lib/fonts';
   import type { AudioDevice, FontChoice, ModelRow, MonitorInfo, ScrollMode, Settings } from '../lib/types';
 
   interface Props {
@@ -77,7 +78,30 @@
   const effBg = $derived(prefs.bgColor ?? theme.bg);
   const ratio = $derived(contrastRatio(effText, effBg));
   const fmtRatio = (r: number) => r.toFixed(1).replace('.', ',') + ' : 1';
-  const levelPct = $derived(Math.max(0, Math.min(100, ((store.level + 60) / 60) * 100)));
+  const FONT_GROUPS = ['Sans', 'Serif', 'Speziell', 'System'] as const;
+  const SPACING: { key: 'letterSpacingEm' | 'wordSpacingEm' | 'paragraphSpacingEm'; label: string }[] = [
+    { key: 'letterSpacingEm', label: 'Zeichenabstand' },
+    { key: 'wordSpacingEm', label: 'Wortabstand' },
+    { key: 'paragraphSpacingEm', label: 'Absatzabstand' },
+  ];
+  const fmtEm = (v: number) => `${v.toFixed(2).replace('.', ',')} em`;
+  const effWeight = $derived(effectiveWeight(prefs.fontFamily, st?.settings.fontWeight ?? pt.weight));
+  // Live preview: same CSS variables as the prompter, at a fixed small size.
+  const previewStyle = $derived(
+    st ? prompterVars(st.settings.theme, prefs, 28, st.settings.lineHeight, st.settings) : '',
+  );
+  function resetTypo() {
+    update({
+      fontWeight: pt.weight,
+      lineHeight: pt.lineHeight,
+      letterSpacingEm: 0,
+      wordSpacingEm: 0,
+      paragraphSpacingEm: 0.6,
+      textAlign: 'left',
+      textTransform: 'none',
+    });
+  }
+  const levelPct =$derived(Math.max(0, Math.min(100, ((store.level + 60) / 60) * 100)));
 
   async function chooseMonitor(i: number | null) {
     selectedMonitor = i;
@@ -175,9 +199,36 @@
                 <label class="field">
                   <span class="lbl">Schriftart</span>
                   <select value={prefs.fontFamily} onchange={(e) => store.setPrefs({ fontFamily: (e.currentTarget as HTMLSelectElement).value as FontChoice })}>
-                    {#each Object.entries(FONT_LABELS) as [k, v] (k)}<option value={k}>{v}</option>{/each}
+                    {#each FONT_GROUPS as g (g)}
+                      <optgroup label={g}>
+                        {#each FONT_IDS.filter((id) => FONTS[id].group === g) as id (id)}<option value={id}>{FONTS[id].label}</option>{/each}
+                      </optgroup>
+                    {/each}
                   </select>
                 </label>
+                {#if prefs.fontFamily === 'custom'}
+                  <label class="field indent">
+                    <span class="lbl">Name der installierten Schrift</span>
+                    <input type="text" placeholder="z. B. Segoe UI, Arial, Verdana" value={prefs.customFont} spellcheck="false" maxlength="64"
+                      onchange={(e) => store.setPrefs({ customFont: sanitizeFontName((e.currentTarget as HTMLInputElement).value) })} />
+                    <span class="footnote">Fehlt die Schrift auf dem Rechner, wird die Systemschrift verwendet.</span>
+                  </label>
+                {/if}
+                <div class="preview" style={previewStyle} aria-label="Vorschau der Schrifteinstellungen">
+                  <p class="pv-head">Vorschau: Typografie</p>
+                  <p>Franz jagt im komplett verwahrlosten Taxi quer durch Bayern – 1.234 Wörter, 140 WPM.</p>
+                  <p>Illustrierte Zahlen 0123456789 und l I 1 | O 0 bleiben unterscheidbar.</p>
+                </div>
+                <div class="field">
+                  <span class="lbl" id="lbl-weight">Schriftstärke</span>
+                  <div class="field-row">
+                    <input type="range" min={TYPO_RANGES.fontWeight[0]} max={TYPO_RANGES.fontWeight[1]} step={TYPO_RANGES.fontWeight[2]} aria-labelledby="lbl-weight"
+                      value={st.settings.fontWeight} aria-valuetext="{st.settings.fontWeight}"
+                      oninput={(e) => update({ fontWeight: Number((e.currentTarget as HTMLInputElement).value) })} />
+                    <span class="num val">{st.settings.fontWeight}</span>
+                  </div>
+                  <span class="footnote">{weightHint(prefs.fontFamily)}{effWeight !== st.settings.fontWeight ? ` · dargestellt: ${effWeight}` : ''}</span>
+                </div>
                 <div class="field">
                   <span class="lbl" id="lbl-size">Größe</span>
                   <div class="field-row">
@@ -200,11 +251,39 @@
                 <div class="field">
                   <span class="lbl" id="lbl-lh">Zeilenabstand</span>
                   <div class="field-row">
-                    <input type="range" min="1" max="2.4" step="0.05" aria-labelledby="lbl-lh" value={st.settings.lineHeight}
-                      onchange={(e) => update({ lineHeight: Number((e.currentTarget as HTMLInputElement).value) })} />
+                    <input type="range" min={TYPO_RANGES.lineHeight[0]} max="2.4" step={TYPO_RANGES.lineHeight[2]} aria-labelledby="lbl-lh" value={st.settings.lineHeight}
+                      oninput={(e) => update({ lineHeight: Number((e.currentTarget as HTMLInputElement).value) })} />
                     <span class="num val">{st.settings.lineHeight.toFixed(2)}</span>
                   </div>
+                  {#if theme.lineHeight && theme.lineHeight > st.settings.lineHeight}<span class="footnote">Theme setzt mindestens {theme.lineHeight}</span>{/if}
                 </div>
+                {#each SPACING as s (s.key)}
+                  <div class="field">
+                    <span class="lbl" id="lbl-{s.key}">{s.label}</span>
+                    <div class="field-row">
+                      <input type="range" min={TYPO_RANGES[s.key][0]} max={TYPO_RANGES[s.key][1]} step={TYPO_RANGES[s.key][2]} aria-labelledby="lbl-{s.key}"
+                        value={st.settings[s.key]} aria-valuetext="{fmtEm(st.settings[s.key])}"
+                        oninput={(e) => update({ [s.key]: Number((e.currentTarget as HTMLInputElement).value) } as Partial<Settings>)} />
+                      <span class="num val">{st.settings[s.key] === 0 && s.key !== 'paragraphSpacingEm' ? 'Theme' : fmtEm(st.settings[s.key])}</span>
+                    </div>
+                  </div>
+                {/each}
+                <div class="field">
+                  <span class="lbl">Ausrichtung</span>
+                  <div class="seg" role="group" aria-label="Textausrichtung">
+                    <button aria-pressed={st.settings.textAlign === 'left'} onclick={() => update({ textAlign: 'left' })}>Links</button>
+                    <button aria-pressed={st.settings.textAlign === 'center'} onclick={() => update({ textAlign: 'center' })}>Zentriert</button>
+                    <button aria-pressed={st.settings.textAlign === 'justify'} onclick={() => update({ textAlign: 'justify' })}>Blocksatz</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <span class="lbl">Groß-/Kleinschreibung</span>
+                  <div class="seg" role="group" aria-label="Groß-/Kleinschreibung">
+                    <button aria-pressed={st.settings.textTransform === 'none'} onclick={() => update({ textTransform: 'none' })}>Normal</button>
+                    <button aria-pressed={st.settings.textTransform === 'uppercase'} onclick={() => update({ textTransform: 'uppercase' })}>GROSSBUCHSTABEN</button>
+                  </div>
+                </div>
+                <button class="btn" onclick={resetTypo}>Typografie zurücksetzen</button>
                 <label class="check"><input type="checkbox" checked={prefs.dimRead} onchange={() => store.setPrefs({ dimRead: !prefs.dimRead })} /> Gelesenen Text dimmen</label>
                 {#if prefs.dimRead}
                   <div class="field indent">
@@ -422,6 +501,26 @@
   .tile .mk { position: absolute; left: 8px; right: 8px; bottom: 10px; height: 2px; border-radius: 1px; }
   .val { min-width: 64px; text-align: right; font-size: 12px; color: var(--ui-text-muted); }
   .indent { margin-left: 24px; }
+  .preview {
+    margin: 4px 0 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius-md, 8px);
+    background: var(--pr-bg);
+    color: var(--pr-text);
+    font-family: var(--pr-font);
+    font-weight: var(--pr-weight);
+    font-size: 20px;
+    line-height: var(--pr-line-height);
+    letter-spacing: var(--pr-letter-spacing);
+    word-spacing: var(--pr-word-spacing);
+    text-align: var(--pr-align);
+    text-transform: var(--pr-transform);
+    max-height: 220px;
+    overflow: hidden;
+  }
+  .preview p { margin: 0 0 var(--pr-para); }
+  .preview p:last-child { margin-bottom: 0; }
+  .preview .pv-head { font-weight: var(--pr-heading-weight); }
   .colors { display: flex; gap: 16px; margin-bottom: 8px; }
   .colors label { display: flex; align-items: center; gap: 6px; font-size: 12px; }
   .bad { color: var(--state-lost); }

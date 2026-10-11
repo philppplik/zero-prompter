@@ -77,9 +77,18 @@ third-party code; it is not a dependency of the shipped app.
 | svelte, @sveltejs/vite-plugin-svelte, vite, vitest, typescript | MIT / Apache-2.0 | build/test tooling |
 | @tauri-apps/api, @tauri-apps/plugin-dialog, @tauri-apps/cli | MIT OR Apache-2.0 | |
 | prettier, prettier-plugin-svelte | MIT | dev-only formatting, never shipped (licence from memory, not re-checked) |
-| @fontsource/atkinson-hyperlegible (font: Braille Institute) | OFL-1.1 (font), MIT (package) | bundled prompter font |
-| @fontsource-variable/inter (font: Rasmus Andersson) | OFL-1.1 (font), MIT (package) | UI font |
-| @fontsource-variable/jetbrains-mono (font: JetBrains) | OFL-1.1 (font), MIT (package) | numbers/timecodes |
+| @fontsource-variable/atkinson-hyperlegible-next (font: Braille Institute) | OFL-1.1 (font), MIT (package) | prompter font (default) |
+| @fontsource-variable/lexend (font: Thomas Jockin, Bonnie Shaver-Troup) | OFL-1.1 (font), MIT (package) | prompter font |
+| @fontsource-variable/source-sans-3 (font: Paul D. Hunt / Adobe) | OFL-1.1 (font), MIT (package) | prompter font |
+| @fontsource-variable/open-sans (font: Steve Matteson) | OFL-1.1 (font), MIT (package) | prompter font |
+| @fontsource-variable/roboto-flex (font: Font Bureau / Google) | OFL-1.1 (font), MIT (package) | prompter font |
+| @fontsource-variable/ibm-plex-sans (font: Mike Abbink, Bold Monday / IBM) | OFL-1.1 (font), MIT (package) | prompter font |
+| @fontsource-variable/source-serif-4 (font: Frank Grießhammer / Adobe) | OFL-1.1 (font), MIT (package) | prompter font (serif) |
+| @fontsource-variable/literata (font: TypeTogether) | OFL-1.1 (font), MIT (package) | prompter font (serif) |
+| @fontsource-variable/merriweather (font: Sorkin Type) | OFL-1.1 (font), MIT (package) | prompter font (serif) |
+| @fontsource/opendyslexic (font: Abbie Gonzalez) | OFL-1.1 (font), MIT (package) | prompter font (400/700) |
+| @fontsource-variable/inter (font: Rasmus Andersson) | OFL-1.1 (font), MIT (package) | prompter font |
+| @fontsource-variable/jetbrains-mono (font: JetBrains) | OFL-1.1 (font), MIT (package) | prompter font (mono) |
 
 Icons in `apps/desktop/src/components/Icon.svelte` and `app-icon.png` are
 original drawings (no icon library copied).

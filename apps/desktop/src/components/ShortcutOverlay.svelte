@@ -18,6 +18,15 @@
     commandPalette: 'Command Palette', shortcutOverlay: 'Diese Übersicht', toggleMode: 'Edit/Live',
     openFile: 'Öffnen', toggleSidebar: 'Skripte ein/aus', openSettings: 'Einstellungen', fontBigger: 'Schrift größer', fontSmaller: 'Schrift kleiner', theme1: 'Theme 1–6', escape: 'Abbrechen',
   };
+  const mod = displayChord('Ctrl');
+  const WHEEL_ROWS: [string, string][] = [
+    ['Konstant: Tempo ±5 WPM', 'Mausrad'],
+    ['Konstant: Tempo ±1 WPM', `${displayChord('Shift')} + Mausrad`],
+    ['Konstant: Position', `${mod}/Alt + Mausrad`],
+    ['Manuell: Position', 'Mausrad'],
+    ['Manuell: Tempo ±5 (±1 mit Shift)', `${mod}/Alt + Mausrad`],
+    ['Voice: kurz manuell (Voice pausiert 2 s)', 'Mausrad'],
+  ];
   const rows = $derived.by(() => {
     const hk = store.state?.settings.hotkeys ?? {};
     const extra = Object.entries(EXTRA_BINDINGS).filter(([k]) => !/^theme[2-6]$|homeMac/.test(k));
@@ -39,7 +48,11 @@
         {#each globals as [chord, cmd] (chord)}<span>{cmd}</span><span class="kbd">{chord}</span>{/each}
       </div>
     {/if}
-    <p class="footnote">Klick auf ein Wort in der Vorschau = Resync · Mausrad = manuell (Voice pausiert 2 s) · Marker per Drag verschieben</p>
+    <h3 class="caption">Maus über dem Prompter</h3>
+    <div class="grid">
+      {#each WHEEL_ROWS as [what, how] (what)}<span>{what}</span><span class="kbd">{how}</span>{/each}
+    </div>
+    <p class="footnote">Klick auf ein Wort in der Vorschau = Resync · Marker per Drag verschieben</p>
     <button class="btn primary" onclick={() => (store.shortcutsOpen = false)}>Schließen</button>
   </div>
 </Dialog>

@@ -8,10 +8,12 @@
 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { Scroller, type LayoutMap } from '../lib/scroller';
   import { clampFocusLine, FOCUS_LINE_MAX, FOCUS_LINE_MIN, frame, store } from '../lib/store.svelte';
   import { api } from '../lib/bridge';
-  import { prompterVars } from '../lib/tokens';
+  import { layoutKey, prompterVars } from '../lib/tokens';
+  import { notches, tokenSteps, WheelAccumulator, wheelTarget, wpmDelta } from '../lib/wheel';
   import type { AppState, Token, UiPrefs } from '../lib/types';
 
   interface Props {
@@ -21,12 +23,14 @@
     scale?: number;
     mirror?: boolean;
     interactive?: boolean;
+    /** Mouse wheel: position / speed (defaults to `interactive`). */
+    wheel?: boolean;
     /** Only the talent window owns the layout report (CONCEPT §8.3). */
     report?: boolean;
     onword?: (token: number) => void;
     onfocusdrag?: (focus: number) => void;
   }
-  let { app, prefs, scale = 1, mirror = false, interactive = false, report = false, onword, onfocusdrag }: Props = $props();
+  let { app, prefs, scale = 1, mirror = false, interactive = false, wheel, report = false, onword, onfocusdrag }: Props = $props();
 
   let viewport: HTMLDivElement;
   let content: HTMLDivElement;
@@ -46,7 +50,7 @@
   const isHeading = (toks: Token[]) => toks.length > 0 && /^#{1,6}$/.test(toks[0].text);
 
   const style = $derived(
-    prompterVars(app.settings.theme, prefs, app.settings.fontSizePx, app.settings.lineHeight) +
+    prompterVars(app.settings.theme, prefs, app.settings.fontSizePx, app.settings.lineHeight, app.settings) +
       `;--pr-scale:${scale};--focus:${app.settings.focusLine}`,
   );
   const mirrorTransform = $derived(
@@ -70,7 +74,9 @@
 
   // Re-measure whenever anything that affects wrapping changes.
   $effect(() => {
-    void [app.script.version, app.settings.fontSizePx, app.settings.lineHeight, app.settings.theme, prefs.fontFamily, prefs.measureCh, scale];
+    // Typography (weight, spacing, alignment, case, font) changes line breaks:
+    // the layout map / scroll mathematics must be rebuilt.
+    void [app.script.version, layoutKey(app.settings, prefs), scale];
     remeasure();
   });
 
@@ -119,11 +125,27 @@
     if (el) onword(Number(el.dataset.t));
   }
 
+  // Speed HUD ("140 WPM"), shown briefly after a wheel speed change.
+  let hud = $state(false);
+  let hudTimer: ReturnType<typeof setTimeout> | undefined;
+  const speedWheel = new WheelAccumulator();
+
   function onWheel(e: WheelEvent) {
-    if (!interactive) return;
+    if (!(wheel ?? interactive)) return;
     e.preventDefault();
-    // Mouse wheel = manual override (Rust starts the 2 s voice hold).
-    const step = Math.sign(e.deltaY) * Math.max(1, Math.round(Math.abs(e.deltaY) / 40));
+    const target = wheelTarget(app.scroll.mode, voiceOn, e);
+    if (target === 'speed') {
+      const steps = speedWheel.push(notches(e), e.timeStamp);
+      if (steps === 0) return;
+      store.send({ type: 'nudgeWpm', value: wpmDelta(steps, e.shiftKey) });
+      hud = true;
+      clearTimeout(hudTimer);
+      hudTimer = setTimeout(() => (hud = false), 1200);
+      return;
+    }
+    // Position. With voice on this is the manual override (Rust starts the 2 s voice hold).
+    const step = tokenSteps(e);
+    if (step === 0) return;
     const n = app.script.tokens.length;
     const to = Math.max(0, Math.min(n - 1, store.currentToken + step));
     store.send({ type: 'seekToken', value: to });
@@ -176,7 +198,12 @@
     const ro = new ResizeObserver(() => remeasure());
     ro.observe(viewport);
     document.fonts?.ready.then(() => remeasure());
+    // Fonts load lazily on first use (font switch, new weight): re-measure then.
+    const fontsDone = () => remeasure();
+    document.fonts?.addEventListener?.('loadingdone', fontsDone);
     return () => {
+      clearTimeout(hudTimer);
+      document.fonts?.removeEventListener?.('loadingdone', fontsDone);
       ro.disconnect();
       viewport.removeEventListener('wheel', wheel);
       scroller?.stop();
@@ -239,6 +266,11 @@
       {/key}
     {/if}
   </div>
+  {#if hud}
+    <div class="hud mono" role="status" aria-live="polite" transition:fade={{ duration: reduced() ? 0 : 160 }}>
+      {app.scroll.wpm} WPM
+    </div>
+  {/if}
   {#if stats}
     <div class="stats mono" aria-hidden="true">{stats.fps} fps · max {stats.worst} ms</div>
   {/if}
@@ -268,16 +300,18 @@
     line-height: var(--pr-line-height);
     letter-spacing: var(--pr-letter-spacing);
     word-spacing: var(--pr-word-spacing);
+    text-align: var(--pr-align);
+    text-transform: var(--pr-transform);
     will-change: transform;
     padding-bottom: 60vh; /* DESIGN §3.6: 60 % run-out */
     overflow-wrap: break-word;
     hyphens: manual;
   }
   p {
-    margin: 0 0 0.6em;
+    margin: 0 0 var(--pr-para);
   }
   p.heading {
-    font-weight: 700;
+    font-weight: var(--pr-heading-weight);
   }
   span.cue {
     font-style: italic;
@@ -413,6 +447,20 @@
     place-items: center;
     height: 60vh;
     opacity: 0.1;
+  }
+  .hud {
+    position: absolute;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.62);
+    color: #fff;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
   }
   .stats {
     position: absolute;

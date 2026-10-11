@@ -38,7 +38,7 @@
 
 <main class:idle>
   {#if store.state}
-    <Prompter app={store.state} prefs={store.prefs} mirror report />
+    <Prompter app={store.state} prefs={store.prefs} mirror report wheel />
   {/if}
 </main>
 

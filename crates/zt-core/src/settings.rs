@@ -114,12 +114,42 @@ pub enum LostPolicy {
     ConstantSpeed,
 }
 
+/// Horizontal alignment of the prompter text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum TextAlign {
+    #[default]
+    Left,
+    Center,
+    Justify,
+}
+
+/// Case transform of the prompter text (display only; the script is untouched).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum TextTransform {
+    #[default]
+    None,
+    Uppercase,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub theme: String,
     pub font_size_px: u16,
     pub line_height: f32,
+    /// CSS font weight (100..=900); bound to the `wght` axis of variable
+    /// fonts, the frontend snaps static fonts to their nearest weight.
+    pub font_weight: u16,
+    /// Extra letter spacing in em (0 = theme default).
+    pub letter_spacing_em: f32,
+    /// Extra word spacing in em (0 = theme default).
+    pub word_spacing_em: f32,
+    /// Space after each paragraph in em.
+    pub paragraph_spacing_em: f32,
+    pub text_align: TextAlign,
+    pub text_transform: TextTransform,
     /// Focus/reading line as a fraction of viewport height.
     pub focus_line: f32,
     pub wpm: u16,
@@ -151,12 +181,20 @@ impl Settings {
     /// Manual microphone gain range (dB); matches zt_audio::MANUAL_GAIN_RANGE_DB.
     pub const MIC_GAIN_MIN_DB: f32 = -20.0;
     pub const MIC_GAIN_MAX_DB: f32 = 40.0;
+    /// Typography ranges (Settings tab "Darstellung" uses the same bounds).
+    pub const FONT_WEIGHT_MIN: u16 = 100;
+    pub const FONT_WEIGHT_MAX: u16 = 900;
+    pub const LETTER_SPACING_RANGE_EM: (f32, f32) = (-0.05, 0.3);
+    pub const WORD_SPACING_RANGE_EM: (f32, f32) = (-0.1, 1.0);
+    pub const PARAGRAPH_SPACING_RANGE_EM: (f32, f32) = (0.0, 3.0);
+    pub const LINE_HEIGHT_RANGE: (f32, f32) = (1.0, 3.0);
 
     pub fn from_tokens(t: &Tokens) -> Self {
         let p = t.typography.prompter;
         Self {
             font_size_px: p.size_default,
             line_height: p.line_height,
+            font_weight: p.weight,
             focus_line: t.layout.focus_line_default,
             ..Self::base()
         }
@@ -184,6 +222,12 @@ impl Settings {
             theme: ThemeSet::DEFAULT.to_string(),
             font_size_px: 72,
             line_height: 1.4,
+            font_weight: 500,
+            letter_spacing_em: 0.0,
+            word_spacing_em: 0.0,
+            paragraph_spacing_em: 0.6,
+            text_align: TextAlign::Left,
+            text_transform: TextTransform::None,
             focus_line: 0.35,
             wpm: 140,
             countdown_secs: 3,
@@ -209,7 +253,15 @@ impl Settings {
         } else {
             t.layout.focus_line_default.clamp(Self::FOCUS_LINE_MIN, Self::FOCUS_LINE_MAX)
         };
-        self.line_height = self.line_height.clamp(1.0, 3.0);
+        let (lh_min, lh_max) = Self::LINE_HEIGHT_RANGE;
+        self.line_height = clamp_or(self.line_height, lh_min, lh_max, p.line_height);
+        self.font_weight = self.font_weight.clamp(Self::FONT_WEIGHT_MIN, Self::FONT_WEIGHT_MAX);
+        let (a, b) = Self::LETTER_SPACING_RANGE_EM;
+        self.letter_spacing_em = clamp_or(self.letter_spacing_em, a, b, 0.0);
+        let (a, b) = Self::WORD_SPACING_RANGE_EM;
+        self.word_spacing_em = clamp_or(self.word_spacing_em, a, b, 0.0);
+        let (a, b) = Self::PARAGRAPH_SPACING_RANGE_EM;
+        self.paragraph_spacing_em = clamp_or(self.paragraph_spacing_em, a, b, 0.6);
         self.mic_gain_db = if self.mic_gain_db.is_finite() {
             self.mic_gain_db.clamp(Self::MIC_GAIN_MIN_DB, Self::MIC_GAIN_MAX_DB)
         } else {
@@ -222,6 +274,15 @@ impl Settings {
             self.theme = ThemeSet::DEFAULT.to_string();
         }
         self
+    }
+}
+
+/// Clamp a float into `min..=max`; non-finite values become `fallback`.
+fn clamp_or(v: f32, min: f32, max: f32, fallback: f32) -> f32 {
+    if v.is_finite() {
+        v.clamp(min, max)
+    } else {
+        fallback.clamp(min, max)
     }
 }
 
@@ -288,6 +349,50 @@ mod tests {
         assert_eq!(s.mic_channel, "mix");
         let s = Settings { mic_channel: "2".into(), ..Default::default() }.sanitized(&t);
         assert_eq!(s.mic_channel, "2");
+    }
+
+    #[test]
+    fn typography_defaults_and_clamps() {
+        let t = Tokens::embedded();
+        let d = Settings::from_tokens(&t);
+        assert_eq!(d.font_weight, t.typography.prompter.weight);
+        assert_eq!(d.text_align, TextAlign::Left);
+        assert_eq!(d.text_transform, TextTransform::None);
+        assert_eq!(d.clone().sanitized(&t), d, "defaults are already sane");
+        let s = Settings {
+            font_weight: 1200,
+            letter_spacing_em: 5.0,
+            word_spacing_em: -3.0,
+            paragraph_spacing_em: f32::NAN,
+            line_height: f32::INFINITY,
+            ..Default::default()
+        }
+        .sanitized(&t);
+        assert_eq!(s.font_weight, Settings::FONT_WEIGHT_MAX);
+        assert_eq!(s.letter_spacing_em, Settings::LETTER_SPACING_RANGE_EM.1);
+        assert_eq!(s.word_spacing_em, Settings::WORD_SPACING_RANGE_EM.0);
+        assert_eq!(s.paragraph_spacing_em, 0.6);
+        assert_eq!(s.line_height, t.typography.prompter.line_height);
+        let s = Settings { font_weight: 0, ..Default::default() }.sanitized(&t);
+        assert_eq!(s.font_weight, Settings::FONT_WEIGHT_MIN);
+    }
+
+    #[test]
+    fn typography_serde_camel_case_and_missing_fields() {
+        let json = r#"{"textAlign":"justify","textTransform":"uppercase","fontWeight":650,"letterSpacingEm":0.05}"#;
+        let s: Settings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.text_align, TextAlign::Justify);
+        assert_eq!(s.text_transform, TextTransform::Uppercase);
+        assert_eq!(s.font_weight, 650);
+        assert_eq!(s.word_spacing_em, 0.0);
+        let v = serde_json::to_value(Settings::default()).unwrap();
+        assert_eq!(v["textAlign"], "left");
+        assert_eq!(v["textTransform"], "none");
+        assert!(v.get("paragraphSpacingEm").is_some());
+        // Old settings files (no typography keys) still load.
+        let old: Settings = serde_json::from_str(r#"{"theme":"daylight"}"#).unwrap();
+        assert_eq!(old.font_weight, 500);
+        assert!(serde_json::from_str::<Settings>(r#"{"textAlign":"diagonal"}"#).is_err());
     }
 
     #[test]

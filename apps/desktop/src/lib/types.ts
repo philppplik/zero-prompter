@@ -65,7 +65,20 @@ export interface OutputState {
   overlay: boolean;
 }
 
-export interface Settings {
+export type TextAlign = 'left' | 'center' | 'justify';
+export type TextTransform = 'none' | 'uppercase';
+
+/** Typography part of zt_core::Settings (ranges: TYPO_RANGES in lib/tokens.ts, mirrors zt-core). */
+export interface Typography {
+  fontWeight: number;
+  letterSpacingEm: number;
+  wordSpacingEm: number;
+  paragraphSpacingEm: number;
+  textAlign: TextAlign;
+  textTransform: TextTransform;
+}
+
+export interface Settings extends Typography {
   theme: string;
   fontSizePx: number;
   lineHeight: number;
@@ -265,11 +278,14 @@ export interface ResyncInfo {
 }
 
 export type MarkerStyle = 'line' | 'band';
-export type FontChoice = 'atkinson' | 'inter' | 'system' | 'serif' | 'mono';
+import type { FontChoice } from './fonts';
+export type { FontChoice } from './fonts';
 
 /** Frontend-only preferences (persisted via `set_ui_prefs`, broadcast to all windows). */
 export interface UiPrefs {
   fontFamily: FontChoice;
+  /** Free font name for fontFamily = 'custom' (installed system font). */
+  customFont: string;
   measureCh: number;
   markerStyle: MarkerStyle;
   dimRead: boolean;
@@ -286,6 +302,7 @@ export interface UiPrefs {
 
 export const DEFAULT_PREFS: UiPrefs = {
   fontFamily: 'atkinson',
+  customFont: '',
   measureCh: 32,
   markerStyle: 'line',
   dimRead: true,

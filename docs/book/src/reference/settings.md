@@ -8,7 +8,13 @@ Dateiformat: `{ "version": 1, "settings": { … } }`. Felder in camelCase. Fehle
 |---|---|---|---|
 | `theme` | string | `"studioDark"` | muss in `tokens.json → prompter` existieren, sonst gilt der Standard |
 | `fontSizePx` | u16 | 72 (`type.prompter.sizeDefault`) | 24–300 |
-| `lineHeight` | f32 | 1,4 | 1,0–3,0 |
+| `lineHeight` | f32 | 1,4 | 1,0–3,0 (nicht endlich → Token-Standard). Theme-Zeilenhöhe gilt als Minimum |
+| `fontWeight` | u16 | 500 (`type.prompter.weight`) | 100–900; Frontend begrenzt auf die `wght`-Achse bzw. das nächste statische Gewicht |
+| `letterSpacingEm` | f32 | 0 | −0,05–0,30 em; 0 = Theme-Wert |
+| `wordSpacingEm` | f32 | 0 | −0,10–1,00 em; 0 = Theme-Wert |
+| `paragraphSpacingEm` | f32 | 0,6 | 0–3 em |
+| `textAlign` | `"left"` \| `"center"` \| `"justify"` | `"left"` | |
+| `textTransform` | `"none"` \| `"uppercase"` | `"none"` | nur Anzeige |
 | `focusLine` | f32 | 0,35 (`layout.focusLineDefault`) | 0,1–0,9 (Anteil der Fensterhöhe) |
 | `wpm` | u16 | 140 | 40–400 (`WPM_MIN`/`WPM_MAX`) |
 | `countdownSecs` | u8 | 3 | 0 = sofort starten |
@@ -27,7 +33,8 @@ Nur für das Frontend. Die App speichert die Datei per `set_ui_prefs` und sendet
 
 | Feld | Typ | Standard |
 |---|---|---|
-| `fontFamily` | `atkinson` \| `inter` \| `system` \| `serif` \| `mono` | `atkinson` |
+| `fontFamily` | `atkinson` \| `inter` \| `lexend` \| `sourceSans` \| `openSans` \| `robotoFlex` \| `plexSans` \| `serif` \| `literata` \| `merriweather` \| `openDyslexic` \| `mono` \| `system` \| `custom` (Katalog: `src/lib/fonts.ts`) | `atkinson` |
+| `customFont` | string (nur bei `custom`; Buchstaben, Ziffern, Leerzeichen, `-_.`, max. 64 Zeichen) | `""` |
 | `measureCh` | number (16–60) | 32 |
 | `markerStyle` | `line` \| `band` | `line` |
 | `dimRead` | bool | true |

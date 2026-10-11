@@ -1,7 +1,8 @@
 // Design tokens: docs/design/tokens.json is the single source of truth for
 // Rust (embedded in zt-core) and the UI (imported here, applied as CSS vars).
 import raw from '../../../../docs/design/tokens.json';
-import type { FontChoice, UiPrefs, VoicePhase } from './types';
+import { effectiveWeight, fontStack, FONT_IDS, FONTS } from './fonts';
+import type { FontChoice, Typography, UiPrefs, VoicePhase } from './types';
 
 export const tokens = raw;
 
@@ -33,24 +34,18 @@ export const THEME_LABELS: Record<string, string> = {
 
 export const STATE_STYLE = raw.state as Record<VoicePhase, { color: string; shape: string; label: string }>;
 
-export const FONT_STACKS: Record<FontChoice, string> = {
-  // 'Atkinson Hyperlegible Next' is used if installed; bundled fallback is the
-  // original Atkinson Hyperlegible (OFL-1.1) from @fontsource.
-  atkinson: "'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', 'Inter Variable', Inter, system-ui, sans-serif",
-  inter: "'Inter Variable', Inter, 'Segoe UI Variable', system-ui, sans-serif",
-  system: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-  serif: "Georgia, 'Times New Roman', serif",
-  mono: "'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace",
-};
+/** Static font stacks per choice (`custom` without a name = system stack). */
+export const FONT_STACKS = Object.fromEntries(FONT_IDS.map((id) => [id, FONTS[id].stack])) as Record<FontChoice, string>;
+export const FONT_LABELS = Object.fromEntries(FONT_IDS.map((id) => [id, FONTS[id].label])) as Record<FontChoice, string>;
 
-export const FONT_LABELS: Record<FontChoice, string> = {
-  atkinson: 'Atkinson Hyperlegible',
-  inter: 'Inter',
-  system: 'System',
-  serif: 'Serif',
-  mono: 'Mono',
-};
-
+/** Typography slider ranges; must match zt_core::Settings::*_RANGE* (sanitized()). */
+export const TYPO_RANGES = {
+  fontWeight: [100, 900, 10],
+  letterSpacingEm: [-0.05, 0.3, 0.01],
+  wordSpacingEm: [-0.1, 1, 0.02],
+  paragraphSpacingEm: [0, 3, 0.1],
+  lineHeight: [1, 3, 0.05],
+} as const;
 const kebab = (s: string) => s.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
 
 /** UI chrome tokens -> `--ui-*` on :root for light & dark (DESIGN §2). */
@@ -88,10 +83,23 @@ export function setUiTheme(mode: UiPrefs['uiTheme']): void {
   else r.setAttribute('data-ui', mode);
 }
 
-/** Resolved prompter style = theme preset + user overrides (prefs). */
-export function prompterVars(themeId: string, prefs: UiPrefs, fontSizePx: number, lineHeight: number): string {
+const em = (v: number) => `${Math.round(v * 1000) / 1000}em`;
+
+/**
+ * Resolved prompter style = theme preset + core typography + user overrides.
+ * Spacing: a non-zero setting wins, 0 keeps the theme value (dyslexia preset).
+ * Line height: the theme value acts as a minimum.
+ */
+export function prompterVars(
+  themeId: string,
+  prefs: UiPrefs,
+  fontSizePx: number,
+  lineHeight: number,
+  typo: Partial<Typography> = {},
+): string {
   const t = THEMES[themeId] ?? THEMES.studioDark;
-  const lh = t.lineHeight ?? lineHeight;
+  const lh = Math.max(t.lineHeight ?? 0, lineHeight);
+  const weight = effectiveWeight(prefs.fontFamily, typo.fontWeight ?? raw.type.prompter.weight);
   const vars: Record<string, string> = {
     '--pr-bg': prefs.bgColor ?? t.bg,
     '--pr-text': prefs.textColor ?? t.text,
@@ -99,17 +107,28 @@ export function prompterVars(themeId: string, prefs: UiPrefs, fontSizePx: number
     '--pr-word': t.wordHighlight,
     '--pr-direction': t.direction,
     '--pr-read-opacity': String(prefs.dimRead ? (prefs.readOpacity ?? t.readOpacity) : 1),
-    '--pr-letter-spacing': t.letterSpacing ?? 'normal',
-    '--pr-word-spacing': t.wordSpacing ?? 'normal',
+    '--pr-letter-spacing': typo.letterSpacingEm ? em(typo.letterSpacingEm) : (t.letterSpacing ?? 'normal'),
+    '--pr-word-spacing': typo.wordSpacingEm ? em(typo.wordSpacingEm) : (t.wordSpacing ?? 'normal'),
     '--pr-line-height': String(lh),
     '--pr-size': `${fontSizePx}px`,
     '--pr-measure': `${prefs.measureCh}ch`,
-    '--pr-font': FONT_STACKS[prefs.fontFamily] ?? FONT_STACKS.atkinson,
-    '--pr-weight': String(raw.type.prompter.weight),
+    '--pr-font': fontStack(prefs.fontFamily, prefs.customFont),
+    '--pr-weight': String(weight),
+    '--pr-heading-weight': String(Math.min(900, Math.max(700, weight + 200))),
+    '--pr-align': typo.textAlign ?? 'left',
+    '--pr-transform': typo.textTransform ?? 'none',
+    '--pr-para': em(typo.paragraphSpacingEm ?? 0.6),
   };
   return Object.entries(vars).map(([k, v]) => `${k}:${v}`).join(';');
 }
 
+/** Everything that changes line wrapping (Prompter re-measures when this key changes). */
+export function layoutKey(s: Partial<Typography> & { fontSizePx: number; lineHeight: number; theme: string }, prefs: UiPrefs): string {
+  return [
+    s.theme, s.fontSizePx, s.lineHeight, s.fontWeight, s.letterSpacingEm, s.wordSpacingEm,
+    s.paragraphSpacingEm, s.textAlign, s.textTransform, prefs.fontFamily, prefs.customFont, prefs.measureCh,
+  ].join('|');
+}
 /** WCAG 2.x relative-luminance contrast ratio for #RRGGBB colours. */
 export function contrastRatio(a: string, b: string): number {
   const lum = (hex: string) => {

@@ -1,7 +1,5 @@
 import { mount } from 'svelte';
-import '@fontsource/atkinson-hyperlegible/400.css';
-import '@fontsource/atkinson-hyperlegible/700.css';
-import '@fontsource-variable/inter';
+import './fonts'; // prompter fonts
 import './app.css';
 import Talent from './components/Talent.svelte';
 import { applyUiTokens } from './lib/tokens';

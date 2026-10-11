@@ -33,6 +33,18 @@ Unter macOS steht `Ctrl` für `⌘`. Die App behandelt Meta wie Ctrl, sodass ein
 | `Ctrl+↑` | zum Anfang (Alternative für Mac-Tastaturen ohne `Home`) |
 | `Esc` | schließt der Reihe nach: Palette, Übersicht, Einstellungen, Skripte-Drawer. Bricht danach den Countdown ab bzw. beendet zuletzt das Vollbild |
 
+## Mausrad
+
+Gilt über der Vorschau im Control-Fenster und über dem Talent-Fenster.
+
+| Modus | Mausrad | `Shift` + Mausrad | `Ctrl`/`Alt` (macOS `⌘`/`⌥`) + Mausrad |
+|---|---|---|---|
+| Konstant | Tempo ±5 WPM pro Raste (hoch = schneller) | Tempo ±1 WPM | Position verschieben |
+| Manuell | Position verschieben (wie in einem Dokument) | – | Tempo ±5 WPM, mit `Shift` ±1 |
+| Sprachaktiviert / Voice-Tracking mit Voice an | kurzzeitig manuell: Position verschieben, Voice pausiert für `manualOverrideMs` (2 s) | – | wie ohne Modifier |
+
+Bei einer Tempoänderung blendet der Prompter kurz ein dezentes „140 WPM“ unten in der Mitte ein. Touchpads werden aufsummiert: eine volle Rasten-Distanz ergibt einen Schritt. In „Manuell“ ist die Position die natürliche Erwartung an ein Scrollrad; das Tempo lässt sich dort trotzdem für den späteren Wechsel nach „Konstant“ vorbereiten.
+
 ## Global (systemweit, auch wenn eine andere App den Fokus hat)
 
 | Taste | Wirkung |

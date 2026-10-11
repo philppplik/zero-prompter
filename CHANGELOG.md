@@ -6,6 +6,12 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 
 > Noch nie kompiliert oder ausgeführt (Erstellung ohne Toolchain). Siehe README → „Erste Schritte nach dem Klonen“.
 
+### Hinzugefügt (2026-10-11, Typografie & Mausrad)
+- **Schriftarten:** 12 lokal gebündelte Prompter-Schriften (OFL-1.1, offline, überwiegend variabel): Atkinson Hyperlegible Next, Inter, Lexend, Source Sans 3, Open Sans, Roboto Flex, IBM Plex Sans, Source Serif 4, Literata, Merriweather, OpenDyslexic, JetBrains Mono – plus „Systemschrift…“ mit freiem Namen. `serif` ist jetzt Source Serif 4 statt Georgia; das Talent-Fenster lädt jetzt alle Schriften (vorher fehlte JetBrains Mono).
+- **Typografie** (Kern-Settings, `sanitized()` + Tests): Schriftstärke 100–900 (an die `wght`-Achse gebunden, Fallback auf vorhandene Gewichte), Zeichen-, Wort- und Absatzabstand, Ausrichtung (links/zentriert/Blocksatz), GROSSBUCHSTABEN. Live-Vorschau im Tab Darstellung; der Prompter misst die Layout-Map bei jeder Typo-Änderung und nach dem Nachladen von Schriften neu. Theme-Zeilenhöhe gilt jetzt als Minimum statt den Regler zu überstimmen.
+- **Mausrad:** Konstant = Tempo ±5 WPM pro Raste (`Shift` ±1) mit kurzem „140 WPM“-Overlay; Manuell = Position; `Ctrl`/`Alt` vertauscht Position und Tempo. Voice-Modus unverändert (kurzer manueller Override). Funktioniert jetzt auch über dem Talent-Fenster. Doku in `shortcuts.md` und im `?`-Overlay.
+- **Beispielskript** rund zehnmal länger (~1.250 Wörter): Zahlen, Namen, Fachwörter, kurze/lange Sätze, Schnellsprech-Absätze, Wiederholungen und Regieanweisungen zum Testen des Voice-Trackings.
+
 ### Geändert (2026-10-11, Fenster & Navigation)
 - Windows/Linux: Control-Fenster ohne System-Titelleiste (`decorations: false`, `shadow: true` → unter Windows 11 abgerundete Ecken und Schatten über DWM). Eigene Fenstersteuerung oben rechts (Minimieren, Maximieren/Wiederherstellen, Schließen = App beenden); die Top-Bar ist Ziehbereich, Doppelklick maximiert. macOS behält die nativen Ampel-Knöpfe (`tauri.macos.conf.json`, `titleBarStyle: Overlay`).
 - Skripte-Drawer: Umschalter in einer schmalen, animierten Leiste links statt in der oberen Aktionsleiste (`Ctrl+B` unverändert).
