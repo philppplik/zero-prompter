@@ -1,74 +1,118 @@
-# Anpassung
+# Customization
 
-Alle Einstellungen findest du im Dialog **Einstellungen**: `Ctrl+,` (macOS `⌘,`) oder das Regler-Symbol in der Aktions-Pille oben rechts. Bereiche: Darstellung, Scroll, Voice & Modelle, Tastenkürzel, Ausgabe; `Esc` oder ein Klick daneben schließt ihn. Die Skript-Bibliothek mit Gliederung öffnest du mit `Ctrl+B` (Seitenleisten-Symbol in der Pille), alle Aktionen mit `Ctrl+K`. Es gibt zwei Speicherorte:
+Open **Settings (Einstellungen)** with `Ctrl+,` (macOS `Cmd+,`) or the settings button at the top right. The tabs relevant to this page are Appearance (Darstellung), Reading marker (Lesemarker), Scroll and Shortcuts (Tastenkürzel). `Esc` or a click outside closes the dialog.
 
-- **Kern-Einstellungen** (`settings.json`): Theme, Schriftgröße, Typografie (Stärke, Abstände, Ausrichtung, Großschreibung), Tempo, Countdown, Voice-Verhalten und Tastenbelegung. Gilt für beide Fenster.
-- **UI-Präferenzen** (`ui-prefs.json`): Schriftart (inkl. freiem Systemschrift-Namen), Zeilenbreite, Marker-Stil, Farben, Dimmen und Erscheinungsbild der Oberfläche. Die App überträgt sie per `prefs://changed` an beide Fenster.
+Settings live in two places, and both windows (control and talent) use them:
+
+- **Core settings** (`settings.json`): theme, font size, font weight, line height, letter, word and paragraph spacing, alignment, uppercase, focus line, tempo, countdown, voice behavior, hotkeys, microphone gain and channel, and the whole reading-marker block. The complete list is in the [Settings reference](../reference/settings.md).
+- **UI preferences** (`ui-prefs.json`): font family (including a free system font name), column width, custom colors, dimming of read text, interface appearance, onboarding state. The app broadcasts changes to both windows (event `prefs://changed`).
 
 ## Themes
 
-Es gibt sechs Prompter-Themes aus `docs/design/tokens.json`. Alle erreichen WCAG AAA. Umschalten mit `Ctrl+1` bis `Ctrl+6`:
+There are six prompter themes, defined in `docs/design/tokens.json`. The contrast ratios below are the values stored in that file, and all are marked WCAG AAA there. Switch with `Ctrl+1` to `Ctrl+6` or by clicking a tile in Appearance.
 
-| Taste | Theme | Kontrast | Besonderheit |
+| Key | Theme | Contrast | Notes |
 |---|---|---|---|
-| `Ctrl+1` | Studio Dark (Standard) | 16,99:1 | |
-| `Ctrl+2` | Broadcast Classic | 21,0:1 | Schwarz/Weiß |
-| `Ctrl+3` | Daylight | 16,40:1 | heller Hintergrund |
-| `Ctrl+4` | High Contrast | 16,13:1 | Gelb auf Schwarz |
-| `Ctrl+5` | Low Light | 9,87:1 | warm und dunkel für dunkle Räume |
-| `Ctrl+6` | Dyslexia | 13,22:1 | Buchstabenabstand 0,04 em, Wortabstand 0,16 em, Zeilenhöhe 1,6 |
+| `Ctrl+1` | Studio Dark (default) | 16.99:1 | Warm off-white on near-black, amber marker. |
+| `Ctrl+2` | Broadcast Classic | 21.0:1 | White on black, yellow marker. |
+| `Ctrl+3` | Daylight | 16.40:1 | Light background, dark text. |
+| `Ctrl+4` | High Contrast | 16.13:1 | Yellow text on black, white marker. |
+| `Ctrl+5` | Low Light | 9.87:1 | Warm and dark, for dark rooms. |
+| `Ctrl+6` | Dyslexia | 13.22:1 | Cream background; letter spacing 0.04 em, word spacing 0.16 em, line height 1.6. |
 
-## Schrift und Layout
+## Typography
 
-| Einstellung | Bereich / Werte | Standard |
+| Setting | Range / values | Default |
 |---|---|---|
-| Schriftgröße | 24–300 px (`Ctrl+=` / `Ctrl+-` je ±4) | 72 px |
-| Schriftart | siehe unten (12 gebündelte Schriften, Systemschrift, freier Name) | Atkinson Hyperlegible Next |
-| Zeilenbreite | 16–60 `ch` (Schieberegler) | 32 ch |
-| Zeilenhöhe | 1,0–2,4 in den Einstellungen (der Kern akzeptiert 1,0–3,0). Ein Theme-Wert (Dyslexia 1,6) gilt als Minimum | 1,4 |
-| Schriftstärke | 100–900. Variable Schriften nutzen ihre `wght`-Achse stufenlos und werden auf ihren Bereich begrenzt (z. B. Open Sans 300–800, IBM Plex Sans bis 700); OpenDyslexic hat nur 400/700 und springt auf das nächste Gewicht | 500 |
-| Zeichenabstand | −0,05 bis 0,30 em; 0 = Wert des Themes | 0 |
-| Wortabstand | −0,10 bis 1,00 em; 0 = Wert des Themes | 0 |
-| Absatzabstand | 0–3 em | 0,6 em |
-| Ausrichtung | Links, Zentriert, Blocksatz | Links |
-| Groß-/Kleinschreibung | Normal, GROSSBUCHSTABEN (nur Anzeige, das Skript bleibt unverändert) | Normal |
-| Fokus-/Leselinie | Einstellungen und Ziehen in der Vorschau: 5–70 % der Fensterhöhe. Der Kern begrenzt auf 10–90 %, Werte unter 10 % werden also auf 10 % angehoben (bekannte Inkonsistenz) | 35 % |
+| Font size (Größe) | 24 to 300 px. `Ctrl+=` and `Ctrl+-` change it by 4 px. | 72 px |
+| Font family (Schriftart) | See [Fonts](#fonts). | Atkinson Hyperlegible Next |
+| Column width (Spaltenbreite) | 16 to 60 `ch`. The UI recommends 25 to 40 characters per line. | 32 ch |
+| Line height (Zeilenabstand) | 1.0 to 2.4 in the settings slider (the core accepts 1.0 to 3.0). A theme's own value (Dyslexia: 1.6) acts as a minimum. | 1.4 |
+| Font weight (Schriftstärke) | 100 to 900. See below. | 500 |
+| Letter spacing (Zeichenabstand) | -0.05 to 0.30 em. 0 means "use the theme's value". | 0 |
+| Word spacing (Wortabstand) | -0.10 to 1.00 em. 0 means "use the theme's value". | 0 |
+| Paragraph spacing (Absatzabstand) | 0 to 3 em | 0.6 em |
+| Alignment (Ausrichtung) | Left, Center, Justify | Left |
+| Case (Groß-/Kleinschreibung) | Normal, UPPERCASE (display only; the script text is unchanged) | Normal |
+| Focus line / reading position | 5 % to 70 % of the window height; set in the Reading marker tab (Position) or by dragging in the preview. | 35 % |
 
-Die Typografie-Werte liegen in den Kern-Einstellungen (`settings.json`) und gelten damit für Vorschau und Talent-Fenster. Eine Vorschau direkt unter der Schriftauswahl zeigt jede Änderung sofort; „Typografie zurücksetzen“ stellt die Standards wieder her. Nach jeder Änderung misst der Prompter die Zeilen neu, damit Lesemarker, Dimmen und Wort-Highlight stimmen.
+A live preview under the font selector shows every change immediately. **Reset typography (Typografie zurücksetzen)** restores the weight, line height, spacing, alignment and case defaults. After each change the prompter re-measures its lines so that the marker, dimming and word highlight stay correct.
 
-### Schriftarten
+**Font weight.** Variable fonts use their `wght` axis continuously and are clamped to their range (for example Open Sans 300 to 800, IBM Plex Sans up to 700). OpenDyslexic has only the weights 400 and 700, so the value snaps to the nearest one. The settings page shows the supported range and, if different from your setting, the weight actually rendered.
 
-Alle Schriften sind lokal gebündelt (`@fontsource`, OFL-1.1) und funktionieren offline.
+### Fonts
 
-| Gruppe | Schriften |
+The prompter fonts are bundled with the app (via `@fontsource`, SIL OFL 1.1 license) and work offline.
+
+| Group | Fonts |
 |---|---|
 | Sans | Atkinson Hyperlegible Next, Inter, Lexend, Source Sans 3, Open Sans, Roboto Flex, IBM Plex Sans |
 | Serif | Source Serif 4, Literata, Merriweather |
-| Speziell | OpenDyslexic (für Legasthenie), JetBrains Mono |
-| System | Systemschrift (Standard), **Systemschrift…** mit freiem Namen einer installierten Schrift (z. B. `Verdana`). Fehlt sie, gilt die Systemschrift |
+| Special (Speziell) | OpenDyslexic, JetBrains Mono |
+| System | **System font (Systemschrift (Standard))**, and **System font... (Systemschrift...)** where you type the name of an installed font (for example `Verdana`). If that font is not installed, the system font is used. The name is limited to 64 characters and to letters, digits, spaces, `_`, `.` and `-`. |
 
-Ältere `ui-prefs.json` bleiben gültig: `serif` ist jetzt Source Serif 4 (statt Georgia), `atkinson` die Next-Variante.
+Older preference files stay valid: the former `serif` choice now maps to Source Serif 4 (instead of Georgia), and `atkinson` maps to the Next variant.
 
-## Lesemarker und Farben
+## Colors and dimming
 
-- **Lesemarker** (eigener Bereich *Einstellungen → Lesemarker*, gespeichert in `settings.json` unter `marker`): Stil per Kachel mit Mini-Vorschau – Linie, Band, Pfeile, Klammern, Fokus-Fenster, Verlauf, Unterstreichung (Wort oder Satz), Seitenbalken oder kein Marker. Dazu Farbe (Vorlagen aus dem Theme-Akzent oder eigener Farbwähler), Deckkraft bzw. Abdunklung, Dicke/Höhe (0,5–3×), Position (5–70 %), Dimmen von gelesenem und ungelesenem Text, Glow, Weichzeichnen außerhalb der Lesezone (Fokus-Fenster/Verlauf) und Animation beim Weiterspringen (Aus, Gleiten, Puls). Eine Live-Vorschau zeigt das Ergebnis; Talent-Fenster und Vorschau sehen identisch aus, auch gespiegelt. Ein früher gewähltes „Band“ wird automatisch übernommen.
-- **Gelesenen Text dimmen**, mit einstellbarer Opazität (0,3–1). Ohne eigenen Wert gilt der Standard des Themes.
-- **Eigene Farben** für Text, Hintergrund und Marker überschreiben das Theme. Achte dabei selbst auf ausreichenden Kontrast.
-- **Erscheinungsbild der Oberfläche:** System, Hell oder Dunkel. Das betrifft nur das Control-Fenster, nicht den Prompter-Text.
+- **Custom colors** for text, background and marker override the theme. A readout shows the contrast ratio between your text and background colors (AAA at 7:1 or more, AA between 4.5:1 and 7:1, "too low" below 4.5:1). Check it yourself, since the app does not stop you. **Reset (Zurücksetzen)** returns to the theme colors.
+- **Dim read text (Gelesenen Text dimmen):** fades the words you have already read. The opacity slider covers 0.3 to 1; without a value the theme's default applies.
+- **Interface appearance (Oberfläche):** System, Light or Dark. This affects only the control window, not the prompter text. The interface theme is a neutral gray design with the DM Sans and Geist Mono fonts, bundled locally. Optionally enable a frame-time display.
 
-## Tempo und Countdown
+## Reading marker styles
 
-- WPM 40–400, Standard 140. Im Modus Konstant ändert auch das Mausrad über dem Prompter das Tempo (siehe [Tastenkürzel](shortcuts.md#mausrad)).
-- Countdown 0 (sofort starten) oder mehr Sekunden, Standard 3. Umschalten im Transport.
+The **Reading marker (Lesemarker)** tab sets how the current reading position looks. It is stored in `settings.json` under `marker`, so the talent window and the preview look identical, also when mirrored. A live preview shows the result.
 
-## Tastenbelegung
+| Style (German label) | Appearance |
+|---|---|
+| Line (Linie) | Thin reading line across the column width. Default. |
+| Band (Band) | Semi-transparent line with edges. |
+| Arrows (Pfeile) | Triangles at the left and right edges. |
+| Brackets (Klammern) | Square brackets around the reading line. |
+| Spotlight (Fokus-Fenster) | Everything except the reading zone is darkened. |
+| Gradient (Verlauf) | Soft band; text above and below fades out. |
+| Underline (Unterstreichung) | Underlines the current word or the current sentence (choose Word or Sentence). |
+| Side bar (Seitenbalken) | Vertical accent bar to the left of the line. |
+| No marker (Kein Marker) | Position only, nothing visible. |
 
-In den Einstellungen unter Tastenkürzel klickst du auf eine Belegung und drückst die neue Kombination. Umbelegen lassen sich nur die Aktionen in `Settings.hotkeys`, die Liste steht unter [Tastenkürzel](shortcuts.md). Die übrigen App-Tasten und die globalen Hotkeys sind in v0.1 fest.
+Further controls:
 
-## Bewegung reduzieren
+| Control | Range | Notes |
+|---|---|---|
+| Color | any `#RRGGBB`, or theme color | Presets from the theme accent or a custom picker. |
+| Opacity / Darkening | 0.1 to 1.0 | Labeled "darkening" (Abdunklung) for Spotlight and Gradient. |
+| Thickness / height (Dicke / Höhe) | 0.5x to 3.0x | |
+| Position | 5 % to 70 % | Same as the focus line. |
+| Dim read text | 0 to 0.9 | "Theme" resets to the theme default. |
+| Dim unread text | 0 to 0.9 | Text below the reading zone. Default 0 (off). |
+| Glow | 0 to 1 | 0 is off. |
+| Soft focus outside the zone (Weichzeichnen außerhalb) | 0 to 8 px | Applies to Spotlight and Gradient. |
+| Animation | None, Glide (Gleiten), Pulse (Puls) | Motion when the marker moves. |
 
-Mit „Bewegung reduzieren“ in den Einstellungen (`reducedMotion`) oder der Systemeinstellung `prefers-reduced-motion` schaltet der Prompter weiche Übergänge wie Resync-Ease, Puls und Countdown-Animation ab oder verkürzt sie. Das gilt auch für die Animationen der Oberfläche (Dialoge, Palette, Drawer, Hinweise).
+A command palette entry ("Lesemarker: ...") cycles to the next style. An older `markerStyle` preference is migrated once to the new setting.
 
-## Oberfläche (UI-Theme)
+## Tempo and countdown
 
-Die Bedienoberfläche nutzt das tweakcn-Theme *Minimal Neutral*: neutrale Grautöne, Radius 1rem, Schriften DM Sans und Geist Mono (lokal gebündelt). Die Werte stehen in `docs/design/tokens.json` unter `ui`. Die sechs Prompter-Themes des Talent-Fensters sind davon unabhängig.
+- Tempo is 40 to 400 WPM, default 140. It applies to constant mode and as the fallback when voice tracking is lost with the policy "continue at constant speed". In Constant mode the mouse wheel also changes it (see [Keyboard shortcuts](shortcuts.md#mouse-wheel)).
+- **Countdown (Countdown):** Off (0), 3 s (default) or 5 s. Set it in Settings, Scroll, or by clicking the countdown button in the transport bar.
+
+## Scroll tab
+
+| Control | Notes |
+|---|---|
+| Mode (Modus) | Manual, Constant, Voice-activated, Voice tracking. See [Scroll modes](first-steps.md#scroll-modes). |
+| Tempo | Slider, 40 to 400 WPM in steps of 5. |
+| Countdown | Off, 3 s, 5 s. |
+| Reduce motion (Bewegung reduzieren) | Also applies to interface animations. |
+
+## Reduce motion
+
+**Reduce motion** (core setting `reducedMotion`), or the system setting `prefers-reduced-motion`, turns off or shortens soft transitions such as the resync ease, the marker pulse and the countdown animation. It also covers interface animations (dialogs, palette, drawer, notices).
+
+## Remapping shortcuts
+
+In Settings, Shortcuts, click a binding and press the new key combination. Only the actions in `Settings.hotkeys` can be remapped; they are listed in [Keyboard shortcuts](shortcuts.md#remappable-shortcuts). The other in-app keys and the global hotkeys are fixed in v0.1.
+
+## Output tab
+
+Choose the monitor for the talent window (numbered tiles with resolution), open or close the talent window, toggle fullscreen, and set horizontal and vertical mirroring. **Reload monitors and devices (Monitore & Geräte neu laden)** refreshes the lists after you plug in hardware. The app places the talent window by moving it onto the target monitor and then switching to fullscreen; some window managers ignore this.
