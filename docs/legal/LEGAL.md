@@ -74,5 +74,4 @@ Quelle: https://patents.google.com/patent/US9953646B2/en
 
 ## Was ein Anwalt zwingend bestätigen muss
 - Patentstatus und FTO (US, EP/DE), insbesondere Wiedereinsetzbarkeit von US 9,953,646 und die Microsoft-EP-Ansprüche.
-- Kommerzielle Nutzbarkeit der Kroko-Gewichte.
 - EULA, Haftung, Gewährleistung, Datenschutzhinweis.

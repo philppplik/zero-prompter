@@ -114,7 +114,7 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 
 ### Bekannt
 - Modell-Manifest noch nicht ladbar: SHA-256 der `tokens.txt` fehlen, URLs nicht auf Commits gepinnt. Ohne `sherpa` und ohne Modell läuft Voice im Demo-Modus.
-- Lizenz von Kroko-DE ungeklärt (release-kritisch), Patentlage US 9,953,646 nicht anwaltlich geprüft, siehe `docs/legal/LEGAL.md`.
+- Patentlage US 9,953,646 nicht anwaltlich geprüft, siehe `docs/legal/LEGAL.md`.
 - `cargo fmt --check`, `clippy -D warnings`, Prettier nie ausgeführt.
 - Kein `package-lock.json`. Die Icons werden über `npx tauri icon` erzeugt.
 - Fernsteuerung (WebSocket/PWA), MIDI/HID/Gamepad, Overlay, `.docx`, Updater und Signierung folgen erst ab v0.2.
