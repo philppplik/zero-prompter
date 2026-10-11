@@ -25,7 +25,7 @@
 - **Not implemented yet:** remote control (phone, WebSocket, MIDI, HID, gamepad), overlay mode, `.docx` import, custom themes. See [Remote control](user/remote.md).
 - **Unverified external APIs.** Parts of cpal 0.15, `ureq` 2 (model download) and `tauri-plugin-global-shortcut` are marked `// VERIFY` in the source. Find them with `rg "VERIFY"`.
 - **Global hotkeys.** Whether `Ctrl+Shift+F6` to `F11` is free on every system is **(unverified)**. They may not work under Wayland, depending on the compositor.
-- **Licensing is not final for every model.** The Kroko models were removed for license reasons (see [`docs/legal/LEGAL.md`](../../legal/LEGAL.md)); a patent note still needs legal review. This is not legal advice.
+- **Licensing is not final for every model.** The Kroko models were removed for license reasons (see [`docs/legal/LEGAL.md`](https://github.com/philppplik/zero-prompter/blob/main/docs/legal/LEGAL.md)); a patent note still needs legal review. This is not legal advice.
 - **Hardware requirements.** The Nemotron 160 ms and 80 ms variants need a fast CPU. The app warns when the speech model decodes slower than real time.
 - **Voice tracking quality** depends on microphone, room, script and model. Latency figures in this manual come from CI measurements in `docs/research/MODELS.md`, not guarantees.
 - **Screenshots** in the README are placeholders and not yet added.

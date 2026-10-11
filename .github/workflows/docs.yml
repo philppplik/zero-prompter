@@ -1,4 +1,4 @@
-﻿name: docs
+name: docs
 on:
   pull_request:
     paths: ['docs/**', '**/*.md', '.github/workflows/docs.yml']
@@ -28,6 +28,7 @@ jobs:
           args: >-
             --offline --no-progress
             --exclude 'releases'
+            --exclude-path docs/book/book/404.html
             'docs/book/book/**/*.html'
             './**/*.md'
           fail: true
