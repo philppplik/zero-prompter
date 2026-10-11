@@ -132,6 +132,55 @@ jobs:
       - run: cargo build -p zt-audio --features cpal
       - run: cargo build -p zt-stt --features sherpa
 
+  # End-to-end STT smoke: real models (models.json, SHA-checked, cached),
+  # real sherpa-onnx, real audio. Proves recognizer creation (incl. the
+  # legacy bpe_vocab bug reproduction), hotwords, text, RTF and latency.
+  stt-smoke:
+    name: STT smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-stt-smoke
+          cache-directories: target/sherpa-onnx-prebuilt
+      - name: Reset incomplete sherpa-onnx prebuilt (stale cache guard)
+        shell: bash
+        run: |
+          for d in target/sherpa-onnx-prebuilt/*/; do
+            [ -d "$d" ] || continue
+            if ! ls "$d"lib/*sherpa-onnx-c-api* >/dev/null 2>&1; then
+              echo "incomplete prebuilt: $d"; rm -r "$d"
+            fi
+          done
+          find target -maxdepth 3 -name 'sherpa-onnx-sys-*' -path '*release*' -prune -exec rm -r {} + || true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: stt-cache
+          key: stt-models-${{ hashFiles('apps/desktop/src-tauri/resources/models.json', 'scripts/stt-smoke.py') }}
+      - name: Build smoke example
+        run: cargo build --release -p zt-stt --features sherpa --example smoke
+      - name: Summary header
+        shell: bash
+        run: |
+          echo "| model | platform | stage | RTF | chunk ms avg / p95 / max | create ms | ok | text |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|---|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+      - name: Smoke (Kroko DE, Kroko EN, Zipformer EN 20M)
+        shell: bash
+        run: python scripts/stt-smoke.py stt-cache zipformer-de-kroko-2025-08-06 zipformer-en-kroko-2025-08-06 zipformer-en-20m-2023-02-17
+
   frontend:
     name: Frontend (check, test, build)
     runs-on: ubuntu-22.04

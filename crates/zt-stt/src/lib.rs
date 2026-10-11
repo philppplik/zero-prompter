@@ -21,6 +21,7 @@ mod fallback;
 mod hotwords;
 mod hybrid;
 mod mock;
+pub mod model_check;
 mod offline;
 mod segment;
 pub use fallback::{build_with_fallback, Fallback};
@@ -35,7 +36,7 @@ mod sherpa;
 #[cfg(feature = "sherpa")]
 mod sherpa_offline;
 #[cfg(feature = "sherpa")]
-pub use sherpa::{SherpaConfig, SherpaEngine};
+pub use sherpa::{LogSink, SherpaConfig, SherpaEngine};
 #[cfg(feature = "sherpa")]
 pub use sherpa_offline::{
     SherpaOfflineConfig, SherpaOfflineEngine, SileroSegmenter, SileroVadConfig,

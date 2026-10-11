@@ -317,7 +317,8 @@ fn run(ctx: &Ctx) {
     let hotwords = build_hotwords(ctx.words.iter().map(String::as_str), 5, 200, 1.5);
     match engine.set_hotwords(&hotwords) {
         Ok(()) => tracing::info!(target: "zt::stt", count = hotwords.len(), "hotwords applied"),
-        // Expected for models without bpe.vocab (all bundled ones): no biasing.
+        // Models without a usable bpe vocab, or sherpa rejected the hotwords
+        // (the engine then keeps running without biasing; see zt::engine log).
         Err(e) => tracing::info!(target: "zt::stt", error = %e, "hotwords not applied"),
     }
 
