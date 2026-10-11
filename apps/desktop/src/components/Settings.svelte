@@ -223,7 +223,7 @@
                   <span class="lbl" id="lbl-weight">Schriftstärke</span>
                   <div class="field-row">
                     <input type="range" min={TYPO_RANGES.fontWeight[0]} max={TYPO_RANGES.fontWeight[1]} step={TYPO_RANGES.fontWeight[2]} aria-labelledby="lbl-weight"
-                      value={st.settings.fontWeight} aria-valuetext="{st.settings.fontWeight}"
+                      value={st.settings.fontWeight} aria-valuetext={String(st.settings.fontWeight)}
                       oninput={(e) => update({ fontWeight: Number((e.currentTarget as HTMLInputElement).value) })} />
                     <span class="num val">{st.settings.fontWeight}</span>
                   </div>
