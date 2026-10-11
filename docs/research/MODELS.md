@@ -34,7 +34,10 @@ Zipformers 2.
 | Zipformer EN 20M int8 | linux-x64 | – / 0.038 | 12 | 0.30 / 0.40 | – / 1.20 | ~530 | 150 | as above |
 
 Run-to-run noise on the shared runners is large: the same 160 ms model
-measured RTF 0.6–0.7 on linux-x64 and 2.3–2.4 on win-x64 in run 38132359791.
+measured RTF 0.6–0.7 on linux-x64 and 2.3–2.4 on win-x64 in run 38132359791,
+and in the final run 38133297099 (default switched to 320 ms) x86 RTF was
+0.61–0.66 (160 ms) vs 0.33–0.40 (320 ms), Arm64 0.51–0.58 vs 0.30–0.31. The
+ratio 160 : 320 ms ≈ 2 : 1 is stable across all runs; absolute x86 values are not.
 Peak RSS is sampled with psutil every 50 ms (Windows: peak working set).
 
 Findings:
