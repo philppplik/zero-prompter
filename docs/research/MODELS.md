@@ -130,7 +130,9 @@ Not a downloadable model: `Windows.Media.SpeechRecognition` (WinRT), id `windows
 
 Role: fallback after Nemotron / Kroko / Zipformer 20M and explicit choice "Windows Spracherkennung (System)". Accuracy and latency were not measured (CI has no microphone or consent). Newer Windows AI APIs (Windows App SDK) offer no general streaming ASR for unpackaged apps as of 2026-10. SAPI 5 desktop recognition is deprecated in Windows 11.
 
-## Open points (not verified)- SHA-256 of all `tokens.txt` files (not LFS). Since manifest schema v2 the hash is
+## Open points (not verified)
+
+- SHA-256 of all `tokens.txt` files (not LFS). Since manifest schema v2 the hash is
   optional: such files are size-checked, their SHA-256 is computed after download and
   stored as `unverified-sha256.json` in the model folder, and the UI marks them as
   unverified. Pin the reported hashes before a release.

@@ -1,146 +1,147 @@
-# ADR-007: Voice-Pipeline – Fehlerbehandlung, Diagnose und Latenz-Tuning
+# ADR-007: Voice pipeline – error handling, diagnostics and latency tuning
 
-- Status: angenommen
-- Datum: 2026-10-11
-- Bezug: ADR-002 (cpal), ADR-006 (hybride STT), Nutzerfeedback zu v0.1.0 (Windows 11 ARM64, `--features sherpa`): „Sprache synchronisieren klappt nicht, in der UI steht Demo“
+> German original: [de/ADR-007-voice-pipeline-tuning.md](de/ADR-007-voice-pipeline-tuning.md)
 
-## Kontext
+- Status: accepted
+- Date: 2026-10-11
+- Related: ADR-002 (cpal), ADR-006 (hybrid STT), user feedback on v0.1.0 (Windows 11 ARM64, `--features sherpa`): "syncing speech does not work, the UI says Demo"
 
-### Befund „Demo“ / Sync klappt nicht
+## Context
 
-Die Release-Builds enthalten sherpa (CI-Log Windows ARM64: `tauri build --features sherpa`, `zt-stt` mit Feature gebaut; das Feature wird korrekt über `apps/desktop/src-tauri/Cargo.toml` → `zt-stt/sherpa` weitergereicht). Der Fehler liegt in der Engine-Auswahl in `voice.rs`/`models.rs` von v0.1.0:
+### Finding: "Demo" / sync does not work
 
-1. **Stiller Demo-Fallback bei Ladefehlern.** `make_engine` machte aus *jedem* `Err` von `build_engine` den Demo-Modus (`MockEngine::reading`). Die Demo-Engine liest das Skript mit 2,3 Wörtern/s selbst vor. Konnte ein installiertes Modell nicht geladen werden, scrollte der Text also unabhängig von der Stimme – für Nutzer genau „Sync klappt nicht“ plus Badge „Demo“. Der Fehler kam nur als kurzer Toast und wurde nirgends geloggt (`eprintln!` ist in einer Windows-GUI-App unsichtbar).
-2. **Sprachbindung ohne Ausweichen.** Gesucht wurde nur unter Modellen der Skriptsprache (`settings.language`, Standard `de`). Wer z. B. nur Zipformer EN 20M (Apache-2.0) oder nur Parakeet (Rolle `resync`, kein Streaming) installiert hatte, bekam `Ok(None)` → Demo, obwohl ein Modell auf der Platte lag.
-3. **Veraltete Engine nach Modell-Download.** Die Engine wird beim Start von Voice/Mikrofontest gebaut. Im Onboarding läuft der Mikrofontest *vor* dem Modell-Download; danach blieb `store.engine.demo = true` stehen, bis Voice neu gestartet wurde.
-4. **Keine Diagnose.** Kein Log, keine Latenz- oder Pegelwerte, keine Erkennung von „Mikrofon geöffnet, liefert aber nichts“ (Windows-Datenschutz „Mikrofonzugriff für Desktop-Apps“ liefert Stille statt eines Fehlers), Panics im Voice-Thread verschwanden mit dem Thread.
+The release builds contain sherpa (CI log Windows ARM64: `tauri build --features sherpa`, `zt-stt` built with the feature; the feature is passed through correctly via `apps/desktop/src-tauri/Cargo.toml` -> `zt-stt/sherpa`). The bug is in the engine selection in `voice.rs`/`models.rs` of v0.1.0:
 
-Geprüft und **nicht** ursächlich: Feature-Weitergabe im Workspace; Modellpfade (Dateinamen kommen aus den Manifest-Rollen `encoder/decoder/joiner/tokens`); Sample-Rate (cpal → eigener Resampler → 16 kHz mono, sherpa `feat_config` 16 kHz/80 fbank laut Crate-Default); Silero (nur für Resync-Segmentierung, Fallback RMS); Hotwords (keines der mitgelieferten Modelle hat `bpe.vocab` → `set_hotwords` liefert `Unsupported`, der Recognizer bleibt unverändert – erwartbar, jetzt als Info geloggt).
+1. **Silent demo fallback on load errors.** `make_engine` turned *every* `Err` from `build_engine` into demo mode (`MockEngine::reading`). The demo engine reads the script aloud by itself at 2.3 words/s. If an installed model could not be loaded, the text therefore scrolled independently of the voice, which for users is exactly "sync does not work" plus the badge "Demo". The error appeared only as a short toast and was logged nowhere (`eprintln!` is invisible in a Windows GUI app).
+2. **Language binding without fallback.** Only models of the script language (`settings.language`, default `de`) were searched. Anyone who had only Zipformer EN 20M (Apache-2.0) or only Parakeet (role `resync`, not streaming) installed got `Ok(None)` -> demo, although a model was on disk.
+3. **Stale engine after a model download.** The engine is built when voice or the microphone test starts. In onboarding the microphone test runs *before* the model download; afterwards `store.engine.demo = true` stayed set until voice was restarted.
+4. **No diagnostics.** No log, no latency or level values, no detection of "microphone opened but delivers nothing" (the Windows privacy setting "Let desktop apps access your microphone" yields silence instead of an error), and panics in the voice thread vanished with the thread.
 
-## Entscheidung
+Checked and found **not** to be the cause: feature propagation in the workspace; model paths (file names come from the manifest roles `encoder/decoder/joiner/tokens`); sample rate (cpal -> own resampler -> 16 kHz mono, sherpa `feat_config` 16 kHz/80 fbank per the crate default); Silero (only used for resync segmentation, RMS fallback); hotwords (none of the shipped models has `bpe.vocab` -> `set_hotwords` returns `Unsupported`, the recognizer stays unchanged -- expected, now logged at info level).
 
-### Engine-Auswahl ohne stille Fallbacks
+## Decision
+
+### Engine selection without silent fallbacks
 
 | Situation | Engine | UI |
 |---|---|---|
-| Streaming-Modell der Skriptsprache installiert | HybridEngine (wie ADR-006) | Modellname |
-| Nur Streaming-Modell anderer Sprache installiert | dieses Modell (`Manifest::streaming_plan`) | Hinweis „Kein Modell für Sprache … – nutze …“ |
-| Kein Streaming-Modell installiert | Demo (`reason = noModel`) | Badge „Demo · Modell laden“ → Einstellungen/Voice |
-| Build ohne `sherpa` | Demo (`reason = noSherpa`) | Badge + Hinweis |
-| Modell installiert, Laden scheitert | `NullEngine` (`reason = engineError`), **kein** Demo | Fehler-Toast, Badge „Modellfehler · Details“ → Diagnose |
+| Streaming model for the script language installed | HybridEngine (as in ADR-006) | Model name |
+| Only a streaming model of another language installed | that model (`Manifest::streaming_plan`) | Notice "No model for language ... - using ..." |
+| No streaming model installed | Demo (`reason = noModel`) | Badge "Demo · load model" -> Settings/Voice |
+| Build without `sherpa` | Demo (`reason = noSherpa`) | Badge + notice |
+| Model installed, loading fails | `NullEngine` (`reason = engineError`), **not** demo | Error toast, badge "Model error · details" -> Diagnostics |
 
-Nach erfolgreichem Modell-Download wird eine laufende Voice-Session neu gestartet.
+After a successful model download, a running voice session is restarted.
 
-### Fehlerpfad und Logging
+### Error path and logging
 
-- `tracing` + `tracing-subscriber` (EnvFilter, Variable `ZT_LOG`) + `tracing-appender` (tägliche Rotation, 7 Dateien) im App-Log-Verzeichnis (`app_log_dir`, Windows `%LOCALAPPDATA%\<identifier>\logs`).
-- Ein Fehlerpfad: `diag::report_error` = Log + Ringpuffer (50) + Event `diag://error` → Toast. Panic-Hook loggt Panics aller Threads, der Voice-Thread läuft unter `catch_unwind` und meldet Abstürze.
-- Strukturierte Events (Targets): `zt::voice` Start/Stop, `zt::engine` Plan/Auswahl/Ladezeit/Fallback-Gründe, `zt::audio` Gerät+Format, Frames/s, RMS, `zt::vad` Segmentgrenzen, `zt::stt` Partial (debug, mit Zeitstempel und Latenz) / Final (info), `zt::tracker` Zustandswechsel, Konfidenz, Cursor, `zt::resync`, `zt::models` Download/Hash, `zt::frontend` unbehandelte JS-Fehler.
-- Mikrofon-Watchdog: 3 s ohne Callback oder nur exakte Nullen → Fehler mit Hinweis auf die Datenschutzeinstellungen.
-- Diagnose-Tab (`DiagnosticsPanel.svelte`): Pegel, Engine/Modell/Kette, Audioformat, Frames/s, Tick-Rate, Tracker-Zustand, Latenzen p50/p95, letzte Fehler, „Log exportieren“ (Speichern-Dialog, Logs + JSON-Snapshot), Mikrofontest.
+- `tracing` + `tracing-subscriber` (EnvFilter, variable `ZT_LOG`) + `tracing-appender` (daily rotation, 7 files) in the app log directory (`app_log_dir`, on Windows `%LOCALAPPDATA%\<identifier>\logs`).
+- A single error path: `diag::report_error` = log + ring buffer (50) + event `diag://error` -> toast. A panic hook logs panics from all threads; the voice thread runs under `catch_unwind` and reports crashes.
+- Structured events (targets): `zt::voice` start/stop, `zt::engine` plan/selection/load time/fallback reasons, `zt::audio` device + format, frames/s, RMS, `zt::vad` segment boundaries, `zt::stt` partial (debug, with timestamp and latency) / final (info), `zt::tracker` state changes, confidence, cursor, `zt::resync`, `zt::models` download/hash, `zt::frontend` unhandled JS errors.
+- Microphone watchdog: 3 s without a callback or only exact zeros -> error with a hint about the privacy settings.
+- Diagnostics tab (`DiagnosticsPanel.svelte`): level, engine/model/chain, audio format, frames/s, tick rate, tracker state, latencies p50/p95, last errors, "Export log" (save dialog, logs + JSON snapshot), microphone test.
 
-### Latenz
+### Latency
 
-Gemessen wird im Voice-Thread (rollierend, letzte 200 Werte, `zt_core::metrics::LatencyWindow`, Nearest-Rank):
+Measured in the voice thread (rolling, last 200 values, `zt_core::metrics::LatencyWindow`, nearest-rank):
 
-| Metrik | Start | Ende |
+| Metric | Start | End |
 |---|---|---|
-| `onsetToPartial` | Sprechbeginn relativ zum Rauschboden (`OnsetDetector`, siehe Nachtrag 2026-10-11; vorher fester Wert −45 dBFS) | erste Partial-Hypothese |
-| `audioToPartial` | Aufnahmezeit des Chunks, der eine neue Partial auslöste | Partial emittiert |
-| `hypToCursor` | Hypothese an Tracker | Cursor-Wechsel |
-| `endToEnd` | Aufnahmezeit des Chunks | `voice://word` emittiert |
+| `onsetToPartial` | Speech onset relative to the noise floor (`OnsetDetector`, see addendum 2026-10-11; previously a fixed -45 dBFS) | first partial hypothesis |
+| `audioToPartial` | Capture time of the chunk that triggered a new partial | partial emitted |
+| `hypToCursor` | Hypothesis handed to the tracker | cursor change |
+| `endToEnd` | Capture time of the chunk | `voice://word` emitted |
 
-Latenzkette (Ziel: Wort erkannt → Scroll < 300 ms p50, hart < 1 s). **Geschätzt** = aus Konfiguration/Literatur abgeleitet, noch nicht auf Zielhardware gemessen; die gemessenen Werte liefert ab dieser Version der Diagnose-Tab.
+Latency chain (target: word recognized -> scroll < 300 ms p50, hard limit < 1 s). **Estimated** = derived from configuration/literature, not yet measured on target hardware; from this version on, the Diagnostics tab provides the measured values.
 
-| Stufe | Wert | Art |
+| Stage | Value | Kind |
 |---|---|---|
-| Audio-Callback (WASAPI shared, cpal-Standardpuffer) | ~10 ms Periode | geschätzt (Windows-Standard) |
-| Kanal → Voice-Thread | blockierendes `recv`, kein Polling-Takt (`recv_timeout` 50 ms nur als Abbruch-Check) | Code |
-| Resampling auf 16 kHz | < 1 ms | geschätzt |
-| `accept_waveform` + Decode | pro Callback-Chunk, `decode` solange `is_ready` | Code |
-| Zipformer-Chunk (Modell-Lookahead) | Partials kommen pro Encoder-Chunk (typisch 320 ms bei Streaming-Zipformer) → Ø ~160 ms Warten + Rechenzeit | geschätzt |
-| Rechenzeit pro Chunk (ARM64, 2 Threads, int8/fp32) | 20–60 ms | geschätzt |
-| Tracker (Smith-Waterman k=6 × w=70) | < 1 ms | geschätzt, misst `hypToCursor` |
-| Tick 60 Hz (`sleep(16 ms)`, Rust std auf Windows mit High-Res-Timer) | ≤ 16 ms | Code, misst „Tick Hz“ |
-| Scroll-Ease (vorher τ = 300 ms) | **τ = 150 ms**: 63 % eines Wortschritts nach 150 ms sichtbar, Bewegung beginnt im nächsten Tick | Code + Test |
-| Endpoint-Regeln (2,4 s / 0,8 s / 20 s) | betreffen nur `Final`, der Tracker folgt den Partials | Code |
+| Audio callback (WASAPI shared, cpal default buffer) | ~10 ms period | estimated (Windows default) |
+| Channel -> voice thread | blocking `recv`, no polling interval (`recv_timeout` of 50 ms only as an abort check) | code |
+| Resampling to 16 kHz | < 1 ms | estimated |
+| `accept_waveform` + decode | per callback chunk, `decode` while `is_ready` | code |
+| Zipformer chunk (model lookahead) | Partials arrive per encoder chunk (typically 320 ms for a streaming zipformer) -> on average ~160 ms of waiting plus compute time | estimated |
+| Compute time per chunk (ARM64, 2 threads, int8/fp32) | 20-60 ms | estimated |
+| Tracker (Smith-Waterman k=6 x w=70) | < 1 ms | estimated, measured by `hypToCursor` |
+| 60 Hz tick (`sleep(16 ms)`, Rust std on Windows with high-resolution timer) | <= 16 ms | code, measured as "Tick Hz" |
+| Scroll ease (previously tau = 300 ms) | **tau = 150 ms**: 63 % of a word step visible after 150 ms, movement begins on the next tick | code + test |
+| Endpoint rules (2.4 s / 0.8 s / 20 s) | only affect `Final`; the tracker follows the partials | code |
 
-Erwartung Wort → sichtbarer Scrollbeginn ≈ 10 + ~160 + ~40 + 1 + ≤16 ms ≈ **230 ms p50** (geschätzt), p95 durch Chunk-Grenze und CPU ≈ 450 ms – innerhalb der harten Grenze. Bestätigung über `endToEnd` im Diagnose-Tab (Scroll-Animation kommt ab Tick hinzu).
+Expected word -> visible scroll start ~ 10 + ~160 + ~40 + 1 + <= 16 ms ~ **230 ms p50** (estimated); p95 ~ 450 ms due to chunk boundaries and CPU, which is within the hard limit. To be confirmed through `endToEnd` in the Diagnostics tab (the scroll animation is added from the tick onward).
 
-Weitere getunte Defaults:
-- Tracker-Nahpfad (`TrackerConfig::near_words = 2`, siehe unten) für das erste Wort nach Seek/Re-Anchor.
-- Hotwords bleiben für Modelle ohne `bpe.vocab` aus; der Recognizer wird dann nicht neu erzeugt (keine doppelte Ladezeit).
+Other tuned defaults:
+- Tracker near path (`TrackerConfig::near_words = 2`, see below) for the first word after a seek/re-anchor.
+- Hotwords stay off for models without `bpe.vocab`; the recognizer is then not recreated (no double load time).
 
-## Vergleich mit ShayneP/local-teleprompter
+## Comparison with ShayneP/local-teleprompter
 
-Quelle: https://github.com/ShayneP/local-teleprompter (Lizenz **MIT**, geprüft im README/Repository). Gelesen: `frontend/lib/teleprompter/position-tracker.ts`, README.
+Source: https://github.com/ShayneP/local-teleprompter (licence **MIT**, checked in the README/repository). Read: `frontend/lib/teleprompter/position-tracker.ts`, README.
 
-| Aspekt | local-teleprompter | zero-teleprompter | Übernahme |
+| Aspect | local-teleprompter | zero-teleprompter | Adopted |
 |---|---|---|---|
-| STT | NVIDIA Nemotron Streaming 0.6B (FastConformer-RNNT, cache-aware) als Python/FastAPI-Server, LiveKit, GPU/MPS bevorzugt; README nennt ~80 ms bis erste Wörter auf Apple Silicon/GPU | sherpa-onnx in-process, Zipformer (Kroko) auf CPU, keine Python-/Server-Abhängigkeit | nein: Server + GPU widerspricht Offline-Einzelbinary (ADR-002/006); Modell als Kandidat in MODELS.md beobachten |
-| Matching | vorwärts, Nahfenster Cursor..+2 sofort; Fernfenster bis +17 nur mit Bigramm-Bestätigung; Fuzzy nur ≥ 5 Zeichen, Längendifferenz ≤ 2, Levenshtein ≤ 1; Re-Anchor nach 4 Fehlschlägen über 6 Wörter, ≥ 3 Treffer | gefenstertes Smith-Waterman (k=6, −10/+60), Hysterese (2× Bestätigung ab 18 Wörtern), Rücksprung bis 10 Wörter, globale Suche bei `lost`, Offline-Resync | **teilweise**: Nahpfad + strikte Fuzzy-Regel |
-| Partials | verarbeitet nur neue Wörter (`consumedSpokenCount`), keine Gewichtung | ersetzt Partial, gewichtet Finals höher | nein: SW-Alignment robuster gegen Revisionen der Hypothese |
-| Rückwärts | nur vorwärts (manuell per Doppelklick) | Rücksprünge erlaubt | nein |
+| STT | NVIDIA Nemotron Streaming 0.6B (FastConformer-RNNT, cache-aware) as a Python/FastAPI server, LiveKit, GPU/MPS preferred; README mentions ~80 ms to first words on Apple Silicon/GPU | sherpa-onnx in-process, Zipformer (Kroko) on CPU, no Python/server dependency | no: server + GPU contradicts the offline single binary (ADR-002/006); watch the model as a candidate in MODELS.md |
+| Matching | forward, near window cursor..+2 immediately; far window up to +17 only with bigram confirmation; fuzzy only for >= 5 characters, length difference <= 2, Levenshtein <= 1; re-anchor after 4 failures over 6 words, >= 3 hits | windowed Smith-Waterman (k=6, -10/+60), hysteresis (2x confirmation from 18 words), jump back up to 10 words, global search when `lost`, offline resync | **partially**: near path + strict fuzzy rule |
+| Partials | processes only new words (`consumedSpokenCount`), no weighting | replaces the partial, weights finals higher | no: SW alignment is more robust against hypothesis revisions |
+| Backward | forward only (manual via double-click) | jumps back allowed | no |
 
-Übernommen (eigene Implementierung, kein Code kopiert, Attribution in THIRD_PARTY_NOTICES.md): **Nahpfad** – wenn das SW-Alignment zu wenig Evidenz hat (`min_matches = 2`), darf das *neueste* Wort den Cursor trotzdem bewegen, sofern es eines der nächsten drei Skriptwörter trifft (exakt oder nach der strikten Fuzzy-Regel). Nur mit vorhandenem Anker (`tracking`/`hold`/`resync`), nie in `listening`/`lost`. Begründung „nachweislich besser“: Nach manuellem Seek, Re-Anchor oder Sprung ist der Hypothesenpuffer leer; bisher brauchte die erste Bewegung zwei passende Wörter (≈ 1 Wort ≈ 250–400 ms zusätzliche Latenz bei 2,5–4 Wörtern/s). Mit Nahpfad bewegt sich der Cursor beim ersten Wort (Test `near_fast_path_moves_on_first_word_after_seek`). Die strikte Fuzzy-Regel verhindert, dass kurze Wörter („und“/„uns“) den Cursor ziehen (Test `near_word_match_rules`); die bestehende Szenario-Tabelle (u. a. „ein Wort reicht in `listening` nicht“) bleibt unverändert grün.
+Adopted (own implementation, no code copied, attribution in THIRD_PARTY_NOTICES.md): **near path** -- when the SW alignment has too little evidence (`min_matches = 2`), the *newest* word may still move the cursor if it hits one of the next three script words (exactly or via the strict fuzzy rule). Only with an existing anchor (`tracking`/`hold`/`resync`), never in `listening`/`lost`. Rationale for "demonstrably better": after a manual seek, re-anchor or jump the hypothesis buffer is empty; previously the first movement required two matching words (~ 1 word ~ 250-400 ms of additional latency at 2.5-4 words/s). With the near path the cursor moves on the first word (test `near_fast_path_moves_on_first_word_after_seek`). The strict fuzzy rule prevents short words ("und"/"uns") from pulling the cursor (test `near_word_match_rules`); the existing scenario table (among others "one word is not enough in `listening`") stays green and unchanged.
 
-Nicht übernommen, weil nicht besser belegt: das Bigramm-Gate fürs Fernfenster (unsere 2×-Sprungbestätigung erfüllt denselben Zweck mit Zeit-Hysterese) und der Re-Anchor über 6 Wörter (bei uns globale SW-Suche + Offline-Resync).
+Not adopted because not demonstrably better: the bigram gate for the far window (our 2x jump confirmation serves the same purpose with time hysteresis) and re-anchoring over 6 words (we use a global SW search + offline resync).
 
-## Nachtrag 2026-10-11: Partial-Kadenz, Onset-Metrik, Nemotron
+## Addendum 2026-10-11: partial cadence, onset metric, Nemotron
 
-**Befund (Nutzer-Log, Win11 ARM64, Kroko DE):** Partials nur alle ~1,27 s
-(t_ms 19180 → 20430 → 21747 → 23020), je 1–3 Wörter; `audioToPartial` 80 ms,
-`hypToCursor` 0,3 ms, der Scroll ruckelt im 1,3-s-Takt. `onsetToPartial`
+**Finding (user log, Win11 ARM64, Kroko DE):** Partials only every ~1.27 s
+(t_ms 19180 -> 20430 -> 21747 -> 23020), 1-3 words each; `audioToPartial` 80 ms,
+`hypToCursor` 0.3 ms, the scroll stutters at a 1.3 s beat. `onsetToPartial`
 p50 2649 ms / p95 46154 ms.
 
-**Ursache Kadenz: Modell, nicht Code.** Encoder-Metadaten der Kroko-Modelle:
-`decode_chunk_len = 128`, `T = 141` (10-ms-Frames) → ein Decoder-Schritt pro
-1,28 s Audio. Unsere Schleife dekodiert nach jedem Audio-Block
-(`while is_ready { decode }`) und meldet jede Textänderung; Endpoint-Regeln
-betreffen nur Finals. Gegenprobe im CI mit identischem Code: Zipformer EN 20M
-0,3 s, Nemotron 160 ms 0,2 s, Nemotron 320 ms 0,3 s, Kroko 1,30 s (p50 = p95).
-Die Annahme oben („typisch 320 ms bei Streaming-Zipformer“) gilt für Kroko
-nicht. Kein Code-Fix möglich; Abhilfe ist ein Modell mit kleinerem Chunk.
+**Cause of the cadence: the model, not the code.** Encoder metadata of the Kroko
+models: `decode_chunk_len = 128`, `T = 141` (10 ms frames) -> one decoder step
+per 1.28 s of audio. Our loop decodes after every audio block
+(`while is_ready { decode }`) and reports every text change; endpoint rules only
+affect finals. Cross-check in CI with identical code: Zipformer EN 20M
+0.3 s, Nemotron 160 ms 0.2 s, Nemotron 320 ms 0.3 s, Kroko 1.30 s (p50 = p95).
+The assumption above ("typically 320 ms for a streaming zipformer") does not
+hold for Kroko. No code fix is possible; the remedy is a model with a smaller chunk.
 
-**Ursache Onset-Metrik:** fester Schwellwert −45 dBFS *nach* AGC. Bei leisem
-Mikrofon hebt die AGC das Rauschen über −45 dBFS → „Onset“ auf Rauschen,
-zurückgesetzt nur bei Endpoint/Final → Sekunden bis Minuten. Neu:
-`zt_audio::OnsetDetector` – Schwelle = Rauschboden + 12 dB (Boden folgt
-schnell nach unten, langsam nach oben mit 3 dB/s, eingefroren während
-Sprache), mindestens 60 ms laut, Neu-Scharfschaltung nach 0,5 s Stille,
-unbeanspruchter Onset bleibt 2,5 s für eine späte erste Hypothese gültig.
-Derselbe Detektor misst im CI „Zeit bis erstes Wort“.
+**Cause of the onset metric:** a fixed threshold of -45 dBFS *after* AGC. With a quiet
+microphone the AGC lifts the noise above -45 dBFS -> "onset" on noise,
+reset only on endpoint/final -> seconds to minutes. New:
+`zt_audio::OnsetDetector` -- threshold = noise floor + 12 dB (the floor follows
+quickly downward, slowly upward at 3 dB/s, frozen during speech), at least
+60 ms loud, re-armed after 0.5 s of silence; an unclaimed onset stays valid for
+2.5 s for a late first hypothesis. The same detector measures "time to first word" in CI.
 
-**Entscheidung Modell:** NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8
-(OpenMDW-1.1, sherpa-onnx-Export `csukuangfj2/…-2026-06-11`) wird Standard für
-DE und EN, als **320-ms-Variante**; 80/160 ms wählbar, Kroko und 20M bleiben
-wählbar und sind Fallback, solange Nemotron nicht installiert ist. Umsetzung:
-`ModelType::OnlineNemoTransducer`, `SherpaConfig::nemotron` (Transducer-Felder,
-`greedy_search`, 4 Threads, `stream.set_option("language", "de"|"en")` nach
-`create_stream` und jedem `reset`, sonst `"auto"`). sherpa-onnx 1.13.8 kennt
-für Streaming-NeMo nur `greedy_search`; `modified_beam_search` beendet den
-Prozess (`exit(-1)`), daher keine Beam-Stufe und keine Hotwords.
+**Model decision:** NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8
+(OpenMDW-1.1, sherpa-onnx export `csukuangfj2/...-2026-06-11`) becomes the default for
+DE and EN, as the **320 ms variant**; 80/160 ms are selectable, Kroko and 20M remain
+selectable and act as a fallback as long as Nemotron is not installed. Implementation:
+`ModelType::OnlineNemoTransducer`, `SherpaConfig::nemotron` (transducer fields,
+`greedy_search`, 4 threads, `stream.set_option("language", "de"|"en")` after
+`create_stream` and after every `reset`, otherwise `"auto"`). sherpa-onnx 1.13.8 only
+supports `greedy_search` for streaming NeMo; `modified_beam_search` terminates the
+process (`exit(-1)`), hence no beam stage and no hotwords.
 
-Gemessen (CI-Lauf 38132699828, 4-vCPU-Runner, 100-ms-Blöcke, 500 ms
-Vorlauf-Stille; vollständige Tabelle in `docs/research/MODELS.md`):
+Measured (CI run 38132699828, 4-vCPU runner, 100 ms blocks, 500 ms
+lead silence; full table in `docs/research/MODELS.md`):
 
-| Modell | RTF Arm64 / x86 | Kadenz p50 / p95 | erstes Wort DE / EN | Laden | RSS |
+| Model | RTF Arm64 / x86 | Cadence p50 / p95 | First word DE / EN | Load | RSS |
 |---|---|---|---|---|---|
-| Nemotron 320 ms | 0,31 / 0,59 | 0,3 / 0,4 s | 0,59 / 0,90 s | ~1,5–1,8 s | 0,76–0,97 GB |
-| Nemotron 160 ms | 0,53–0,60 / **1,05–1,23** | 0,2 / 0,3–0,5 s | 0,59 / 0,90 s | ~1,5–1,8 s | 0,76–0,97 GB |
-| Kroko DE / EN | 0,03–0,04 | **1,3 / 1,3 s** | 0,99 / 1,0–2,3 s | ~2,4–2,8 s | 0,25 GB |
-| Zipformer EN 20M | 0,03–0,04 | 0,3 / 0,4 s | – / 1,2 s | ~0,6 s | 0,15 GB |
+| Nemotron 320 ms | 0.31 / 0.59 | 0.3 / 0.4 s | 0.59 / 0.90 s | ~1.5-1.8 s | 0.76-0.97 GB |
+| Nemotron 160 ms | 0.53-0.60 / **1.05-1.23** | 0.2 / 0.3-0.5 s | 0.59 / 0.90 s | ~1.5-1.8 s | 0.76-0.97 GB |
+| Kroko DE / EN | 0.03-0.04 | **1.3 / 1.3 s** | 0.99 / 1.0-2.3 s | ~2.4-2.8 s | 0.25 GB |
+| Zipformer EN 20M | 0.03-0.04 | 0.3 / 0.4 s | - / 1.2 s | ~0.6 s | 0.15 GB |
 
-Warum 320 statt 160 ms: 160 ms ist auf den x86-Runnern nicht echtzeitfähig
-(in einem zweiten Lauf sogar RTF 2,4 auf windows-latest), 320 ms braucht überall
-die Hälfte der Rechenzeit bei 0,3 s Kadenz (Kroko: 1,3 s). Damit ein zu
-langsames Modell nicht unbemerkt hinterherläuft, misst `RealtimeWatch`
-(`voice.rs`) die Dekodierzeit je 5 s Audio und warnt einmal, wenn RTF > 0,9 in
-zwei Fenstern hintereinander.
+Why 320 rather than 160 ms: 160 ms is not real-time capable on the x86 runners
+(in a second run even RTF 2.4 on windows-latest), whereas 320 ms needs
+half the compute everywhere at 0.3 s cadence (Kroko: 1.3 s). So that a model that
+is too slow does not silently fall behind, `RealtimeWatch`
+(`voice.rs`) measures the decode time per 5 s of audio and warns once if RTF > 0.9 in
+two consecutive windows.
 
-## Konsequenzen
+## Consequences
 
-- „Demo“ erscheint nur noch, wenn wirklich kein Streaming-Modell installiert ist oder der Build kein STT enthält, und dann immer mit „Modell laden“.
-- Ein kaputtes Modell führt nicht mehr zu scheinbarem Tracking, sondern zu einer sichtbaren Fehlermeldung mit Log.
-- Neue Abhängigkeiten: `tracing`, `tracing-subscriber`, `tracing-appender` (alle MIT). `Cargo.lock` per `lockfiles.yml` regeneriert.
-- Offene Punkte: Latenzwerte auf Windows-ARM64-Zielhardware messen und hier nachtragen; Encoder-Chunkgröße der Kroko-Modelle aus den Modell-Metadaten verifizieren; `num_threads` (2) für ARM64 evaluieren; cpal-Stream-Fehler (`err_fn`) laufen noch über `eprintln!` in `zt-audio` statt über `tracing`.
+- "Demo" only appears when no streaming model is really installed or the build contains no STT, and then always with "Load model".
+- A broken model no longer leads to apparent tracking but to a visible error message with a log.
+- New dependencies: `tracing`, `tracing-subscriber`, `tracing-appender` (all MIT). `Cargo.lock` regenerated via `lockfiles.yml`.
+- Open points: measure latency values on Windows ARM64 target hardware and add them here; verify the encoder chunk size of the Kroko models from the model metadata; evaluate `num_threads` (2) for ARM64; cpal stream errors (`err_fn`) still go through `eprintln!` in `zt-audio` instead of `tracing`.
