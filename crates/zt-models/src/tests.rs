@@ -134,7 +134,7 @@ const BUNDLED: &str = include_str!("../../../apps/desktop/src-tauri/resources/mo
 #[test]
 fn bundled_manifest_is_valid_and_complete() {
     let m = Manifest::parse(BUNDLED).expect("bundled models.json must parse");
-    assert_eq!(m.models.len(), 8);
+    assert_eq!(m.models.len(), 6);
     // Every file is pinned and hashed (no unverified files in the release manifest).
     assert!(m.warnings().is_empty(), "{:?}", m.warnings());
     for e in &m.models {
@@ -214,10 +214,7 @@ fn default_selection_and_fallback_chain() {
         "zipformer-en-20m-2023-02-17"
     );
     // A preference for another language is ignored.
-    assert_eq!(
-        ids(m.fallback_chain("en", ModelRole::Streaming, Some(N80)))[0],
-        N80
-    );
+    assert_eq!(ids(m.fallback_chain("en", ModelRole::Streaming, Some(N80)))[0], N80);
     // Unranked Nemotron 320 not installed -> the Apache-2.0 20M model.
     let sel = m.select("en-US", ModelRole::Streaming, None, |e| !e.id.starts_with("nemotron"));
     assert_eq!(sel.unwrap().id, "zipformer-en-20m-2023-02-17");
