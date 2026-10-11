@@ -110,13 +110,16 @@ fn main() {
     let platform = format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH);
 
     let t_start = Instant::now();
-    let mut cfg = SherpaConfig::zipformer(&dir, name.clone());
+    // --language selects the Nemotron config (greedy only, language prompt).
+    let mut cfg = match arg(&args, "--language") {
+        Some(l) => SherpaConfig::nemotron(&dir, name.clone(), l),
+        None => SherpaConfig::zipformer(&dir, name.clone()),
+    };
     cfg.encoder = dir.join(need("--encoder"));
     cfg.decoder = dir.join(need("--decoder"));
     cfg.joiner = dir.join(need("--joiner"));
     cfg.tokens = dir.join(need("--tokens"));
     cfg.debug = std::env::var_os("ZT_STT_DEBUG").is_some();
-    cfg.language = arg(&args, "--language");
     if let Some(t) = arg(&args, "--threads") {
         cfg.num_threads = t.parse().expect("--threads");
     }

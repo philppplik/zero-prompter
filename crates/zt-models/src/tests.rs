@@ -134,7 +134,7 @@ const BUNDLED: &str = include_str!("../../../apps/desktop/src-tauri/resources/mo
 #[test]
 fn bundled_manifest_is_valid_and_complete() {
     let m = Manifest::parse(BUNDLED).expect("bundled models.json must parse");
-    assert_eq!(m.models.len(), 5);
+    assert_eq!(m.models.len(), 8);
     // Every file is pinned and hashed (no unverified files in the release manifest).
     assert!(m.warnings().is_empty(), "{:?}", m.warnings());
     for e in &m.models {

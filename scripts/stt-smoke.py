@@ -43,10 +43,11 @@ WAVS = {
 NEMO = "nemotron-3.5-streaming-0.6b-160ms-int8"
 
 # model id -> list of (wav, expected keywords, hotwords, legacy-check, language)
+# Nemotron: no hotwords (sherpa-onnx 1.13.8 streaming NeMo = greedy_search only).
 CASES = {
     NEMO: [
-        ("de-kroko-0", "Ende,Wurst,zwei", "Teleprompter,Mikrofon", False, "de"),
-        ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", False, "en"),
+        ("de-kroko-0", "Ende,Wurst,zwei", "", False, "de"),
+        ("en-librispeech-0", "yellow,lamps,quarter", "", False, "en"),
     ],
     "zipformer-de-kroko-2025-08-06": [
         ("de-kroko-0", "Ende,Wurst,zwei", "Teleprompter,Mikrofon", True, None),
@@ -60,7 +61,7 @@ CASES = {
     ],
 }
 # ONNX Runtime threads (the app uses the same: 4 for Nemotron, 2 otherwise).
-THREADS = {NEMO: 4}
+THREADS = {NEMO: 4}  # informational; SherpaConfig::nemotron already uses 4
 EXE = os.path.join(ROOT, "target", "release", "examples", "smoke" + (".exe" if os.name == "nt" else ""))
 
 def sha256(path):

@@ -95,6 +95,32 @@ impl SherpaConfig {
         }
     }
 
+    /// NVIDIA Nemotron 3.5 ASR streaming (NeMo cache-aware transducer).
+    /// sherpa-onnx 1.13.8 only implements `greedy_search` for streaming NeMo
+    /// transducers; any other method makes the C++ side call `exit(-1)`
+    /// (whole process, not catchable), so this config never tries beam search
+    /// and therefore has no hotwords. `language`: "de", "en" or "auto".
+    pub fn nemotron(
+        dir: impl Into<PathBuf>,
+        model_name: impl Into<String>,
+        language: impl Into<String>,
+    ) -> Self {
+        let dir = dir.into();
+        Self {
+            encoder: dir.join("encoder.int8.onnx"),
+            decoder: dir.join("decoder.int8.onnx"),
+            joiner: dir.join("joiner.int8.onnx"),
+            num_threads: 4,
+            decoding_method: "greedy_search".into(),
+            language: Some(language.into()),
+            ..Self::zipformer(dir, model_name)
+        }
+    }
+
+    fn beam(&self) -> bool {
+        self.decoding_method == "modified_beam_search"
+    }
+
     fn log(&self, msg: &str) {
         if let Some(l) = &self.log {
             (l.0)(msg);
@@ -216,7 +242,7 @@ impl SherpaEngine {
     fn ladder(&self, hotwords: Option<String>) -> Vec<Stage> {
         let beam = "modified_beam_search".to_string();
         let mut v = Vec::new();
-        if let (Some(h), Some(bpe)) = (hotwords, &self.bpe) {
+        if let (Some(h), Some(bpe), true) = (hotwords, &self.bpe, self.cfg.beam()) {
             v.push(Stage {
                 label: "beam+hotwords",
                 decoding_method: beam.clone(),
@@ -224,7 +250,7 @@ impl SherpaEngine {
                 hotwords: Some(h),
             });
         }
-        if self.cfg.decoding_method == beam {
+        if self.cfg.beam() {
             v.push(Stage { label: "beam", decoding_method: beam, bpe: None, hotwords: None });
         }
         v.push(Stage {
@@ -336,6 +362,11 @@ impl SpeechEngine for SherpaEngine {
     fn set_hotwords(&mut self, hotwords: &[Hotword]) -> Result<(), SttError> {
         if self.bpe.is_none() {
             return Err(SttError::Unsupported("hotwords need a bpe vocab (model has none)"));
+        }
+        if !self.cfg.beam() {
+            return Err(SttError::Unsupported(
+                "hotwords need modified_beam_search; this model runs greedy_search only",
+            ));
         }
         let lines: Vec<String> =
             hotwords.iter().filter_map(|h| self.vocab.hotword_line(&h.text, h.score)).collect();

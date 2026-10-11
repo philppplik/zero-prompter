@@ -12,8 +12,8 @@
 mod gain;
 mod onset;
 mod resample;
-pub use onset::{OnsetConfig, OnsetDetector};
 pub use gain::{soft_limit, Agc, GainMode, AGC_TARGET_DBFS, MANUAL_GAIN_RANGE_DB};
+pub use onset::{OnsetConfig, OnsetDetector};
 pub use resample::{downmix_to_mono, ChannelMode, ChannelSelector, Resampler};
 
 #[cfg(feature = "cpal")]

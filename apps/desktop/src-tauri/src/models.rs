@@ -28,9 +28,6 @@ const BUNDLED_MANIFEST: &str = include_str!("../resources/models.json");
 /// Computed hashes of files the manifest could not verify (per model dir).
 const UNVERIFIED_FILE: &str = "unverified-sha256.json";
 const PREFS_FILE: &str = "voice-models.json";
-/// ONNX Runtime threads for the 0.6B Nemotron encoder (Zipformers use 2).
-#[cfg(feature = "sherpa")]
-const NEMO_THREADS: i32 = 4;
 /// Legacy location of a manually copied Silero VAD model (`<models>/silero_vad.onnx`).
 /// The manifest entry `silero-vad` (engine `sherpaVad`) is preferred.
 pub const SILERO_VAD_FILE: &str = "silero_vad.onnx";
@@ -461,17 +458,16 @@ pub fn build_engine(
     };
     let candidates = chain.iter().map(|e| {
         let e: &ModelEntry = e;
-        let mut cfg = SherpaConfig::zipformer(store.model_dir(e), e.name.clone());
+        // Nemotron 3.5 streaming: per-stream language prompt ("de"/"en", else
+        // "auto"), greedy only, 4 threads for the 0.6B encoder.
+        let mut cfg = match e.language_prompt(&short) {
+            Some(l) => SherpaConfig::nemotron(store.model_dir(e), e.name.clone(), l),
+            None => SherpaConfig::zipformer(store.model_dir(e), e.name.clone()),
+        };
         path_of(e, "encoder", &mut cfg.encoder);
         path_of(e, "decoder", &mut cfg.decoder);
         path_of(e, "joiner", &mut cfg.joiner);
         path_of(e, "tokens", &mut cfg.tokens);
-        // Nemotron 3.5 streaming: per-stream language prompt ("de"/"en", else
-        // "auto"); 0.6B encoder -> more threads than the small Zipformers.
-        cfg.language = e.language_prompt(&short);
-        if cfg.language.is_some() {
-            cfg.num_threads = NEMO_THREADS;
-        }
         // Diagnostics mode: sherpa's own verbose output (stderr, visible when
         // started from a console). Stage/preflight lines go to the log file.
         cfg.debug = std::env::var_os("ZT_STT_DEBUG").is_some();
