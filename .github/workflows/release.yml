@@ -73,6 +73,19 @@ jobs:
           npm ci --no-audit --no-fund
           npx tauri icon app-icon.png
 
+      # Same guard as ci.yml: a partially restored cache can leave an empty
+      # target/sherpa-onnx-prebuilt/<archive>/lib that the build script trusts.
+      - name: Reset incomplete sherpa-onnx prebuilt (stale cache guard)
+        shell: bash
+        run: |
+          for d in target/sherpa-onnx-prebuilt/*/ target/*/sherpa-onnx-prebuilt/*/; do
+            [ -d "$d" ] || continue
+            if ! ls "$d"lib/*sherpa-onnx-c-api* >/dev/null 2>&1; then
+              echo "incomplete prebuilt: $d"; rm -r "$d"
+            fi
+          done
+          find target -maxdepth 4 -name 'sherpa-onnx-sys-*' -path '*release*' -prune -exec rm -r {} + || true
+
       # Signing is optional. Empty APPLE_* variables make the bundler try to
       # import an empty certificate and fail, so they are only exported when
       # the secrets exist (unsigned builds otherwise).
