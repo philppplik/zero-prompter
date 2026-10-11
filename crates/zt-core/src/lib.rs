@@ -6,6 +6,7 @@
 
 pub mod command;
 pub mod controller;
+pub mod marker;
 pub mod metrics;
 pub mod playback;
 pub mod script;
@@ -14,6 +15,7 @@ pub mod state;
 
 pub use command::{Command, ScrollMode, VoiceSignal};
 pub use controller::{Controller, CoreError, StatePatch};
+pub use marker::{MarkerAnimation, MarkerSettings, MarkerStyle, UnderlineScope};
 pub use playback::{Playback, PlaybackEvent, PlaybackState, UiMode};
 pub use script::{Paragraph, Script, Token, TokenId};
 pub use settings::{

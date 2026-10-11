@@ -2,9 +2,10 @@
 // source of truth: the UI never mutates `state` locally, it dispatches commands
 // and applies `state://patch` events.
 import { api, errorText, events, type UnlistenFn } from './bridge';
+import { migrateLegacyStyle, sanitizeMarker } from './marker';
 import { DEFAULT_PREFS, type AppState, type Command, type EngineInfo, type ResyncInfo, type UiPrefs } from './types';
 
-export type SettingsTab = 'appearance' | 'scroll' | 'voice' | 'hotkeys' | 'output' | 'diagnostics' | 'about';
+export type SettingsTab = 'appearance' | 'marker' | 'scroll' | 'voice' | 'hotkeys' | 'output' | 'diagnostics' | 'about';
 
 export interface Toast {
   id: number;
@@ -91,6 +92,12 @@ class Store {
     this.state = st;
     Object.assign(this.prefs, { ...DEFAULT_PREFS, ...prefs });
     this.talentVisible = visible;
+    // One-time migration: legacy UI pref markerStyle 'band' -> Settings.marker.style.
+    const migrated = migrateLegacyStyle(this.prefs.markerStyle, sanitizeMarker(st.settings.marker));
+    if (migrated) {
+      this.send({ type: 'replaceSettings', value: { ...st.settings, marker: migrated } });
+      this.setPrefs({ markerStyle: 'line' });
+    }
     frame.position = frame.target = this.position = st.scroll.position;
     frame.version = st.script.version;
     return un;

@@ -51,7 +51,7 @@ Alle Schriften sind lokal gebündelt (`@fontsource`, OFL-1.1) und funktionieren 
 
 ## Lesemarker und Farben
 
-- **Marker-Stil:** Linie oder Band.
+- **Lesemarker** (eigener Bereich *Einstellungen → Lesemarker*, gespeichert in `settings.json` unter `marker`): Stil per Kachel mit Mini-Vorschau – Linie, Band, Pfeile, Klammern, Fokus-Fenster, Verlauf, Unterstreichung (Wort oder Satz), Seitenbalken oder kein Marker. Dazu Farbe (Vorlagen aus dem Theme-Akzent oder eigener Farbwähler), Deckkraft bzw. Abdunklung, Dicke/Höhe (0,5–3×), Position (5–70 %), Dimmen von gelesenem und ungelesenem Text, Glow, Weichzeichnen außerhalb der Lesezone (Fokus-Fenster/Verlauf) und Animation beim Weiterspringen (Aus, Gleiten, Puls). Eine Live-Vorschau zeigt das Ergebnis; Talent-Fenster und Vorschau sehen identisch aus, auch gespiegelt. Ein früher gewähltes „Band“ wird automatisch übernommen.
 - **Gelesenen Text dimmen**, mit einstellbarer Opazität (0,3–1). Ohne eigenen Wert gilt der Standard des Themes.
 - **Eigene Farben** für Text, Hintergrund und Marker überschreiben das Theme. Achte dabei selbst auf ausreichenden Kontrast.
 - **Erscheinungsbild der Oberfläche:** System, Hell oder Dunkel. Das betrifft nur das Control-Fenster, nicht den Prompter-Text.

@@ -10,10 +10,12 @@
   import { onMount, tick } from 'svelte';
   import { fade } from 'svelte/transition';
   import { Scroller, type LayoutMap } from '../lib/scroller';
-  import { clampFocusLine, FOCUS_LINE_MAX, FOCUS_LINE_MIN, frame, store } from '../lib/store.svelte';
+  import { frame, store } from '../lib/store.svelte';
   import { api } from '../lib/bridge';
-  import { layoutKey, prompterVars } from '../lib/tokens';
+  import { layoutKey, prompterVars, THEMES } from '../lib/tokens';
   import { notches, tokenSteps, WheelAccumulator, wheelTarget, wpmDelta } from '../lib/wheel';
+  import { markerColor, markerVars, sanitizeMarker } from '../lib/marker';
+  import ReadingMarker from './ReadingMarker.svelte';
   import type { AppState, Token, UiPrefs } from '../lib/types';
 
   interface Props {
@@ -49,8 +51,13 @@
   const isMdMark = (t: Token) => /^#{1,6}$/.test(t.text) || /^[-*>]$/.test(t.text);
   const isHeading = (toks: Token[]) => toks.length > 0 && /^#{1,6}$/.test(toks[0].text);
 
+  const marker = $derived(sanitizeMarker(app.settings.marker));
+  let rm = $state<ReturnType<typeof ReadingMarker>>();
+  let ulHost = $state<HTMLDivElement>();
   const style = $derived(
     prompterVars(app.settings.theme, prefs, app.settings.fontSizePx, app.settings.lineHeight, app.settings) +
+      ';' +
+      markerVars(marker, markerColor(marker, prefs.markerColor, THEMES[app.settings.theme] ?? THEMES.studioDark), prefs.dimRead, reduced()) +
       `;--pr-scale:${scale};--focus:${app.settings.focusLine}`,
   );
   const mirrorTransform = $derived(
@@ -87,6 +94,7 @@
   });
 
   function placeDim(pos: number, layout: LayoutMap | null) {
+    rm?.frame(pos, layout, app.script.tokens);
     if (!dim || !layout || layout.lines.length === 0) {
       if (dim) dim.style.height = '0px';
       return;
@@ -151,31 +159,6 @@
     store.send({ type: 'seekToken', value: to });
   }
 
-  // Marker drag (preview only): 5–70 % of the height (DESIGN §3.7).
-  let dragging = false;
-  function markerDown(e: PointerEvent) {
-    if (!onfocusdrag) return;
-    dragging = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-  function markerMove(e: PointerEvent) {
-    if (!dragging || !onfocusdrag) return;
-    const r = viewport.getBoundingClientRect();
-    onfocusdrag(clampFocusLine(Math.round(((e.clientY - r.top) / r.height) * 100) / 100));
-  }
-  function markerUp() {
-    dragging = false;
-  }
-  function markerKey(e: KeyboardEvent) {
-    if (!onfocusdrag) return;
-    const d = e.key === 'ArrowUp' ? -0.01 : e.key === 'ArrowDown' ? 0.01 : 0;
-    if (d) {
-      e.preventDefault();
-      e.stopPropagation();
-      onfocusdrag(clampFocusLine(Math.round((app.settings.focusLine + d) * 100) / 100));
-    }
-  }
-
   onMount(() => {
     scroller = new Scroller({
       content,
@@ -224,6 +207,7 @@
   <div class="stage" style:transform={mirrorTransform}>
     <div class="content" bind:this={content} lang={app.settings.language}>
       <div class="hl" bind:this={hl} aria-hidden="true"></div>
+      <div class="mk-ul" bind:this={ulHost} aria-hidden="true"></div>
       {#if app.script.tokens.length === 0}
         <div class="empty" aria-label="Kein Skript geladen">
           <svg viewBox="0 0 64 64" width="160" height="160" aria-hidden="true">
@@ -241,25 +225,16 @@
       {/if}
     </div>
     {#if prefs.dimRead}<div class="dim" bind:this={dim} aria-hidden="true"></div>{/if}
-    <!-- svelte-ignore a11y_no_static_element_interactions a11y_no_noninteractive_tabindex -->
-    <div
-      class="marker {prefs.markerStyle}"
-      class:hold
-      class:draggable={!!onfocusdrag}
-      role={onfocusdrag ? 'slider' : undefined}
-      tabindex={onfocusdrag ? 0 : undefined}
-      aria-label={onfocusdrag ? 'Lesemarker-Position' : undefined}
-      aria-valuemin={onfocusdrag ? Math.round(FOCUS_LINE_MIN * 100) : undefined}
-      aria-valuemax={onfocusdrag ? Math.round(FOCUS_LINE_MAX * 100) : undefined}
-      aria-valuenow={onfocusdrag ? Math.round(app.settings.focusLine * 100) : undefined}
-      aria-valuetext={onfocusdrag ? `${Math.round(app.settings.focusLine * 100)} Prozent` : undefined}
-      onpointerdown={markerDown}
-      onpointermove={markerMove}
-      onpointerup={markerUp}
-      onkeydown={markerKey}
-    >
-      <span class="arrow" aria-hidden="true"></span>
-    </div>
+    <ReadingMarker
+      bind:this={rm}
+      {marker}
+      focus={app.settings.focusLine}
+      {hold}
+      reduced={reduced()}
+      viewport={() => viewport}
+      {ulHost}
+      ondrag={onfocusdrag}
+    />
     {#if countdown > 0}
       {#key countdown}
         <div class="countdown" aria-live="assertive">{countdown}</div>
@@ -350,63 +325,6 @@
     background: var(--pr-bg);
     opacity: calc(1 - var(--pr-read-opacity));
     pointer-events: none;
-  }
-  .marker {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(var(--focus) * 100%);
-    pointer-events: none;
-    display: flex;
-    justify-content: center;
-  }
-  .marker::before {
-    content: '';
-    display: block;
-  }
-  .marker.line::before {
-    height: 2px;
-    background: var(--pr-marker);
-    width: calc(min(100%, var(--pr-measure) + 24px));
-    font-size: calc(var(--pr-size) * var(--pr-scale));
-    margin-top: -1px;
-  }
-  .marker.band::before {
-    height: calc(var(--pr-size) * var(--pr-scale) * var(--pr-line-height));
-    transform: translateY(-50%);
-    width: calc(min(100%, var(--pr-measure) + 24px));
-    font-size: calc(var(--pr-size) * var(--pr-scale));
-    background: color-mix(in srgb, var(--pr-marker) 12%, transparent);
-    border-top: 1px solid color-mix(in srgb, var(--pr-marker) 40%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--pr-marker) 40%, transparent);
-  }
-  .marker .arrow {
-    position: absolute;
-    left: 8px;
-    top: -8px;
-    border: 8px solid transparent;
-    border-left: 12px solid var(--pr-marker);
-  }
-  .marker.hold::after {
-    /* DESIGN §3.6: only visible state on talent = subtle ring at the marker */
-    content: '';
-    position: absolute;
-    left: 6px;
-    top: -14px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 3px solid color-mix(in srgb, var(--state-hold) 30%, transparent);
-  }
-  .marker.draggable {
-    pointer-events: auto;
-    cursor: ns-resize;
-    height: 16px;
-    margin-top: -8px;
-    align-items: center;
-  }
-  .marker.draggable .arrow {
-    top: 0;
   }
   .countdown {
     position: absolute;

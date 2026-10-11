@@ -169,6 +169,8 @@ pub struct Settings {
     /// Multi-channel input -> mono: "auto" (loudest channel), "mix" (average)
     /// or a 1-based channel number ("1", "2", ...).
     pub mic_channel: String,
+    /// Reading-marker look (style, colour, dimming, motion), see [crate::marker].
+    pub marker: crate::marker::MarkerSettings,
 }
 
 impl Settings {
@@ -240,6 +242,7 @@ impl Settings {
             mic_gain_auto: true,
             mic_gain_db: 0.0,
             mic_channel: "auto".to_string(),
+            marker: crate::marker::MarkerSettings::default(),
         }
     }
 
@@ -270,6 +273,7 @@ impl Settings {
         let ch = self.mic_channel.trim().to_ascii_lowercase();
         let valid = ch == "auto" || ch == "mix" || ch.parse::<u8>().is_ok_and(|n| n >= 1);
         self.mic_channel = if valid { ch } else { "auto".to_string() };
+        self.marker = self.marker.sanitized();
         if !t.prompter.contains_key(&self.theme) {
             self.theme = ThemeSet::DEFAULT.to_string();
         }
@@ -316,6 +320,21 @@ mod tests {
         assert_eq!(s.font_size_px, t.typography.prompter.size_min);
         assert_eq!(s.wpm, Settings::WPM_MAX);
         assert_eq!(s.theme, ThemeSet::DEFAULT);
+    }
+
+    #[test]
+    fn marker_settings_are_sanitized() {
+        let t = Tokens::embedded();
+        let marker = crate::marker::MarkerSettings {
+            size: 50.0,
+            color: Some("#ABC".into()),
+            ..Default::default()
+        };
+        let s = Settings { marker, ..Default::default() }.sanitized(&t);
+        assert_eq!(s.marker.size, crate::marker::MarkerSettings::SIZE_MAX);
+        assert_eq!(s.marker.color.as_deref(), Some("#aabbcc"));
+        let old: Settings = serde_json::from_str("{\"wpm\":150}").unwrap();
+        assert_eq!(old.marker, crate::marker::MarkerSettings::default());
     }
 
     #[test]

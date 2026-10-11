@@ -149,7 +149,15 @@ Zustände: Countdown, Playing, Paused (Marker bleibt), Ende („— Ende —“ 
 Position Default 35 % Höhe (verschiebbar per Drag im Control-Vorschau, 5–70 %).
 - **Linie:** 2 px, Marker-Farbe, volle Spaltenbreite + 24 px.
 - **Band:** Zeilenhöhe, Marker 12 % Fläche, Kanten 1 px 40 %.
-- **Pfeil/Keil (0.2):** 24 px Dreieck links außen.
+- **Pfeile:** Dreiecke links und rechts am Fensterrand (0,3 em × Größe).
+- **Klammern:** eckige Klammern an den Spaltenkanten, Zeilenhöhe × Größe.
+- **Fokus-Fenster (Spotlight):** alles außer der Lesezone mit Hintergrundfarbe abgedunkelt (Deckkraft × 85 %), optional weichgezeichnet (`backdrop-filter`, 0–8 px).
+- **Verlauf:** weiches Farbband, darüber/darunter blendet der Text über 3 Zeilen in den Hintergrund aus.
+- **Unterstreichung:** aktuelles Wort oder aktueller Satz (bis Satzzeichen `.!?…`), 0,07 em, mitlaufend im Content-Layer.
+- **Seitenbalken:** vertikaler Akzentbalken (4 px × Größe) links der Spalte.
+- **Kein Marker:** unsichtbar; in der Vorschau bleibt ein Drag-Griff (gestrichelt bei Hover/Fokus).
+
+Einstellungen (`Settings.marker`, zt-core `marker.rs`, gespiegelt in `lib/marker.ts`): `style`, `color` (null = UI-Pref/Theme; Vorlagen beginnen mit dem Theme-Akzent), `opacity` 0,1–1, `size` 0,5–3, `dimRead` 0–0,9 (null = Theme-`readOpacity`), `dimUnread` 0–0,9, `glow` 0–1 (drop-shadow bis 16 px), `blur` 0–8 px, `animation` none/glide (180 ms transform)/pulse (Opacity-Flash bei Zeilenwechsel), `underlineScope` word/sentence. Rendering in `ReadingMarker.svelte` innerhalb der gespiegelten Stage: Talent, Vorschau und Einstellungs-Vorschau sind identisch, H/V-Spiegelung wirkt automatisch. Performance: Position nur über `transform`, Effekte über `opacity`/`filter`; DOM-Schreibzugriffe pro Frame nur bei Zeilen-/Bereichswechsel. `prefers-reduced-motion` bzw. „Bewegung reduzieren“ schaltet Animationen ab.
 Text oberhalb = gelesen → `readOpacity`. Voice: aktuelles Wort mit `wordHighlight`-Hintergrund, radius xs, Übergang 120 ms.
 
 ### 3.8 Voice-Tracking-Statusindikator (Operator)

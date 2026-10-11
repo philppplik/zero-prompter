@@ -1,3 +1,4 @@
+import type { MarkerSettings } from './marker';
 // Mirrors the serde JSON of zt-core (crates/zt-core/src/*.rs). Keep in sync.
 
 export type TokenId = number;
@@ -97,6 +98,8 @@ export interface Settings extends Typography {
   micGainDb: number;
   /** Multi-channel -> mono: 'auto' (loudest), 'mix' or a 1-based channel number. */
   micChannel: string;
+  /** Reading marker look (lib/marker.ts, zt_core::marker). */
+  marker: MarkerSettings;
 }
 
 export interface AppState {
@@ -279,6 +282,7 @@ export interface ResyncInfo {
   outcome: 'ignored' | 'noMatch' | 'confirmed' | 'reanchored';
 }
 
+/** Legacy UI pref (migrated into Settings.marker.style, see lib/marker.ts). */
 export type MarkerStyle = 'line' | 'band';
 import type { FontChoice } from './fonts';
 export type { FontChoice } from './fonts';

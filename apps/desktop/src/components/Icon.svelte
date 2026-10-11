@@ -23,6 +23,7 @@
     // Sliders (settings) – replaces the former sun-like gear glyph.
     settings: 'M2.5 4.5h6M11.5 4.5h2M2.5 11.5h2M7.5 11.5h6M10 3v3M6 10v3',
     type: 'M3 4.5V3h10v1.5M8 3v10M6 13h4',
+    marker: 'M5.5 8h8M2 5.5 4.5 8 2 10.5M5.5 4.5h6M5.5 11.5h6',
     sidebar: 'M2.5 3.5h11v9h-11zM6 3.5v9',
     command: 'M5.5 6.5h5v3h-5zM5.5 6.5V5a1.5 1.5 0 1 0-1.5 1.5zM10.5 6.5V5a1.5 1.5 0 1 1 1.5 1.5zM5.5 9.5V11a1.5 1.5 0 1 1-1.5-1.5zM10.5 9.5V11a1.5 1.5 0 1 0 1.5-1.5z',
     exit: 'M6 3.5H3.5v9H6M9.5 5.5 12 8l-2.5 2.5M12 8H6',

@@ -5,6 +5,7 @@ import { api, errorText } from './bridge';
 import { store } from './store.svelte';
 import { THEME_IDS, THEME_LABELS, THEMES } from './tokens';
 import type { ScrollMode } from './types';
+import { MARKER_STYLES, nextStyle, sanitizeMarker, type MarkerSettings, type MarkerStyle } from './marker';
 
 export interface Action {
   id: string;
@@ -16,6 +17,17 @@ export interface Action {
 }
 
 const s = () => store.state;
+
+const curMarker = (): MarkerSettings => sanitizeMarker(store.state?.settings.marker);
+const styleLabel = (id: MarkerStyle) => MARKER_STYLES.find((x) => x.id === id)?.label ?? id;
+
+/** Patch the reading marker (core settings, sanitized again in Rust). */
+export function updateMarker(patch: Partial<MarkerSettings>): void {
+  const st = store.state;
+  if (!st) return;
+  const settings = JSON.parse(JSON.stringify(st.settings)) as typeof st.settings;
+  store.send({ type: 'replaceSettings', value: { ...settings, marker: sanitizeMarker({ ...curMarker(), ...patch }) } });
+}
 
 export async function openFileDialog(): Promise<void> {
   try {
@@ -171,7 +183,7 @@ export function paletteActions(): Action[] {
     { id: 'fontBigger', group: 'Darstellung', label: 'Schrift größer', run: () => nudgeFont(4) },
     { id: 'fontSmaller', group: 'Darstellung', label: 'Schrift kleiner', run: () => nudgeFont(-4) },
     { id: 'dim', group: 'Darstellung', label: store.prefs.dimRead ? 'Gelesenen Text nicht dimmen' : 'Gelesenen Text dimmen', run: () => store.setPrefs({ dimRead: !store.prefs.dimRead }) },
-    { id: 'marker', group: 'Darstellung', label: store.prefs.markerStyle === 'line' ? 'Lesemarker: Band' : 'Lesemarker: Linie', run: () => store.setPrefs({ markerStyle: store.prefs.markerStyle === 'line' ? 'band' : 'line' }) },
+    { id: 'marker', group: 'Darstellung', label: `Lesemarker: ${styleLabel(nextStyle(curMarker().style))}`, keywords: 'marker stil linie band', run: () => updateMarker({ style: nextStyle(curMarker().style) }) },
     { id: 'fps', group: 'Darstellung', label: store.prefs.showFrameStats ? 'Frametime-Anzeige aus' : 'Frametime-Anzeige an', keywords: 'fps performance', run: () => store.setPrefs({ showFrameStats: !store.prefs.showFrameStats }) },
     { id: 'toggleMirror', group: 'Ausgabe', label: 'Horizontal spiegeln', keywords: 'mirror', run: () => { runHotkeyAction('toggleMirror'); } },
     { id: 'toggleMirrorV', group: 'Ausgabe', label: 'Vertikal spiegeln', keywords: 'mirror', run: () => { runHotkeyAction('toggleMirrorV'); } },

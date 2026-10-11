@@ -13,7 +13,8 @@
   import ModelList from './ModelList.svelte';
   import AboutPanel from './AboutPanel.svelte';
   import DiagnosticsPanel from './DiagnosticsPanel.svelte';
-  import { FOCUS_LINE_MAX, FOCUS_LINE_MIN, store, type SettingsTab } from '../lib/store.svelte';
+  import MarkerPanel from './MarkerPanel.svelte';
+  import { store, type SettingsTab } from '../lib/store.svelte';
   import { api, errorText } from '../lib/bridge';
   import { setMode } from '../lib/actions';
   import { displayChord } from '../lib/hotkeys';
@@ -31,8 +32,9 @@
   const prefs = $derived(store.prefs);
   const pt = tokens.type.prompter;
 
-  const TABS: { id: SettingsTab; label: string; icon: 'type' | 'paraNext' | 'mic' | 'keyboard' | 'monitor' | 'timer' | 'info' }[] = [
+  const TABS: { id: SettingsTab; label: string; icon: 'type' | 'marker' | 'paraNext' | 'mic' | 'keyboard' | 'monitor' | 'timer' | 'info' }[] = [
     { id: 'appearance', label: 'Darstellung', icon: 'type' },
+    { id: 'marker', label: 'Lesemarker', icon: 'marker' },
     { id: 'scroll', label: 'Scroll', icon: 'paraNext' },
     { id: 'voice', label: 'Voice & Modelle', icon: 'mic' },
     { id: 'hotkeys', label: 'Tastenkürzel', icon: 'keyboard' },
@@ -314,24 +316,6 @@
               </section>
 
               <section>
-                <h3 class="caption">Lesemarker</h3>
-                <div class="seg" role="group" aria-label="Marker-Stil">
-                  <button aria-pressed={prefs.markerStyle === 'line'} onclick={() => store.setPrefs({ markerStyle: 'line' })}>Linie</button>
-                  <button aria-pressed={prefs.markerStyle === 'band'} onclick={() => store.setPrefs({ markerStyle: 'band' })}>Band</button>
-                </div>
-                <div class="field" style="margin-top:12px">
-                  <span class="lbl" id="lbl-focus">Position</span>
-                  <div class="field-row">
-                    <input type="range" min={FOCUS_LINE_MIN} max={FOCUS_LINE_MAX} step="0.01" aria-labelledby="lbl-focus" value={st.settings.focusLine}
-                      aria-valuetext="{Math.round(st.settings.focusLine * 100)} Prozent"
-                      onchange={(e) => update({ focusLine: Number((e.currentTarget as HTMLInputElement).value) })} />
-                    <span class="num val">{Math.round(st.settings.focusLine * 100)} %</span>
-                  </div>
-                  <span class="footnote">Auch per Drag auf dem Marker in der Vorschau.</span>
-                </div>
-              </section>
-
-              <section>
                 <h3 class="caption">Oberfläche</h3>
                 <div class="seg" role="group" aria-label="Erscheinungsbild">
                   <button aria-pressed={prefs.uiTheme === 'system'} onclick={() => store.setPrefs({ uiTheme: 'system' })}>System</button>
@@ -340,6 +324,8 @@
                 </div>
                 <label class="check" style="margin-top:12px"><input type="checkbox" checked={prefs.showFrameStats} onchange={() => store.setPrefs({ showFrameStats: !prefs.showFrameStats })} /> Frametime-Anzeige</label>
               </section>
+            {:else if tab === 'marker'}
+              <MarkerPanel />
             {:else if tab === 'scroll'}
               <section>
                 <label class="field">

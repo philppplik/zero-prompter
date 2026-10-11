@@ -12,6 +12,10 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 - **Mausrad:** Konstant = Tempo ±5 WPM pro Raste (`Shift` ±1) mit kurzem „140 WPM“-Overlay; Manuell = Position; `Ctrl`/`Alt` vertauscht Position und Tempo. Voice-Modus unverändert (kurzer manueller Override). Funktioniert jetzt auch über dem Talent-Fenster. Doku in `shortcuts.md` und im `?`-Overlay.
 - **Beispielskript** rund zehnmal länger (~1.250 Wörter): Zahlen, Namen, Fachwörter, kurze/lange Sätze, Schnellsprech-Absätze, Wiederholungen und Regieanweisungen zum Testen des Voice-Trackings.
 
+### Hinzugefügt (2026-10-11, Lesemarker)
+- Lesemarker vollständig anpassbar (Einstellungen → **Lesemarker**): neun Stile (Linie, Band, Pfeile, Klammern, Fokus-Fenster, Verlauf, Unterstreichung von Wort/Satz, Seitenbalken, kein Marker) mit Mini-Vorschau-Kacheln und Live-Vorschau; Farbe mit Theme-Vorlagen, Deckkraft, Dicke/Höhe, Position, Dimmen gelesen/ungelesen, Glow, Weichzeichnen, Animation (Gleiten/Puls, respektiert „Bewegung reduzieren“).
+- Neue Kern-Einstellung `Settings.marker` (`zt_core::marker::MarkerSettings`, sanitized + Tests); der bisherige UI-Pref `markerStyle` wird einmalig migriert. Rendering in `ReadingMarker.svelte`, GPU-freundlich (transform/opacity).
+
 ### Geändert (2026-10-11, Fenster & Navigation)
 - Windows/Linux: Control-Fenster ohne System-Titelleiste (`decorations: false`, `shadow: true` → unter Windows 11 abgerundete Ecken und Schatten über DWM). Eigene Fenstersteuerung oben rechts (Minimieren, Maximieren/Wiederherstellen, Schließen = App beenden); die Top-Bar ist Ziehbereich, Doppelklick maximiert. macOS behält die nativen Ampel-Knöpfe (`tauri.macos.conf.json`, `titleBarStyle: Overlay`).
 - Skripte-Drawer: Umschalter in einer schmalen, animierten Leiste links statt in der oberen Aktionsleiste (`Ctrl+B` unverändert).
