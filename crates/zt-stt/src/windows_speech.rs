@@ -28,17 +28,18 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use windows::core::{Interface, HSTRING};
-use windows::Foundation::Collections::IIterable;
 use windows::Foundation::{TimeSpan, TypedEventHandler};
 use windows::Globalization::Language;
 use windows::Media::SpeechRecognition::{
     ISpeechRecognitionConstraint, SpeechContinuousRecognitionCompletedEventArgs,
     SpeechContinuousRecognitionResultGeneratedEventArgs, SpeechContinuousRecognitionSession,
     SpeechRecognitionConfidence, SpeechRecognitionHypothesisGeneratedEventArgs,
-    SpeechRecognitionListConstraint, SpeechRecognitionResultStatus,
-    SpeechRecognitionScenario, SpeechRecognitionTopicConstraint, SpeechRecognizer,
-    SpeechRecognizerState, SpeechRecognizerStateChangedEventArgs,
+    SpeechRecognitionListConstraint, SpeechRecognitionResultStatus, SpeechRecognitionScenario,
+    SpeechRecognitionTopicConstraint, SpeechRecognizer, SpeechRecognizerState,
+    SpeechRecognizerStateChangedEventArgs,
 };
+
+use windows_collections::{IIterable, IVectorView};
 
 use crate::{Hotword, SpeechEngine, SttError, SttEvent, WINSPEECH_NAME};
 
@@ -50,12 +51,14 @@ const HR_ACCESS_DENIED: i32 = 0x8007_0005_u32 as i32;
 const MAX_LIST_PHRASES: usize = 2000;
 
 /// Hint for the operator UI (settings pages, `ms-settings:` URIs).
-pub const HINT_PRIVACY: &str = "Windows-Einstellungen › Datenschutz und Sicherheit › Spracherkennung › \
+pub const HINT_PRIVACY: &str =
+    "Windows-Einstellungen › Datenschutz und Sicherheit › Spracherkennung › \
      „Online-Spracherkennung“ einschalten (ms-settings:privacy-speech)";
 pub const HINT_LANGUAGE: &str = "Windows-Einstellungen › Zeit und Sprache › Sprache und Region › \
      Deutsch › Sprachoptionen › „Spracherkennung“ installieren (ms-settings:regionlanguage), \
      dann unter Zeit und Sprache › Spracherkennung die Sprache wählen (ms-settings:speech)";
-pub const HINT_MICROPHONE: &str = "Windows-Einstellungen › Datenschutz und Sicherheit › Mikrofon › \
+pub const HINT_MICROPHONE: &str =
+    "Windows-Einstellungen › Datenschutz und Sicherheit › Mikrofon › \
      „Desktop-Apps Zugriff auf das Mikrofon erlauben“ (ms-settings:privacy-microphone)";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -140,7 +143,7 @@ fn map_err(stage: &str, e: &windows::core::Error) -> SttError {
     SttError::Engine(format!("Windows-Spracherkennung ({stage}): {}. {hint}", hr_msg(e)))
 }
 
-fn tags(v: windows::core::Result<windows::Foundation::Collections::IVectorView<Language>>) -> Vec<String> {
+fn tags(v: windows::core::Result<IVectorView<Language>>) -> Vec<String> {
     v.map(|v| v.into_iter().filter_map(|l| l.LanguageTag().ok()).map(|t| t.to_string()).collect())
         .unwrap_or_default()
 }
@@ -156,9 +159,7 @@ fn match_language(wanted: &str, installed: &[String]) -> Option<String> {
             // Prefer the "main" region (de-DE, en-US) over others.
             let main = format!("{prim}-{}", if prim == "en" { "us" } else { prim });
             installed.iter().find(|t| t.to_ascii_lowercase() == main).or_else(|| {
-                installed.iter().find(|t| {
-                    t.to_ascii_lowercase().split('-').next() == Some(prim)
-                })
+                installed.iter().find(|t| t.to_ascii_lowercase().split('-').next() == Some(prim))
             })
         })
         .cloned()
@@ -308,23 +309,24 @@ fn start_session(
         .map_err(|e| map_err("HypothesisGenerated", &e))?;
     let txs = tx.clone();
     recognizer
-        .StateChanged(&TypedEventHandler::<
-            SpeechRecognizer,
-            SpeechRecognizerStateChangedEventArgs,
-        >::new(move |_, args| {
-            if let Ok(a) = args.ok() {
-                match a.State()? {
-                    SpeechRecognizerState::SpeechDetected => {
-                        let _ = txs.send(SttEvent::Vad(true));
+        .StateChanged(
+            &TypedEventHandler::<SpeechRecognizer, SpeechRecognizerStateChangedEventArgs>::new(
+                move |_, args| {
+                    if let Ok(a) = args.ok() {
+                        match a.State()? {
+                            SpeechRecognizerState::SpeechDetected => {
+                                let _ = txs.send(SttEvent::Vad(true));
+                            }
+                            SpeechRecognizerState::SoundEnded => {
+                                let _ = txs.send(SttEvent::Vad(false));
+                            }
+                            _ => {}
+                        }
                     }
-                    SpeechRecognizerState::SoundEnded => {
-                        let _ = txs.send(SttEvent::Vad(false));
-                    }
-                    _ => {}
-                }
-            }
-            Ok(())
-        }))
+                    Ok(())
+                },
+            ),
+        )
         .map_err(|e| map_err("StateChanged", &e))?;
     let txr = tx.clone();
     session
@@ -397,7 +399,8 @@ impl WinSpeechEngine {
             Err(_) => {
                 let _ = cmd_tx.send(Cmd::Stop);
                 Err(SttError::Engine(
-                    "Windows-Spracherkennung: Initialisierung antwortet nicht (Timeout 20 s)".into(),
+                    "Windows-Spracherkennung: Initialisierung antwortet nicht (Timeout 20 s)"
+                        .into(),
                 ))
             }
         }

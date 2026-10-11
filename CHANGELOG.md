@@ -6,6 +6,11 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 
 > Noch nie kompiliert oder ausgeführt (Erstellung ohne Toolchain). Siehe README → „Erste Schritte nach dem Klonen“.
 
+### Hinzugefügt (2026-10-11, Windows-Spracherkennung)
+- **Windows-Spracherkennung als Fallback-Engine** (ADR-008, nur Windows, Feature `winspeech`, in den Windows-Release-Builds aktiv): `Windows.Media.SpeechRecognition` mit Diktat (Partials über `HypothesisGenerated`, Finals über `ResultGenerated`, VAD über `StateChanged`). Ohne Online-Spracherkennung läuft ein Offline-Skriptwort-Modus (List-Constraint). Die Engine nimmt selbst auf (neue Trait-Methode `SpeechEngine::self_capturing`) und läuft auf einem eigenen MTA-Thread.
+- Fallback-Kette: Modelle (Nemotron/Kroko/20M) → Windows-Spracherkennung → Fehlerstatus bzw. Demo. Zusätzlich in der Modellauswahl wählbar: „Windows Spracherkennung (System)“, ohne Download.
+- Präzise Fehlerhinweise: Sprachpaket fehlt, Online-Spracherkennung aus (`0x80045509`), Mikrofon verweigert, jeweils mit Pfad und `ms-settings:`-Link. Logging unter `zt::engine` mit Initialisierungszeit. Latenz als Sprechbeginn → Partial.
+- CI-Job `winspeech` (windows-latest + windows-11-arm): Build/clippy/Tests mit Feature und Initialisierungs-Probe (`examples/winspeech_probe`).
 ### Hinzugefügt (2026-10-11, Typografie & Mausrad)
 - **Schriftarten:** 12 lokal gebündelte Prompter-Schriften (OFL-1.1, offline, überwiegend variabel): Atkinson Hyperlegible Next, Inter, Lexend, Source Sans 3, Open Sans, Roboto Flex, IBM Plex Sans, Source Serif 4, Literata, Merriweather, OpenDyslexic, JetBrains Mono – plus „Systemschrift…“ mit freiem Namen. `serif` ist jetzt Source Serif 4 statt Georgia; das Talent-Fenster lädt jetzt alle Schriften (vorher fehlte JetBrains Mono).
 - **Typografie** (Kern-Settings, `sanitized()` + Tests): Schriftstärke 100–900 (an die `wght`-Achse gebunden, Fallback auf vorhandene Gewichte), Zeichen-, Wort- und Absatzabstand, Ausrichtung (links/zentriert/Blocksatz), GROSSBUCHSTABEN. Live-Vorschau im Tab Darstellung; der Prompter misst die Layout-Map bei jeder Typo-Änderung und nach dem Nachladen von Schriften neu. Theme-Zeilenhöhe gilt jetzt als Minimum statt den Regler zu überstimmen.

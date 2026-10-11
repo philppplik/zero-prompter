@@ -30,8 +30,21 @@ In den Einstellungen (`Ctrl+,`) unter Voice & Modelle → Spracherkennung wähls
 
 Der Schalter **Resync im Hintergrund** (Stufe L, standardmäßig aus) lädt zusätzlich Parakeet TDT 0.6B v3. Es dekodiert abgeschlossene Sprachsegmente im Hintergrund und verankert den Cursor neu, wenn das Streaming-Modell danebenlag. Das Scrollen wird dadurch nie verzögert. Segmentiert wird mit Silero VAD, wenn `silero_vad.onnx` im Modellordner liegt, sonst über den Pegel. Änderungen gelten beim nächsten Start von Voice. Hintergrund: [ADR-006](../../../adr/ADR-006-hybrid-stt.md).
 
-## Einschalten
+## Windows-Spracherkennung (System-Fallback)
 
+Windows-Builds können die Spracherkennung des Betriebssystems nutzen ([ADR-008](../../../adr/ADR-008-windows-speech-fallback.md)). Dafür muss nichts heruntergeladen werden.
+
+- **Automatisch als Fallback:** Ist kein Streaming-Modell installiert oder lässt sich keins laden, versucht die App die Windows-Spracherkennung, bevor sie in den Demo-Modus bzw. auf „Modellfehler“ geht. Unter der Modellauswahl steht dann z. B. „Nemotron → Kroko → Windows Spracherkennung (System)“.
+- **Manuell:** In Voice & Modelle → Spracherkennung „Windows Spracherkennung (System)“ wählen.
+- **Voraussetzungen:**
+  - Das Sprachpaket mit Spracherkennung ist installiert: Einstellungen → Zeit und Sprache → Sprache und Region → Deutsch → Sprachoptionen → „Spracherkennung“ (`ms-settings:regionlanguage`). Die Sprache wählst du unter Zeit und Sprache → Spracherkennung (`ms-settings:speech`).
+  - **Online-Spracherkennung** ist eingeschaltet: Datenschutz und Sicherheit → Spracherkennung (`ms-settings:privacy-speech`). Das freie Diktat ist ein Microsoft-Clouddienst, das Audio verlässt dann das Gerät.
+  - Mikrofonzugriff für Desktop-Apps ist erlaubt (`ms-settings:privacy-microphone`).
+- **Ohne Online-Spracherkennung** wechselt die Engine in den *Skriptwort-Modus* (offline, sofern die Grammatik-Erkennung für die Sprache installiert ist). Erkannt werden dann nur Wörter aus dem Skript. Das reicht als Notbetrieb, ist aber deutlich ungenauer.
+- Windows nimmt das **Standard-Mikrofon** selbst auf. Die Mikrofonwahl, der Gain und die Kanalwahl der App wirken nicht auf die Erkennung. Pegelanzeige und Watchdog laufen weiter über die App-Aufnahme.
+- Die Latenz misst die Diagnose als *Sprechbeginn → erster Partial*. „Audio → Partial“ und „Ende-zu-Ende“ bleiben für diese Engine leer.
+
+## Einschalten
 - `V` (in der App) oder `Ctrl+Shift+F6` (global) schaltet Voice an und aus.
 - Beim Einschalten springt der Scroll-Modus auf **Voice-Tracking**, beim Ausschalten auf **Konstant**.
 - Alternativ wählst du den Modus in der Befehlspalette („Scroll-Modus: …“). „Sprachaktiviert“ nutzt dieselbe Pipeline, scrollt aber mit konstantem Tempo, solange Sprache erkannt wird.

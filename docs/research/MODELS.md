@@ -48,8 +48,23 @@ the model-free RMS segmenter.
 Teleprompter tracking matches against a known script, so a moderate WER is
 acceptable. Latency and robustness matter more.
 
-## Open points (not verified)
-- SHA-256 of all `tokens.txt` files (not LFS). Since manifest schema v2 the hash is
+## Windows speech recognition (system fallback, ADR-008)
+
+Not a downloadable model: `Windows.Media.SpeechRecognition` (WinRT), id `windows-speech`, Windows builds with feature `winspeech` only (`windows` crate `=0.61.3`).
+
+| Aspect | Value |
+|---|---|
+| Dictation (`SpeechRecognitionTopicConstraint`, scenario Dictation) | cloud service; needs language pack + privacy setting "Online speech recognition" (HRESULT `0x80045509` otherwise) + network |
+| Offline (`SpeechRecognitionListConstraint`) | script words only, needs the grammar language installed; coarse |
+| Partials / finals | `HypothesisGenerated` / `ContinuousRecognitionSession.ResultGenerated` |
+| Audio | captured by Windows itself (default device), not by cpal |
+| Biasing | none for dictation (topic hint only); list mode = script words |
+| Platforms | Windows 10/11 x64 + ARM64; unpackaged Win32 use documented, not yet verified on hardware |
+| Licence | OS component, no redistribution |
+
+Role: fallback after Nemotron / Kroko / Zipformer 20M and explicit choice "Windows Spracherkennung (System)". Accuracy and latency were not measured (CI has no microphone or consent). Newer Windows AI APIs (Windows App SDK) offer no general streaming ASR for unpackaged apps as of 2026-10. SAPI 5 desktop recognition is deprecated in Windows 11.
+
+## Open points (not verified)- SHA-256 of all `tokens.txt` files (not LFS). Since manifest schema v2 the hash is
   optional: such files are size-checked, their SHA-256 is computed after download and
   stored as `unverified-sha256.json` in the model folder, and the UI marks them as
   unverified. Pin the reported hashes before a release.

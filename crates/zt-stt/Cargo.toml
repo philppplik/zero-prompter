@@ -22,6 +22,8 @@ windows = { version = "=0.61.3", optional = true, features = [
     "Globalization",
     "Media_SpeechRecognition",
 ] }
+# IIterable / IVectorView live in windows-collections since windows 0.61.
+windows-collections = { version = "=0.2.0", optional = true }
 
 [features]
 default = []
@@ -33,7 +35,7 @@ default = []
 sherpa = ["dep:sherpa-onnx"]
 # Windows.Media.SpeechRecognition as self-capturing fallback engine (ADR-008).
 # No-op on other platforms (the dependency is Windows-only).
-winspeech = ["dep:windows"]
+winspeech = ["dep:windows", "dep:windows-collections"]
 
 [[example]]
 name = "smoke"

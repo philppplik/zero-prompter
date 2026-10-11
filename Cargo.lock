@@ -5537,6 +5537,7 @@ dependencies = [
  "sherpa-onnx",
  "thiserror 2.0.21",
  "windows 0.61.3",
+ "windows-collections",
  "zt-audio",
 ]
 
