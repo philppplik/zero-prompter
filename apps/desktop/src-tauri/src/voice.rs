@@ -535,7 +535,7 @@ fn run(ctx: &Ctx) {
         }
         let t_dec = Instant::now();
         engine.accept_waveform(&frame);
-        if !demo {
+        if !demo && !self_capturing {
             if let Some(rtf) = rt_watch.add(frame.len(), t_dec.elapsed()) {
                 diag::report_error(app, "stt", slow_message(rtf, engine.name()));
             }
@@ -557,7 +557,7 @@ fn run(ctx: &Ctx) {
                             let ms = on.elapsed().as_secs_f64() * 1000.0;
                             d.lat.onset_to_partial.push(ms);
                             tracing::debug!(target: "zt::stt", onset_ms = ms,
-                                noise_floor_db = ?onset.noise_floor(), "first partial of utterance");
+                                floor_db = ?onset.noise_floor(), "first partial");
                         }
                         d.last_partial = Some(text.clone());
                     }
