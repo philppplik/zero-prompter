@@ -161,24 +161,29 @@ impl SherpaEngine {
         cfg.preflight()?;
         let vocab = TokenVocab::load(&cfg.tokens).map_err(SttError::Model)?;
         if vocab.is_empty() {
-            return Err(SttError::Model(format!("{}: tokens.txt has no tokens", cfg.tokens.display())));
+            return Err(SttError::Model(format!(
+                "{}: tokens.txt has no tokens",
+                cfg.tokens.display()
+            )));
         }
         let bpe = match &cfg.bpe_vocab {
             Some(v) if v.is_file() => Some((cfg.modeling_unit.clone(), v.clone())),
-            _ if vocab.is_sentencepiece() => match model_check::ensure_bpe_vocab(&cfg.tokens, &vocab) {
-                Ok(p) => {
-                    cfg.log(&format!(
-                        "no bpe.vocab in model; synthesized {} from tokens.txt ({} tokens) for hotwords",
-                        p.display(),
-                        vocab.len()
-                    ));
-                    Some(("bpe".to_string(), p))
+            _ if vocab.is_sentencepiece() => {
+                match model_check::ensure_bpe_vocab(&cfg.tokens, &vocab) {
+                    Ok(p) => {
+                        cfg.log(&format!(
+                            "no bpe.vocab; synthesized {} from tokens.txt ({} tokens)",
+                            p.display(),
+                            vocab.len()
+                        ));
+                        Some(("bpe".to_string(), p))
+                    }
+                    Err(e) => {
+                        cfg.log(&format!("hotwords disabled: {e}"));
+                        None
+                    }
                 }
-                Err(e) => {
-                    cfg.log(&format!("hotwords disabled: {e}"));
-                    None
-                }
-            },
+            }
             _ => {
                 cfg.log("hotwords disabled: no bpe.vocab and tokens.txt is not SentencePiece");
                 None
@@ -217,7 +222,12 @@ impl SherpaEngine {
         if self.cfg.decoding_method == beam {
             v.push(Stage { label: "beam", decoding_method: beam, bpe: None, hotwords: None });
         }
-        v.push(Stage { label: "greedy", decoding_method: "greedy_search".into(), bpe: None, hotwords: None });
+        v.push(Stage {
+            label: "greedy",
+            decoding_method: "greedy_search".into(),
+            bpe: None,
+            hotwords: None,
+        });
         v
     }
 
@@ -333,6 +343,9 @@ impl SpeechEngine for SherpaEngine {
         }
         let buf = (!lines.is_empty()).then(|| lines.join("\n"));
         self.rebuild(buf)?;
+        if lines.is_empty() && !hotwords.is_empty() {
+            return Err(SttError::Unsupported("no hotword is encodable with this model's tokens"));
+        }
         if !lines.is_empty() && self.active != "beam+hotwords" {
             return Err(SttError::Unsupported("hotwords rejected by sherpa-onnx; running without"));
         }

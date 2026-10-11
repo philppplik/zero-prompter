@@ -20,6 +20,11 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 ### Hinzugefügt (2026-10-11)
 - Einstellungen → **Über**: Version (`getVersion`), Build-Commit, Lizenz, Links zu Repo, Third-Party-Notices, Modelllizenzen und Changelog (Befehl `open_link` mit fester Link-Liste), Credits.
 
+### Behoben (2026-10-11, Spracherkennung startet nicht)
+- „failed to create OnlineRecognizer“ nach 1 ms mit Kroko DE/EN und Zipformer EN 20M: Der Adapter setzte immer `modeling_unit = "bpe"`, aber keines der Modelle hat `bpe.vocab`; sherpa-onnx `OnlineModelConfig::Validate` lehnt das ab (`bpe_vocab: '' does not exist`). `modeling_unit`/`bpe_vocab` werden jetzt nur gemeinsam gesetzt; für SentencePiece-Modelle wird `zt-generated-bpe.vocab` aus `tokens.txt` erzeugt, damit Hotwords funktionieren (Schreibweise passend zum Modell: Kroko gemischt, LibriSpeech groß).
+- Erzeugung als Stufenleiter `beam+hotwords` → `beam` → `greedy`, jede Stufe geloggt. Vorab-Prüfung aller Modelldateien (Existenz, Größe) und Nachbau der sherpa-Validierungsregeln in Rust (`zt_stt::model_check`) für präzise Fehlertexte. `ZT_STT_DEBUG=1` schaltet sherpa `debug` ein.
+- CI: neuer Job `stt-smoke` (Ubuntu, Windows x64, Windows ARM64) lädt die Modelle aus `models.json` (SHA-geprüft, Cache), dekodiert Test-WAVs (`cargo run -p zt-stt --example smoke --features sherpa`), prüft Schlüsselwörter, Hotword-Stufe und reproduziert den alten Fehler (`--legacy-check`). RTF und Chunk-Latenz stehen in der Job-Zusammenfassung.
+
 ### Behoben (2026-10-11, Voice)
 - „Sprache synchronisieren klappt nicht, UI zeigt Demo“: Konnte ein installiertes Modell nicht geladen werden, fiel die App still in den Demo-Modus (Mock-Engine liest das Skript selbst vor). Jetzt: Fehlermeldung + Log, keine Selbstbewegung. Ist nur ein Modell einer anderen Sprache installiert, wird es genutzt (mit Hinweis) statt Demo. Nach einem Modell-Download startet eine laufende Voice-Sitzung neu. „Demo“ erscheint nur noch ohne Streaming-Modell, mit Button „Modell laden“ (ADR-007).
 - Mikrofon-Watchdog: meldet „keine Daten“ bzw. „nur digitale Stille“ (Windows-Mikrofon-Datenschutz) nach 3 s.
