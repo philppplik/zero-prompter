@@ -1,10 +1,9 @@
 [book]
-title = "zero-teleprompter – Handbuch"
+title = "zero-teleprompter - Handbook"
 authors = ["zero-teleprompter contributors"]
-language = "de"
-multilingual = false
+language = "en"
 src = "src"
-description = "Nutzer- und Entwicklerhandbuch für zero-teleprompter (v0.1, ungetestet)"
+description = "User and developer handbook for zero-teleprompter (v0.1, untested)"
 
 [build]
 build-dir = "book"
@@ -13,6 +12,12 @@ create-missing = false
 [output.html]
 git-repository-url = "https://github.com/philppplik/zero-prompter"
 no-section-label = false
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 [output.html.search]
 enable = true
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+

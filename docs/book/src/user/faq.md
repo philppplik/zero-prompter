@@ -1,81 +1,130 @@
-# FAQ & Fehlerbehebung
+# FAQ and troubleshooting
 
-## Allgemein
+## General
 
-**Braucht die App Internet?**
-Nein. Netzwerkzugriff gibt es nur, wenn du ein Sprachmodell herunterlädst. Die Tauri-CSP erlaubt sonst nur IPC.
+**Does the app need internet access?**
+No. The only network access in normal use is downloading a speech model, which you start yourself. The Tauri content security policy otherwise allows only the internal IPC channel. The one exception is the optional Windows system speech fallback, which can use a Microsoft online service depending on a Windows setting (see [Voice tracking](voice-tracking.md#windows-speech-recognition-system-fallback)).
 
-**Wird meine Stimme aufgezeichnet oder hochgeladen?**
-Nein. Die Audiodaten fließen nur durch den Arbeitsspeicher (Mikrofon → Resampler → Spracherkennung) und werden nicht gespeichert.
+**Is my voice recorded or uploaded?**
+No. Audio flows only through memory (microphone, resampler, speech recognizer) and is not stored. The log files can contain recognized text, because the `zt::stt` target logs partial and final hypotheses (partials at debug level, which the default filter enables). Review a log, or an exported log, before attaching it to a public bug report. This is based on the logging reference, not on a privacy review.
 
-**Welche Sprachen gibt es?**
-Deutsch und Englisch, für die Normalisierung und die Wahl des Modells. Jeder Sprachcode, der mit `en` beginnt, gilt als Englisch, alles andere als Deutsch.
+**Which languages are supported?**
+German and English, for text normalization and for choosing the model. Any language code beginning with `en` counts as English; everything else is treated as German.
 
-## Probleme
+**Why is the interface in German?**
+In this version all interface labels are German and the code contains no language switch. This manual gives the English meaning and the German label in parentheses.
 
-**Voice bewegt den Text, obwohl ich nichts sage („Demo“).**
-Dann läuft der **Demo-Modus**: Es ist kein Streaming-Modell installiert (Parakeet und Silero VAD allein reichen nicht), oder der Build enthält keine Spracherkennung. Klicke auf „Demo · Modell laden“ neben dem Voice-Status und lade „NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 320 ms“ (Deutsch und Englisch; nur Englisch und klein: „Streaming Zipformer EN 20M“). Unter Windows geht ohne Download auch „Windows Spracherkennung (System)“. Eine laufende Voice-Sitzung übernimmt das Modell nach dem Download automatisch. Siehe [Voice-Tracking](voice-tracking.md).
+## Problems
 
-**„Modellfehler“ oder „Sprachmodell konnte nicht geladen werden“.**
-Ein Modell ist installiert, lässt sich aber nicht öffnen (beschädigte oder fehlende Datei, zu wenig Speicher). Die Meldung nennt die Datei. Entferne das Modell unter Voice & Modelle und lade es neu. Details stehen im Diagnose-Tab und im Log.
+### The app does not start on Windows (VCRUNTIME140.dll was not found)
 
-**Log: „recognizer failed … failed to create OnlineRecognizer“ (nach ~1 ms).**
-Bis einschließlich der ersten Testbuilds lag das an der Konfiguration, nicht am Modell: sherpa-onnx verlangt bei `modeling_unit = bpe` eine Datei `bpe.vocab`, die keines der angebotenen Modelle mitbringt. Behoben: Die App prüft vor dem Start alle Modelldateien (Name + Größe stehen als `preflight ok` im Log; fehlende Dateien werden einzeln genannt), erzeugt die für Hotwords nötige Vokabeldatei `zt-generated-bpe.vocab` aus `tokens.txt` und probiert der Reihe nach `beam+hotwords` → `beam` → `greedy`. Jede Stufe steht im Log (`stage … ok` / `stage … failed`). Scheitern alle Stufen, enthält die Meldung die Gründe je Stufe. Für die interne Ausgabe von sherpa-onnx die App aus einer Konsole mit `ZT_STT_DEBUG=1` starten (die C++-Bibliothek schreibt nur nach stderr). Pfade mit Umlauten können unter Windows Probleme machen; das Log warnt dann.
+Earlier builds failed on fresh Windows systems (seen on Windows 11 ARM64) with "VCRUNTIME140.dll was not found". The MSVC runtime is now linked statically (`.cargo/config.toml`, `+crt-static`), and CI and the release workflow check with `dumpbin /dependents` (`scripts/check-crt.ps1`) that the executable imports no `VCRUNTIME*` or `MSVCP*` DLL. If you see this error you are probably running an old build; install a current one. If you build from source with your own `RUSTFLAGS` environment variable, note that it overrides the `.cargo/config.toml` setting and drops the static runtime.
 
-**„Mikrofon liefert keine Daten“ / „nur digitale Stille“.**
-Das Gerät wurde geöffnet, liefert aber nichts. Unter Windows meist: Einstellungen → Datenschutz und Sicherheit → Mikrofon → „Desktop-Apps den Zugriff auf das Mikrofon erlauben“ ist aus, oder das Mikrofon ist stummgeschaltet. Auf macOS: Systemeinstellungen → Datenschutz → Mikrofon. Danach Mikrofontest erneut starten.
+### Voice moves the text although I say nothing ("Demo")
 
-**„Mikrofon sehr leise (< −50 dBFS beim Sprechen)“.**
-Das Mikrofon liefert Signal, aber viel zu wenig für die Spracherkennung (typisch: Surface/Snapdragon-Geräte mit „Microphone Array … Static Endpoints“, Pegel −85 bis −100 dBFS in Pausen, kaum über −45 dBFS beim Sprechen).
-1. Windows: Einstellungen → System → Sound → Eingabe → das Mikrofon wählen → **Eingangslautstärke** auf 80–100 % stellen. Bei manchen Treibern gibt es dort zusätzlich „Audioverbesserungen“ bzw. „Sprachfokus“; ausprobieren.
-2. Einstellungen → Voice & Modelle → **Mikrofon-Gain** auf „Auto“ lassen. Die App verstärkt dann digital (bis +40 dB) auf ca. −20 dBFS Sprachpegel; ein Limiter verhindert Übersteuern. „Manuell“ setzt eine feste Verstärkung von −20 bis +40 dB.
-3. **Mikrofon-Kanal**: Mikrofon-Arrays liefern mehrere Kanäle, von denen einer leer oder gegenphasig sein kann. „Auto“ nimmt den lautesten Kanal (Standard), „Alle mischen“ mittelt (kann bei Arrays Pegel kosten), „Kanal N“ erzwingt einen Kanal. Der Diagnose-Tab zeigt den Pegel jedes Kanals und den gewählten Kanal.
-4. Im Diagnose-Tab sollte „Mikrofon roh“ beim Sprechen über −50 dBFS liegen; ohne Windows-Anpassung hebt nur die digitale Verstärkung auch das Rauschen an.
+You are in **demo mode**: no streaming model is installed (Parakeet and Silero VAD alone are not enough), or the build contains no speech recognition. Click **Demo - load model (Demo · Modell laden)** next to the voice status and download "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 320 ms" (German and English; English only and small: "Streaming Zipformer EN 20M"). On Windows, "Windows Spracherkennung (System)" also works without a download. A running voice session picks the model up after the download. See [Voice tracking](voice-tracking.md#which-engine-runs).
 
-**Sprache synchronisiert nicht, obwohl ein Modell geladen ist.**
-1. Einstellungen → **Diagnose** öffnen und Voice starten.
-2. „Engine“ muss den Modellnamen zeigen, „Audio“ ein Gerät, der Pegel beim Sprechen deutlich über −40 dBFS liegen.
-3. „Erkannt“ zeigt, was die Spracherkennung hört. Passt das nicht zum Skript, stimmt die Sprache nicht (Voice & Modelle → Sprache).
-4. Bleibt es unklar: **Log exportieren** und die Datei dem Fehlerbericht anhängen.
+### "Model error" or "speech model could not be loaded" (Modellfehler)
 
-**Wo liegen die Logs?**
-Im App-Log-Ordner (Pfad steht im Diagnose-Tab), Dateien `zero-teleprompter.JJJJ-MM-TT.log`, 7 Tage. Mit der Umgebungsvariable `ZT_LOG=debug` wird jede Hypothese mit Zeitstempel und Latenz protokolliert.
-**Die Modellliste ist leer.**
-Das ist so gewollt. Das mitgelieferte Manifest enthält in v0.1 keine Einträge, weil keine ungeprüften URLs oder Hashes ausgeliefert werden sollen.
+A model is installed but cannot be opened (damaged or missing file, not enough memory). The message names the file. Remove the model in Settings, Voice and models, and download it again. Details are in the Diagnostics tab and in the log. On Windows, the app tries the Windows speech fallback first when a model cannot be loaded.
 
-**Der Text bleibt auf „Wartet“ (`hold`) stehen.**
-Die App ist nicht sicher genug oder wartet auf die zweite Bestätigung eines Sprungs. Lies ein paar Wörter weiter, oder klicke auf das Wort, an dem du bist.
+### Log line "recognizer failed ... failed to create OnlineRecognizer"
 
-**„Verloren“ (`lost`) erscheint häufig.**
-- Prüfe den Pegel im Mikrofontest. Er sollte beim Sprechen deutlich über −40 dBFS liegen.
-- Stelle die richtige Sprache ein.
-- Gehe näher ans Mikrofon oder nimm ein Headset.
-- Setze bei Bedarf „Bei Verlust“ auf „konstant weiter“.
+Early test builds failed this way right after startup (about 1 ms): the adapter always set the modeling unit `bpe`, but none of the models ships a `bpe.vocab` file, and sherpa-onnx rejects that configuration. This is fixed. The app now:
 
-**Kein Mikrofon gefunden.**
-- macOS: Systemeinstellungen → Datenschutz → Mikrofon → zero-teleprompter erlauben.
-- Windows: Einstellungen → Datenschutz → Mikrofon → „Desktop-Apps den Zugriff erlauben“.
-- Linux: ALSA- bzw. PipeWire-Gerät prüfen.
+1. checks all model files before starting (names and sizes appear as `preflight ok` in the log; missing files are named one by one),
+2. generates the vocabulary file `zt-generated-bpe.vocab` from `tokens.txt` where hotwords need it, and
+3. tries the stages `beam+hotwords`, then `beam`, then `greedy` in order. Each stage is logged as `stage ... ok` or `stage ... failed`. If every stage fails, the error message lists the reason for each stage.
 
-Dann in den Einstellungen unter Voice & Modelle das Gerät wählen.
+If you still see the error: remove and re-download the model, and check the log for the `preflight` and `stage` lines. To see sherpa-onnx's own output, start the app from a console with the environment variable `ZT_STT_DEBUG=1` (the C++ library writes only to stderr). Paths with non-ASCII characters (such as umlauts) can cause problems on Windows; the log warns in that case.
 
-**Globale Hotkeys gehen nicht.**
-Die Kombination ist schon belegt (das steht dann im Log `zt: global shortcut … unavailable`), oder du nutzt Wayland. Bei fokussiertem Fenster funktionieren die App-Tasten weiterhin.
+### "Microphone delivers no data" or "only digital silence"
 
-**Linux mit NVIDIA: Ruckeln oder schwarzes Fenster.**
-Starte die App mit `ZT_SAFE_RENDER=1`.
+The device opened but delivers nothing. On Windows this is usually Settings, Privacy and security, Microphone, "Let desktop apps access your microphone" being off, or the microphone being muted. On macOS: System Settings, Privacy and Security, Microphone. Afterwards run the microphone test again.
 
-**Import schlägt fehl.**
-Unterstützt sind `.txt`, `.md`, `.markdown` und `.text` bis 8 MB. `.docx` kommt in v0.2. Sonderzeichen sehen falsch aus? Speichere die Datei als UTF-8.
+### "Microphone very quiet (below -50 dBFS while speaking)"
 
-**Das Skript lässt sich nicht bearbeiten.**
-Während der Wiedergabe ist der Text gesperrt. Pausiere oder stoppe, dann `Ctrl+E`.
+The microphone delivers a signal, but far too little for speech recognition. A typical case is Surface or Snapdragon devices with a "Microphone Array ... Static Endpoints" device, with levels of -85 to -100 dBFS in pauses and hardly above -45 dBFS while speaking.
 
-**Das Talent-Fenster ist weg.**
-Beim Schließen wird es nur ausgeblendet. Über die Befehlspalette → „Talent-Fenster öffnen“ kommt es zurück. Schließt du das Control-Fenster, beendet sich die App.
+1. **Windows input volume.** Settings, System, Sound, Input, select the microphone, and set the **input volume** to 80 to 100 %. Some drivers also offer "audio enhancements" or "voice focus" there; try them.
+2. **Microphone gain.** In Settings, Voice and models, keep **Microphone gain (Mikrofon-Gain)** on **Auto**. The app then amplifies digitally (up to +40 dB) toward about -20 dBFS speech level, and a limiter prevents clipping. **Manual** sets a fixed gain from -20 to +40 dB.
+3. **Microphone channel.** Microphone arrays deliver several channels, and one may be empty or out of phase. **Auto** (default) takes the loudest channel, **Mix all** averages (which can cost level on arrays), and **Channel N** forces one channel. The Diagnostics tab shows the level of each channel and the chosen one.
+4. In the Diagnostics tab, "Microphone raw" should be above -50 dBFS while you speak. Without a Windows-side change, digital gain also raises the noise.
 
-## Bekannte Einschränkungen von v0.1
+### Speech does not synchronize although a model is loaded
 
-- Der Code ist noch nie kompiliert worden, siehe [Projektstatus](../status.md).
-- Keine Fernsteuerung, kein Overlay, keine eigenen Themes, kein Updater.
-- Den Monitor für das Talent-Fenster setzt die App per Fensterposition: Sie verschiebt das Fenster um 40 px versetzt auf den Zielmonitor und schaltet dann Vollbild ein. Manche Fenstermanager ignorieren das.
+1. Open Settings, **Diagnostics** and start voice.
+2. "Engine" must show the model name, "Audio" a device, and the level should be clearly above -40 dBFS while you speak.
+3. "Recognized (Erkannt)" shows what the recognizer hears. If it does not match your script, the language setting is probably wrong (Settings, Voice and models, Language).
+4. If it is still unclear, use **Export log** and attach the file to a bug report.
+
+### The text stays on "Waiting" (hold)
+
+The app is not sure enough, or it is waiting for the second confirmation of a jump. Read a few more words, or click the word you are at (or press `R`).
+
+### "Lost" appears often
+
+- Check the level in the microphone test. It should be clearly above -40 dBFS while you speak.
+- Set the correct language.
+- Move closer to the microphone or use a headset.
+- Set **When lost** to **Continue at constant speed** if you prefer that over stopping.
+- Consider a different model. Nemotron 320 ms updates the cursor about every 0.3 s; 160 ms about every 0.2 s.
+
+### A warning says the speech model is slower than real time
+
+The streaming model needs more compute than your CPU provides (the warning appears when the real-time factor stays above 0.9 for about 10 seconds). Pick a smaller model: Nemotron 320 ms instead of 160 or 80 ms, or (English) Zipformer 20M. Also switch off background resync, which adds CPU load.
+
+### No microphone found
+
+- macOS: System Settings, Privacy, Microphone, allow zero-teleprompter.
+- Windows: Settings, Privacy, Microphone, allow desktop apps access.
+- Linux: check the ALSA or PipeWire device.
+
+Then choose the device in Settings, Voice and models.
+
+### Windows speech recognition does not work
+
+See the requirements in [Voice tracking](voice-tracking.md#windows-speech-recognition-system-fallback): speech language pack installed, online speech recognition on (otherwise only the script-word mode is available) and microphone access allowed for desktop apps. The app shows specific hints for a missing language pack, for online speech recognition being off (HRESULT `0x80045509`) and for a denied microphone, each with the matching `ms-settings:` page. Remember that Windows records the default microphone itself, so the app's microphone choice does not apply.
+
+### Global hotkeys do not work
+
+Another app already uses the combination (the log then says "global shortcut unavailable", target `zt::hotkeys`), or you are on Wayland. The in-app keys still work while the window has focus.
+
+### Linux with NVIDIA: stutter or a black window
+
+Start the app with `ZT_SAFE_RENDER=1` (sets `WEBKIT_DISABLE_DMABUF_RENDERER=1`).
+
+### Import fails
+
+Supported: `.txt`, `.md`, `.markdown` and `.text`, up to 8 MB. `.docx` is not supported yet (planned for v0.2). If special characters look wrong, save the file as UTF-8.
+
+### The script cannot be edited
+
+While the text is playing it is locked. Pause or stop, then press `Ctrl+E`.
+
+### The talent window is gone
+
+Closing it only hides it. Use the **Output** button, or the command palette entry "Talent-Fenster öffnen". If you close the control window, the whole app quits.
+
+### The talent window does not appear on the chosen monitor
+
+The app moves the window to the target monitor (offset by 40 px) and then turns on fullscreen. Some window managers ignore this. Move the window by hand, then press `F`.
+
+### Where are the logs?
+
+In the app's log folder. The Diagnostics tab shows the path and can copy it. Files are named `zero-teleprompter.YYYY-MM-DD.log`, kept for 7 days. With `ZT_LOG=debug`, every hypothesis is logged with a timestamp and latency. Use **Export log** in the Diagnostics tab to save everything, plus a JSON snapshot, into a single file.
+
+## Environment variables
+
+| Variable | Effect |
+|---|---|
+| `ZT_LOG` | Log filter in `tracing` `EnvFilter` syntax, for example `ZT_LOG=debug`. |
+| `ZT_STT_DEBUG` | Any value turns on sherpa-onnx's verbose output on stderr. |
+| `ZT_SAFE_RENDER` | Linux only. Workaround for rendering problems with NVIDIA and WebKitGTK. |
+
+## Known limitations of v0.1
+
+- No remote control, no overlay mode, no custom themes, no auto-updater, no `.docx` import. See [Project status](../status.md).
+- Installers are not signed by default, so expect operating system warnings. See [Installation](installation.md#unsigned-installers).
+- Global hotkeys may not work under Wayland.
+- Kroko models were removed for license reasons (`docs/legal/LEGAL.md`).

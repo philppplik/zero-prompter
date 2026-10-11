@@ -1,61 +1,67 @@
-# Tastenkürzel
+# Keyboard shortcuts
 
-Unter macOS steht `Ctrl` für `⌘`. Die App behandelt Meta wie Ctrl, sodass eine Belegung überall funktioniert. In Textfeldern lösen einfache Tasten keine Aktionen aus. `?` zeigt diese Liste in der App an.
+On macOS, `Ctrl` in this list means `Cmd`: the app treats the Meta key like Ctrl, so one binding works everywhere. In text fields, plain keys (without Ctrl or Cmd) type text and do not trigger actions; `Esc` still works. Inside text fields the usual edit chords (`Ctrl+A`, `C`, `V`, `X`, `Z`, `Y`, `Shift+Z`, `Up` and `Down`) are left to the field. Press `?` in the app to see this list.
 
-## Umbelegbar (`Settings.hotkeys`)
+Sources: `apps/desktop/src/lib/hotkeys.ts` (in-app and display of global keys), `apps/desktop/src-tauri/src/hotkeys.rs` (global keys), and the default hotkey table in `crates/zt-core/src/settings.rs`.
 
-| Aktion (ID) | Standard | Wirkung |
+## Remappable shortcuts
+
+These are stored in `Settings.hotkeys` and can be changed in Settings, Shortcuts (Tastenkürzel).
+
+| Action ID | Default | Effect |
 |---|---|---|
-| `togglePlay` | `Space` | Play/Pause, mit Countdown beim Start |
-| `stop` | `Home` | Live: Stop und zurück zum Anfang. Edit: zum Anfang |
-| `faster` | `↑` | +5 WPM |
-| `slower` | `↓` | −5 WPM |
-| `nextParagraph` | `PgDn` | nächster Absatz |
-| `prevParagraph` | `PgUp` | vorheriger Absatz |
-| `toggleMirror` | `M` | horizontal spiegeln |
-| `toggleFullscreen` | `F` | Vollbild des Talent-Fensters. Öffnet das Fenster bei Bedarf |
-| `toggleVoice` | `V` | Voice an/aus |
-| `resyncHere` | `R` | Resync an der Markerposition |
-| `commandPalette` | `Ctrl+K` | Befehlspalette |
-| `shortcutOverlay` | `?` | Übersicht der Tastenkürzel |
+| `togglePlay` | `Space` | Play or pause. A countdown runs first when starting (if enabled). |
+| `stop` | `Home` | Live: stop and return to the start. Edit: jump to the start. |
+| `faster` | `Up` | +5 WPM (shows a brief "N WPM" notice). |
+| `slower` | `Down` | -5 WPM. |
+| `nextParagraph` | `PgDn` | Next paragraph. |
+| `prevParagraph` | `PgUp` | Previous paragraph. |
+| `toggleMirror` | `M` | Mirror horizontally. |
+| `toggleFullscreen` | `F` | Toggle fullscreen of the talent window. Opens the window if it is hidden. |
+| `toggleVoice` | `V` | Voice tracking on or off. |
+| `resyncHere` | `R` | Resync at the current marker position. |
+| `commandPalette` | `Ctrl+K` | Command palette. |
+| `shortcutOverlay` | `?` | Shortcut overview. |
 
-## Fest belegt (v0.1)
+## Fixed in-app shortcuts
 
-| Taste | Wirkung |
+| Key | Effect |
 |---|---|
-| `Shift+M` | vertikal spiegeln |
-| `Ctrl+E` | Edit- und Live-Modus umschalten |
-| `Ctrl+O` | Skript öffnen |
-| `Ctrl+B` | Skripte & Gliederung (Drawer) ein/aus – auch über das Symbol in der linken Leiste |
-| `Ctrl+,` | Einstellungen öffnen/schließen |
-| `Ctrl+=` / `Ctrl+-` | Schrift ±4 px |
-| `Ctrl+1` … `Ctrl+6` | Theme 1–6 |
-| `Ctrl+↑` | zum Anfang (Alternative für Mac-Tastaturen ohne `Home`) |
-| `Esc` | schließt der Reihe nach: Palette, Übersicht, Einstellungen, Skripte-Drawer. Bricht danach den Countdown ab bzw. beendet zuletzt das Vollbild |
+| `Shift+M` | Mirror vertically. |
+| `Ctrl+E` | Toggle Edit and Live mode. |
+| `Ctrl+O` | Open a script file. |
+| `Ctrl+B` | Show or hide the scripts drawer (also the rail button). |
+| `Ctrl+,` | Open or close settings. |
+| `Ctrl+=` and `Ctrl+-` | Font size +4 px or -4 px. |
+| `Ctrl+1` to `Ctrl+6` | Select theme 1 to 6. |
+| `Ctrl+Up` | Jump to the start (an alternative for Mac keyboards without a `Home` key). |
+| `Esc` | Closes, in this order: command palette, shortcut overview, settings, scripts drawer. If none is open, it cancels a running countdown, or else exits talent fullscreen. |
 
-## Mausrad
+## Mouse wheel
 
-Gilt über der Vorschau im Control-Fenster und über dem Talent-Fenster.
+The wheel works over the preview in the control window and over the talent window. The effect depends on the scroll mode. Voice tracking and voice-activated mode count as "voice on" only while the voice pipeline is actually enabled.
 
-| Modus | Mausrad | `Shift` + Mausrad | `Ctrl`/`Alt` (macOS `⌘`/`⌥`) + Mausrad |
+| Mode | Wheel | `Shift` + wheel | `Ctrl` or `Alt` (macOS `Cmd` or `Opt`) + wheel |
 |---|---|---|---|
-| Konstant | Tempo ±5 WPM pro Raste (hoch = schneller) | Tempo ±1 WPM | Position verschieben |
-| Manuell | Position verschieben (wie in einem Dokument) | – | Tempo ±5 WPM, mit `Shift` ±1 |
-| Sprachaktiviert / Voice-Tracking mit Voice an | kurzzeitig manuell: Position verschieben, Voice pausiert für `manualOverrideMs` (2 s) | – | wie ohne Modifier |
+| Constant | Tempo +/-5 WPM per notch (wheel up is faster). | Tempo +/-1 WPM. | Moves the position. |
+| Manual | Moves the position, like scrolling a document. | (no special effect) | Tempo +/-5 WPM, with `Shift` +/-1. This prepares the tempo for a later switch to Constant. |
+| Voice-activated, or voice tracking with voice on | Short manual override: moves the position, and voice is paused for `manualOverrideMs` (2 s by default). | | The modifier has no effect; the wheel still moves the position. |
 
-Bei einer Tempoänderung blendet der Prompter kurz ein dezentes „140 WPM“ unten in der Mitte ein. Touchpads werden aufsummiert: eine volle Rasten-Distanz ergibt einen Schritt. In „Manuell“ ist die Position die natürliche Erwartung an ein Scrollrad; das Tempo lässt sich dort trotzdem für den späteren Wechsel nach „Konstant“ vorbereiten.
+When the tempo changes, the prompter briefly shows a subtle "140 WPM" label at the bottom center. Touchpads are accumulated: one full notch of distance produces one step.
 
-## Global (systemweit, auch wenn eine andere App den Fokus hat)
+## Global shortcuts (system-wide)
 
-| Taste | Wirkung |
+These work even when another app has focus (for example OBS, slides or a video call). They are registered by the Rust side with `tauri-plugin-global-shortcut`.
+
+| Key | Effect |
 |---|---|
-| `Ctrl+Shift+F6` | Voice an/aus |
-| `Ctrl+Shift+F7` | Play/Pause |
-| `Ctrl+Shift+F8` | −5 WPM |
-| `Ctrl+Shift+F9` | +5 WPM |
-| `Ctrl+Shift+F10` | Absatz zurück |
-| `Ctrl+Shift+F11` | Absatz vor |
+| `Ctrl+Shift+F6` | Voice on or off. |
+| `Ctrl+Shift+F7` | Play or pause. |
+| `Ctrl+Shift+F8` | -5 WPM. |
+| `Ctrl+Shift+F9` | +5 WPM. |
+| `Ctrl+Shift+F10` | Paragraph back. |
+| `Ctrl+Shift+F11` | Paragraph forward. |
 
-Die globalen Hotkeys liegen seit der Überarbeitung vom 2026-10-10 auf F-Tasten. Die früheren Kombinationen (`Ctrl+Shift+V`, `Ctrl+Shift+Space`, `Ctrl+Shift+Pfeile/PgUp/PgDn`) kollidierten mit „als Text einfügen“, Eingabemethoden und der Textauswahl in Editoren. `Ctrl+Alt` (= AltGr auf deutschen Tastaturen), `Ctrl+Shift+Esc` und `F12` werden bewusst nicht benutzt. Ob die F-Kombinationen auf allen Systemen frei sind, ist **nicht geprüft**. Die Anzeige in der App (`GLOBAL_HOTKEYS` in `src/lib/hotkeys.ts`) muss von Hand mit `src-tauri/src/hotkeys.rs` übereinstimmen.
+The global shortcuts are on function keys because the earlier combinations collided with common shortcuts such as "paste as plain text" (`Ctrl+Shift+V`), input methods and text selection in editors. `Ctrl+Alt` (which is AltGr on German keyboards), `Ctrl+Shift+Esc` and `F12` are deliberately avoided. Whether the F-key combinations are free on every system is **unverified**.
 
-Ist eine globale Kombination schon von einer anderen App belegt, protokolliert zero-teleprompter das und läuft ohne diese Kombination weiter. Unter Wayland funktionieren globale Hotkeys je nach Compositor gar nicht (Portal-Unterstützung ist für v0.2 geplant).
+If another application already owns a combination, zero-teleprompter logs a warning (target `zt::hotkeys`, message "global shortcut unavailable") and keeps running without it. Under Wayland, global hotkeys may not work at all, depending on the compositor. The list shown in the app (`GLOBAL_HOTKEYS` in `hotkeys.ts`) must be kept in sync by hand with `hotkeys.rs`.

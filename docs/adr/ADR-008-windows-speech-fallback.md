@@ -1,62 +1,64 @@
-# ADR-008: Windows-Spracherkennung als Fallback-Engine
+# ADR-008: Windows speech recognition as a fallback engine
 
-- Status: angenommen
-- Datum: 2026-10-11
-- Bezug: ADR-006 (hybride STT, Fallback-Kette), ADR-007 (Fehlerbehandlung, Latenzmetriken)
+> German original: [de/ADR-008-windows-speech-fallback.md](de/ADR-008-windows-speech-fallback.md)
 
-## Kontext
+- Status: accepted
+- Date: 2026-10-11
+- Related: ADR-006 (hybrid STT, fallback chain), ADR-007 (error handling, latency metrics)
 
-Die Engines aus ADR-006 (Nemotron 3.5, Kroko, Zipformer 20M via sherpa-onnx) brauchen ein heruntergeladenes Modell. Fehlt es, kann es nicht geladen werden oder schlägt die Erzeugung fehl, landete die App bisher im Demo- bzw. Fehlerzustand. Windows bringt mit `Windows.Media.SpeechRecognition` eine System-Spracherkennung mit, die ohne Download nutzbar ist, sobald das Sprachpaket installiert ist.
+## Context
 
-## Entscheidung
+The engines from ADR-006 (Nemotron 3.5, Zipformer 20M via sherpa-onnx) need a downloaded model. If it is missing, cannot be loaded, or construction fails, the app previously ended up in the demo or error state. Windows ships a system speech recognizer, `Windows.Media.SpeechRecognition`, which is usable without a download as soon as the language pack is installed.
 
-1. Neuer Adapter `WinSpeechEngine` (`crates/zt-stt/src/windows_speech.rs`). Er kompiliert nur unter Windows mit dem Cargo-Feature `winspeech`. Das Feature ist in den Windows-Release-Builds (x64, ARM64, Store) aktiv und auf anderen Plattformen ein No-op.
-2. **Selbst aufnehmende Engine:** Windows öffnet das Standardmikrofon selbst. Der `SpeechEngine`-Trait bekommt dafür `fn self_capturing(&self) -> bool` mit dem Default `false`. Bei `true` ignoriert die Engine `accept_waveform`. Die cpal-Pipeline läuft trotzdem weiter: Sie liefert Pegel, Kanalanzeige und Mikrofon-Watchdog und erkennt den Sprechbeginn für die Latenzmessung. Unter Windows dürfen mehrere Apps im Shared Mode gleichzeitig aufnehmen. Die Latenz wird nur als *Sprechbeginn → erster Partial* (`onset_to_partial`) gemessen, weil `audio_to_partial` und `end_to_end` ohne gemeinsame Audioblöcke nichts aussagen.
-3. **Ereignisse:**
-   - `SpeechRecognizer.HypothesisGenerated` → `SttEvent::Partial`
-   - `ContinuousRecognitionSession.ResultGenerated` → `SttEvent::Final`. Ergebnisse mit der Konfidenz `Rejected` werden verworfen.
-   - `StateChanged` (`SpeechDetected` / `SoundEnded`) → `SttEvent::Vad`
-   - `Completed` (die Sitzung endet von selbst, z. B. weil das Mikrofon weg ist, das Netz fehlt oder ein Timeout greift) → automatischer Neustart
+## Decision
+
+1. New adapter `WinSpeechEngine` (`crates/zt-stt/src/windows_speech.rs`). It compiles only on Windows with the Cargo feature `winspeech`. The feature is active in the Windows release builds (x64, ARM64, Store) and is a no-op on other platforms.
+2. **Self-capturing engine:** Windows opens the default microphone itself. For this the `SpeechEngine` trait gains `fn self_capturing(&self) -> bool` with the default `false`. When `true`, the engine ignores `accept_waveform`. The cpal pipeline keeps running anyway: it provides levels, the channel display and the microphone watchdog, and detects speech onset for latency measurement. On Windows several apps may record simultaneously in shared mode. Latency is measured only as *speech onset -> first partial* (`onset_to_partial`), because `audio_to_partial` and `end_to_end` say nothing without shared audio blocks.
+3. **Events:**
+   - `SpeechRecognizer.HypothesisGenerated` -> `SttEvent::Partial`
+   - `ContinuousRecognitionSession.ResultGenerated` -> `SttEvent::Final`. Results with confidence `Rejected` are discarded.
+   - `StateChanged` (`SpeechDetected` / `SoundEnded`) -> `SttEvent::Vad`
+   - `Completed` (the session ends on its own, e.g. because the microphone is gone, the network is missing or a timeout hits) -> automatic restart
    - `EndSilenceTimeout` 400 ms, `AutoStopSilenceTimeout` 24 h
-4. **Threading:** Alle WinRT-Objekte leben auf einem eigenen Thread `zt-winspeech` im MTA. windows-rs tritt beim ersten Aktivieren über `CoIncrementMTAUsage` implizit dem MTA bei, deshalb ist kein `unsafe` nötig und `unsafe_code = "forbid"` bleibt bestehen. Asynchrone Operationen (`CompileConstraintsAsync`, `StartAsync`, `StopAsync`) werden dort blockierend mit `.get()` abgewartet, nie im UI-Thread. Die Event-Handler laufen im WinRT-Threadpool und schieben nur in einen `mpsc`-Kanal. Der Voice-Thread pollt diesen Kanal wie bei jeder anderen Engine. Damit muss `WinSpeechEngine` unabhängig vom Agile-Status der WinRT-Klassen nur Kanäle halten und ist `Send`.
+4. **Threading:** All WinRT objects live on a dedicated `zt-winspeech` thread in the MTA. windows-rs implicitly joins the MTA on first activation via `CoIncrementMTAUsage`, so no `unsafe` is needed and `unsafe_code = "forbid"` stays in force. Asynchronous operations (`CompileConstraintsAsync`, `StartAsync`, `StopAsync`) are awaited there in a blocking fashion with `.get()`, never on the UI thread. The event handlers run in the WinRT thread pool and only push into an `mpsc` channel. The voice thread polls that channel like for any other engine. As a result, `WinSpeechEngine` holds only channels, independent of the agile status of the WinRT classes, and is `Send`.
 5. **Constraints:**
-   - Standard ist `SpeechRecognitionTopicConstraint(Dictation)`, also freies Diktat.
-   - Scheitert das Diktat (Datenschutz-Einstellung aus oder kein Netz) und ist für die Sprache eine Grammatik-Erkennung installiert, wechselt die Engine in den **Skriptwort-Modus**: eine `SpeechRecognitionListConstraint` aus den Skriptwörtern (Hotwords, max. 2000). Sie läuft offline, erkennt aber nur genau diese Wörter bzw. Phrasen. Sie startet, sobald `set_hotwords` die Wörter liefert.
-   - Topic- und List-Constraints werden nicht gemischt.
-6. **Fallback-Kette** (`apps/desktop/src-tauri/src/winspeech.rs`, `voice::make_engine`):
-   1. installierte Modelle (Nemotron → 20M; Kroko seit 2026-10-11 entfernt)
-   2. Windows-Spracherkennung
-   3. Fehlerstatus (`engineError`, die Meldung nennt beide Ursachen). Ist gar kein Modell installiert, bleibt es beim Demo-Modus, und die Notiz erklärt, warum Windows nicht verfügbar war.
-7. **Manuelle Wahl:** Unter Einstellungen → Voice steht „Windows Spracherkennung (System)“ (id `windows-speech`) in der Modellauswahl. Es gibt nichts herunterzuladen. `Selection.windowsSpeech` meldet, ob der Build die Engine enthält.
-8. **Crate:** Gepinnt ist `windows = "=0.61.3"` mit den Features `Foundation`, `Foundation_Collections`, `Globalization` und `Media_SpeechRecognition`. 0.62.x setzt Rust 1.82 voraus, die Workspace-MSRV ist 1.80. Tauri zieht 0.61.3 ohnehin in den Lockfile, es entsteht also keine zusätzliche Kopie.
+   - The default is `SpeechRecognitionTopicConstraint(Dictation)`, i.e. free dictation.
+   - If dictation fails (privacy setting off or no network) and a grammar recognizer is installed for the language, the engine switches to **script-word mode**: a `SpeechRecognitionListConstraint` built from the script words (hotwords, max. 2000). It runs offline but recognizes only exactly those words or phrases. It starts as soon as `set_hotwords` supplies the words.
+   - Topic and list constraints are not mixed.
+6. **Fallback chain** (`apps/desktop/src-tauri/src/winspeech.rs`, `voice::make_engine`):
+   1. installed models (Nemotron -> 20M; Kroko was removed on 2026-10-11)
+   2. Windows speech recognition
+   3. error status (`engineError`, the message names both causes). If no model is installed at all, it stays in demo mode, and the note explains why Windows was not available.
+7. **Manual choice:** Under Settings -> Voice, "Windows Spracherkennung (System)" (id `windows-speech`) appears in the model selection (the label is a UI string and is currently German). There is nothing to download. `Selection.windowsSpeech` reports whether the build contains the engine.
+8. **Crate:** `windows = "=0.61.3"` is pinned with the features `Foundation`, `Foundation_Collections`, `Globalization` and `Media_SpeechRecognition`. 0.62.x requires Rust 1.82, the workspace MSRV is 1.80. Tauri pulls 0.61.3 into the lockfile anyway, so no additional copy is created.
 
-## Fehlerfälle und Hinweise im UI
+## Error cases and UI hints
 
-| Fall | Erkennung | Meldung / Link |
+| Case | Detection | Message / link |
 |---|---|---|
-| Sprachpaket fehlt | Sprache nicht in `SupportedTopicLanguages` bzw. `SupportedGrammarLanguages`, oder `SpeechRecognizer(Language)` schlägt fehl | „Windows-Sprachpaket für „de“ fehlt …“ → `ms-settings:regionlanguage` (Sprachoptionen → Spracherkennung), `ms-settings:speech` |
-| Online-Spracherkennung aus | HRESULT `0x80045509` (SPERR_SPEECH_PRIVACY_POLICY_NOT_ACCEPTED) | → `ms-settings:privacy-speech`. Ohne Grammatik-Sprache Fehler, sonst Skriptwort-Modus |
-| Mikrofon verweigert | `0x80070005` | → `ms-settings:privacy-microphone` |
-| Kein Netz / Diktierdienst | Compile-Status `NetworkFailure` | Hinweis „Internet nötig“ |
-| Sprache passt nicht | `TopicLanguageNotSupported` / `GrammarLanguageMismatch` | Hinweis auf das Sprachpaket |
+| Language pack missing | Language not in `SupportedTopicLanguages` or `SupportedGrammarLanguages`, or `SpeechRecognizer(Language)` fails | "Windows language pack for 'de' missing ..." -> `ms-settings:regionlanguage` (language options -> speech recognition), `ms-settings:speech` |
+| Online speech recognition off | HRESULT `0x80045509` (SPERR_SPEECH_PRIVACY_POLICY_NOT_ACCEPTED) | -> `ms-settings:privacy-speech`. Error without a grammar language, otherwise script-word mode |
+| Microphone denied | `0x80070005` | -> `ms-settings:privacy-microphone` |
+| No network / dictation service | Compile status `NetworkFailure` | Hint "Internet required" |
+| Language mismatch | `TopicLanguageNotSupported` / `GrammarLanguageMismatch` | Hint about the language pack |
 
-## Einschränkungen (ehrlich)
+## Limitations (honest)
 
-- **Diktat ist ein Online-Dienst.** Unter Windows 10/11 braucht `SpeechRecognitionScenario.Dictation` die Einstellung „Online-Spracherkennung“ und eine Internetverbindung. Audio geht dabei an Microsoft. Das widerspricht dem Offline-Anspruch der App, deshalb ist die Engine nur **Fallback** bzw. eine bewusste manuelle Wahl.
-- **Skriptwort-Modus ist grob:** Er erkennt nur Wörter aus der Liste, jedes Ergebnis ist kurz, und es gibt keine Partials in Wortfolge. Für das Tracking reicht das nur als Notbetrieb.
-- **Unpackaged Desktop-App:** `SpeechRecognizer` und `ContinuousRecognitionSession` funktionieren laut Microsoft-Doku und Community-Berichten auch ohne Package Identity. Die Mikrofonfreigabe läuft dann über „Desktop-Apps Zugriff auf das Mikrofon erlauben“ statt über eine App-Capability. Auf echter Hardware **noch nicht verifiziert** (CI hat kein Mikrofon). Für den Store-Build (MSIX) wäre ggf. die Capability `microphone` im Manifest nötig, das ist offen.
-- **Kein Hotword-Biasing im Diktat:** Die Topic-Constraint akzeptiert nur einen Hinweis-String, keine Skriptwörter.
-- **Zweite Mikrofonöffnung:** Windows nimmt das *Standard*-Eingabegerät, nicht das in der App gewählte. Gain und Kanalwahl der App wirken nicht auf die Erkennung.
-- **ARM64:** WinRT-APIs sind auf ARM64 nativ vorhanden. Gebaut und initialisiert wird in CI auf `windows-11-arm`, Erkennung mit echter Sprache ist nicht getestet.
-- **Neuere Windows-AI-APIs** (Windows App SDK / „Windows AI Foundry“, Phi Silica, Copilot+-NPU-Modelle) bieten Stand 2026-10 keine allgemein verfügbare Streaming-STT-API für unpackaged Win32-Apps mit Deutsch. Außerdem bräuchten sie das Windows App SDK als Laufzeit und teils Copilot+-Hardware. Deshalb verworfen. Neu prüfen, sobald eine Streaming-ASR-API stabil ist.
-- Die alte SAPI-5-Desktop-Erkennung (`Win32_Media_Speech`, „Windows-Spracherkennung“ Legacy) ist in Windows 11 abgekündigt (durch Voice Access ersetzt) und hat kein brauchbares deutsches Diktat. Deshalb verworfen.
+- **Dictation is an online service.** On Windows 10/11, `SpeechRecognitionScenario.Dictation` requires the "Online speech recognition" setting and an internet connection. Audio goes to Microsoft. This contradicts the app's offline claim, which is why the engine is only a **fallback** or a deliberate manual choice.
+- **Script-word mode is coarse:** It recognizes only words from the list, each result is short, and there are no partials in word order. For tracking it suffices only as an emergency mode.
+- **Unpackaged desktop app:** According to Microsoft documentation and community reports, `SpeechRecognizer` and `ContinuousRecognitionSession` also work without package identity. Microphone access is then governed by "Let desktop apps access your microphone" instead of an app capability. **Not yet verified** on real hardware (CI has no microphone). For the Store build (MSIX), the `microphone` capability in the manifest might be required; that is open.
+- **No hotword biasing in dictation:** The topic constraint accepts only a hint string, not script words.
+- **Second microphone open:** Windows uses the *default* input device, not the one selected in the app. The app's gain and channel selection do not affect recognition.
+- **ARM64:** WinRT APIs are natively available on ARM64. CI builds and initializes on `windows-11-arm`; recognition with real speech is untested.
+- **Newer Windows AI APIs** (Windows App SDK / "Windows AI Foundry", Phi Silica, Copilot+ NPU models) offer, as of 2026-10, no generally available streaming STT API for unpackaged Win32 apps with German. They would also require the Windows App SDK as a runtime and in part Copilot+ hardware. Therefore rejected. Re-evaluate once a streaming ASR API is stable.
+- The old SAPI 5 desktop recognition (`Win32_Media_Speech`, legacy "Windows Speech Recognition") is deprecated in Windows 11 (replaced by Voice Access) and has no usable German dictation. Therefore rejected.
 
-## Konsequenzen
+## Consequences
 
-- Ohne Download ist unter Windows sofort Voice-Tracking möglich (bei aktivierter Online-Spracherkennung).
-- Die Release-Builds hängen zusätzlich vom `windows`-Crate ab (MIT/Apache-2.0, ohnehin über Tauri vorhanden).
-- CI-Job `winspeech` (windows-latest und windows-11-arm): clippy und Tests mit Feature, außerdem `examples/winspeech_probe` (Sprachen auflisten, Recognizer erzeugen, `CompileConstraintsAsync` ohne Mikrofon). Fehlt auf dem Runner das Sprachpaket oder die Einwilligung, meldet der Probe `SKIP`/`FAILED` als Information. Rot wird er nur, wenn eine Grammatik-Sprache installiert ist und die Offline-List-Constraint trotzdem nicht kompiliert.
+- Without a download, voice tracking is immediately possible on Windows (with online speech recognition enabled).
+- The release builds additionally depend on the `windows` crate (MIT/Apache-2.0, already present via Tauri).
+- CI job `winspeech` (windows-latest and windows-11-arm): clippy and tests with the feature, plus `examples/winspeech_probe` (list languages, create the recognizer, `CompileConstraintsAsync` without a microphone). If the runner lacks the language pack or consent, the probe reports `SKIP`/`FAILED` as information. It turns red only if a grammar language is installed and the offline list constraint still fails to compile.
 
-## Nachweis (CI, 2026-10-11)
+## Evidence (CI, 2026-10-11)
 
-`examples/winspeech_probe` lief auf `windows-latest` (x64) und `windows-11-arm` (ARM64) unpackaged als normaler Prozess. Beide Runner haben nur `en-US` (Token `MS-1033-110-WINMO-DNN`) und kein deutsches Sprachpaket. Deshalb meldet der Probe für `de` „SKIP … probing system language en-US“, was dem erwarteten Fehlerpfad „Sprachpaket fehlt“ entspricht. Für `en-US` verlief alles erfolgreich: `SpeechRecognizer` wurde erzeugt, und `CompileConstraintsAsync` lieferte für Dictation und ScriptList jeweils `Success` (~115 ms warm, ~1,1–1,8 s beim ersten Aufruf). Die Dictation-Constraint kompiliert also auch ohne Online-Einwilligung. Die Datenschutzprüfung (`0x80045509`) greift erst bei `StartAsync`, das der Adapter genauso abfängt. Nicht geprüft, weil CI kein Mikrofon hat: `StartAsync`, Partials/Finals mit echter Sprache, Latenz und Erkennungsqualität.
+`examples/winspeech_probe` ran on `windows-latest` (x64) and `windows-11-arm` (ARM64), unpackaged as a normal process. Both runners have only `en-US` (token `MS-1033-110-WINMO-DNN`) and no German language pack. The probe therefore reports "SKIP ... probing system language en-US" for `de`, which corresponds to the expected failure path "language pack missing". For `en-US` everything succeeded: `SpeechRecognizer` was created, and `CompileConstraintsAsync` returned `Success` for both Dictation and ScriptList (~115 ms warm, ~1.1-1.8 s on the first call). So the dictation constraint compiles even without online consent. The privacy check (`0x80045509`) only triggers at `StartAsync`, which the adapter handles the same way. Not verified, because CI has no microphone: `StartAsync`, partials/finals with real speech, latency and recognition quality.

@@ -1,14 +1,16 @@
-# ADR-004: Updater und Distribution
+# ADR-004: Updater and distribution
 
-- **Status:** angenommen (Umsetzung ab v0.2)
-- **Quelle:** übernommen aus `docs/research/RESEARCH.md` §4 (2026-10-10)
+> German original: [de/ADR-004-updater-distribution.md](de/ADR-004-updater-distribution.md)
 
-## Entscheidung
+- **Status:** accepted (implementation from v0.2)
+- **Source:** taken over from `docs/research/RESEARCH.md` §4 (2026-10-10)
 
-- **Updater:** `tauri-plugin-updater` (minisign-Signaturen) über `tauri-action`.
-- **Nicht gewählt:** cargo-dist/axoupdater, weil schwach gewartet und auf CLI-Tools ausgerichtet.
-- **Installer:** unter 15 MB ohne Modelle; Modelle werden zur Laufzeit geladen.
+## Decision
 
-## Nachtrag 2026-10-10: Code-Signing
+- **Updater:** `tauri-plugin-updater` (minisign signatures) via `tauri-action`.
+- **Not chosen:** cargo-dist/axoupdater, because they are poorly maintained and aimed at CLI tools.
+- **Installer:** under 15 MB without models; models are downloaded at runtime.
 
-Recherche dazu in `docs/legal/LEGAL.md`: Azure Artifact Signing ist laut Bericht für EU-Organisationen verfügbar (Validierungsvoraussetzungen und Preise unbelegt); OV/EV-Zertifikate nur noch über Hardware-Token/Cloud-HSM; macOS braucht Apple Developer Program, D-U-N-S-Nummer und Notarisierung.
+## Addendum 2026-10-10: code signing
+
+Research on this is in `docs/legal/LEGAL.md`: according to the report, Azure Artifact Signing is available to EU organisations (validation prerequisites and prices are unverified); OV/EV certificates are only available on hardware tokens or cloud HSMs; macOS requires the Apple Developer Program, a D-U-N-S number and notarization.

@@ -1,30 +1,32 @@
-# ADR-001: UI-Framework – Tauri 2 + Svelte 5
+# ADR-001: UI Framework – Tauri 2 + Svelte 5
 
-- **Status:** angenommen
-- **Quelle:** übernommen aus `docs/research/RESEARCH.md` §4 (2026-10-10)
+> German original: [de/ADR-001-ui-framework.md](de/ADR-001-ui-framework.md)
 
-## Kontext
+- **Status:** accepted
+- **Source:** taken over from `docs/research/RESEARCH.md` §4 (2026-10-10)
 
-Gefordert sind eine native .exe sowie macOS und Linux, Polish auf Apple-Niveau, Rust-Geschwindigkeit, Installer und Updates.
+## Context
 
-## Optionen
+The requirements are a native .exe plus macOS and Linux builds, Apple-level polish, Rust performance, an installer, and updates.
 
-- Tauri 2 (111,7k Stars, v2.12.2 vom 09.10.2026, laut Research verifiziert)
-- Slint (24,1k Stars)
-- egui, iced, Dioxus, GPUI (gpui-component, Lizenz NOASSERTION), Makepad, Floem/Xilem
+## Options
 
-## Entscheidung
+- Tauri 2 (111.7k stars, v2.12.2 of 2026-10-09, verified according to the research)
+- Slint (24.1k stars)
+- egui, iced, Dioxus, GPUI (gpui-component, licence NOASSERTION), Makepad, Floem/Xilem
 
-Tauri 2.12.x + Svelte 5 + TypeScript + Vite. Komponenten: Bits UI bzw. shadcn-svelte.
+## Decision
 
-## Begründung
+Tauri 2.12.x + Svelte 5 + TypeScript + Vite. Components: Bits UI or shadcn-svelte.
 
-- Ein Web-Stack ist der schnellste Weg zu Premium-Polish; Text-Rendering und Fonts sind sehr gut.
-- Tauri bringt Bundler für alle drei Plattformen, Updater und Signing mit; permissive Lizenz.
-- Svelte statt Solid: Solid hat seit v1.9.0 (09/2024) kein GitHub-Release mehr veröffentlicht. Svelte hat das größere Ökosystem.
+## Rationale
 
-## Konsequenzen
+- A web stack is the fastest route to premium polish; text rendering and fonts are very good.
+- Tauri ships a bundler for all three platforms, an updater and signing support; permissive licence.
+- Svelte rather than Solid: Solid has not published a GitHub release since v1.9.0 (09/2024). Svelte has the larger ecosystem.
 
-- Linux/WebKitGTK ist ein Risiko. Fallback-Plan: `WEBKIT_DISABLE_DMABUF_RENDERER=1` bei NVIDIA (`ZT_SAFE_RENDER=1`), Performance-Modus ohne `backdrop-filter`, später CEF-Runtime, im Notfall ein nativer Talent-Renderer (wgpu/egui oder Slint).
-- Die Scroll-Engine liegt in Rust, die UI interpoliert nur. Ein nativer Ausgabe-Renderer bleibt nachrüstbar.
-- Die exakten Tauri-/Plugin-Versionen und mehrere Plugin-APIs (global-shortcut-Handler, Permission-Namen) sind im Code noch nicht verifiziert, siehe `docs/book/src/status.md`.
+## Consequences
+
+- Linux/WebKitGTK is a risk. Fallback plan: `WEBKIT_DISABLE_DMABUF_RENDERER=1` on NVIDIA (`ZT_SAFE_RENDER=1`), a performance mode without `backdrop-filter`, later a CEF runtime, and as a last resort a native talent-window renderer (wgpu/egui or Slint).
+- The scroll engine lives in Rust; the UI only interpolates. A native output renderer can still be added later.
+- The exact Tauri and plugin versions and several plugin APIs (global-shortcut handler, permission names) are not yet verified in code, see `docs/book/src/status.md`.

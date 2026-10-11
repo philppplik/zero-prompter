@@ -1,23 +1,25 @@
-# ADR-002: Audio nativ über cpal statt getUserMedia
+# ADR-002: Native audio via cpal instead of getUserMedia
 
-- **Status:** angenommen
-- **Quelle:** übernommen aus `docs/research/RESEARCH.md` §4 (2026-10-10)
+> German original: [de/ADR-002-native-audio-cpal.md](de/ADR-002-native-audio-cpal.md)
 
-## Entscheidung
+- **Status:** accepted
+- **Source:** taken over from `docs/research/RESEARCH.md` §4 (2026-10-10)
 
-Mikrofon-Audio wird nativ in Rust über `cpal` aufgenommen, nicht im WebView über `getUserMedia`.
+## Decision
 
-## Begründung
+Microphone audio is captured natively in Rust via `cpal`, not in the WebView via `getUserMedia`.
 
-- Nur ein Code-Pfad; die Audiodaten bleiben im Rust-Thread bei sherpa-onnx.
-- Keine Abhängigkeit vom Permission-Handling der WebViews ([tauri#2338](https://github.com/tauri-apps/tauri/issues/2338)).
-- Konfliktauflösung: Der GUI-Entwurf hatte getUserMedia offengelassen; entschieden ist cpal.
+## Rationale
 
-## Plattformpflichten
+- Only one code path; the audio data stays in the Rust thread that feeds sherpa-onnx.
+- No dependency on the WebViews' permission handling ([tauri#2338](https://github.com/tauri-apps/tauri/issues/2338)).
+- Conflict resolution: the GUI draft had left getUserMedia open; cpal is the decision.
 
-- **macOS:** `NSMicrophoneUsageDescription` in `src-tauri/Info.plist` und Entitlement `com.apple.security.device.audio-input`; für den Mac App Store zusätzlich `device.microphone`. Ohne Usage-String liefert cpal stillschweigend nur Nullen ([soloterm/solo#114](https://github.com/soloterm/solo/issues/114)).
-- **Windows:** unpackaged keine Capability nötig, bei MSIX schon ([MS Learn](https://learn.microsoft.com/en-us/windows/apps/develop/devices-sensors/enable-device-capabilities)).
+## Platform obligations
 
-## Nachtrag 2026-10-10: Version
+- **macOS:** `NSMicrophoneUsageDescription` in `src-tauri/Info.plist` and the entitlement `com.apple.security.device.audio-input`; for the Mac App Store additionally `device.microphone`. Without the usage string, cpal silently delivers only zeros ([soloterm/solo#114](https://github.com/soloterm/solo/issues/114)).
+- **Windows:** no capability is needed when unpackaged; for MSIX it is ([MS Learn](https://learn.microsoft.com/en-us/windows/apps/develop/devices-sensors/enable-device-capabilities)).
 
-Der Adapter bleibt auf **cpal 0.15**. Die aktuelle cpal 0.18.2 ist API-inkompatibel (`build_input_stream` nimmt `StreamConfig` per Wert, Fehler-Callback mit `Error`, `name()` ersetzt durch `description()`/`id()`; [docs.rs](https://docs.rs/cpal/latest/cpal/traits/trait.DeviceTrait.html)). Ein Upgrade ist eine eigene Aufgabe. Die 0.15-API im Code ist nicht gegen die 0.15-Doku geprüft.
+## Addendum 2026-10-10: version
+
+The adapter stays on **cpal 0.15**. The current cpal 0.18.2 is API-incompatible (`build_input_stream` takes `StreamConfig` by value, the error callback takes `Error`, `name()` is replaced by `description()`/`id()`; [docs.rs](https://docs.rs/cpal/latest/cpal/traits/trait.DeviceTrait.html)). An upgrade is a separate task. The 0.15 API usage in the code has not been checked against the 0.15 documentation.
