@@ -1,37 +1,46 @@
-# Zusammenfassung
+﻿# Summary
 
-[Einleitung](intro.md)
-[Projektstatus](status.md)
+[Introduction](intro.md)
+[Project Status](status.md)
 
-# Nutzerhandbuch
+# User Guide
 
 - [Installation](user/installation.md)
-- [Erste Schritte](user/first-steps.md)
-- [Anpassung](user/customization.md)
-- [Voice-Tracking](user/voice-tracking.md)
-- [Tastenkürzel](user/shortcuts.md)
-- [Fernsteuerung](user/remote.md)
-- [FAQ & Fehlerbehebung](user/faq.md)
+- [First Steps](user/first-steps.md)
+- [Customization](user/customization.md)
+- [Voice Tracking](user/voice-tracking.md)
+- [Keyboard Shortcuts](user/shortcuts.md)
+- [Remote Control](user/remote.md)
+- [FAQ and Troubleshooting](user/faq.md)
 
-# Entwicklerhandbuch
+# Developer Guide
 
-- [Architektur](dev/architecture.md)
-- [Crates & APIs](dev/crates.md)
-- [Datenfluss](dev/dataflow.md)
-- [Aligner-Algorithmus](dev/aligner.md)
-- [Build & Release](dev/build-release.md)
+- [Architecture](dev/architecture.md)
+- [Crates and APIs](dev/crates.md)
+- [Data Flow](dev/dataflow.md)
+- [Aligner Algorithm](dev/aligner.md)
+- [Build and Release](dev/build-release.md)
 - [Microsoft Store](dev/ms-store.md)
-- [Tests](dev/testing.md)
+- [Testing](dev/testing.md)
 - [Contributing](dev/contributing.md)
-- [Code-Style](dev/code-style.md)
+- [Code Style](dev/code-style.md)
 
-# Referenz
+# Reference
 
 - [Settings](reference/settings.md)
-- [Design-Tokens](reference/tokens.md)
-- [IPC: Commands & Events](reference/ipc.md)
-- [WebSocket-Protokoll (geplant)](reference/ws-protocol.md)
+- [Design Tokens](reference/tokens.md)
+- [IPC: Commands and Events](reference/ipc.md)
+- [Model Manifest](reference/models-manifest.md)
+- [Logging and Diagnostics](reference/logging.md)
+- [WebSocket Protocol (Planned)](reference/ws-protocol.md)
 
-# Entscheidungen
+# Decisions
 
-- [ADR-Index](adr/index.md)
+- [ADR Index](adr/index.md)
+
+# Archive (German originals)
+
+- [Settings (German)](reference/de/settings.md)
+- [Design Tokens (German)](reference/de/tokens.md)
+- [IPC (German)](reference/de/ipc.md)
+- [WebSocket Protocol (German)](reference/de/ws-protocol.md)

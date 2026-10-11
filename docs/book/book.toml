@@ -1,10 +1,10 @@
 [book]
-title = "zero-teleprompter – Handbuch"
+title = "zero-teleprompter - Handbook"
 authors = ["zero-teleprompter contributors"]
-language = "de"
+language = "en"
 multilingual = false
 src = "src"
-description = "Nutzer- und Entwicklerhandbuch für zero-teleprompter (v0.1, ungetestet)"
+description = "User and developer handbook for zero-teleprompter (v0.1, untested)"
 
 [build]
 build-dir = "book"
