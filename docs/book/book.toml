@@ -1,4 +1,4 @@
-﻿[book]
+[book]
 title = "zero-teleprompter - Handbook"
 authors = ["zero-teleprompter contributors"]
 language = "en"
@@ -12,7 +12,8 @@ create-missing = false
 
 [output.html]
 git-repository-url = "https://github.com/philppplik/zero-prompter"
-no-section-label = false`nadditional-js = ["mermaid.min.js", "mermaid-init.js"]
+no-section-label = false
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 [output.html.search]
 enable = true
