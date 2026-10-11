@@ -48,6 +48,10 @@ const MIC_SILENCE_REPORT: Duration = Duration::from_secs(3);
 const QUIET_DBFS: f32 = -50.0;
 /// Observation window of the quiet-microphone check.
 const QUIET_WINDOW: Duration = Duration::from_secs(10);
+/// Audio per real-time check window of [RealtimeWatch].
+const RT_WINDOW_S: f64 = 5.0;
+/// Decode time / audio time above this counts as "too slow".
+const RT_LIMIT: f64 = 0.9;
 /// How often the gain / channel settings are re-read while running.
 const SETTINGS_POLL: Duration = Duration::from_millis(500);
 
@@ -452,6 +456,7 @@ fn run(ctx: &Ctx) {
     // tracked noise floor; re-armed after silence) for onset->partial.
     let mut onset = OnsetDetector::<Instant>::new(OnsetConfig::default());
     let mut last_state = VoiceState::Idle;
+    let mut rt_watch = RealtimeWatch::default();
 
     while !ctx.stop.load(Ordering::SeqCst) {
         let (captured, mut frame) = match rx.recv_timeout(Duration::from_millis(50)) {
@@ -528,7 +533,13 @@ fn run(ctx: &Ctx) {
             raw_acc.clear();
             last_level = Instant::now();
         }
+        let t_dec = Instant::now();
         engine.accept_waveform(&frame);
+        if !demo {
+            if let Some(rtf) = rt_watch.add(frame.len(), t_dec.elapsed()) {
+                diag::report_error(app, "stt", slow_message(rtf, engine.name()));
+            }
+        }
         for ev in engine.poll() {
             let tev = match ev {
                 SttEvent::Partial(text) => {
@@ -652,6 +663,47 @@ fn mic_silence_message(got_frame: bool) -> &'static str {
         "Mikrofon liefert keine Daten. Mikrofonzugriff in den System-Datenschutzeinstellungen \
          prüfen oder ein anderes Eingabegerät wählen."
     }
+}
+
+/// Detects a streaming model that decodes slower than real time on this CPU
+/// (e.g. the 0.6B Nemotron on a weak x86 laptop): audio then queues up, the
+/// bounded channel drops frames and the cursor lags further and further.
+/// Reported once after two consecutive slow windows.
+#[derive(Debug, Default)]
+struct RealtimeWatch {
+    audio_s: f64,
+    busy_s: f64,
+    slow_windows: u32,
+    reported: bool,
+}
+
+impl RealtimeWatch {
+    /// Adds one decoded block; returns the window RTF once if too slow.
+    fn add(&mut self, samples: usize, busy: Duration) -> Option<f64> {
+        self.audio_s += samples as f64 / zt_audio::TARGET_RATE as f64;
+        self.busy_s += busy.as_secs_f64();
+        if self.audio_s < RT_WINDOW_S {
+            return None;
+        }
+        let rtf = self.busy_s / self.audio_s;
+        tracing::debug!(target: "zt::stt", rtf, "decode real-time factor");
+        self.audio_s = 0.0;
+        self.busy_s = 0.0;
+        self.slow_windows = if rtf > RT_LIMIT { self.slow_windows + 1 } else { 0 };
+        if self.slow_windows >= 2 && !self.reported {
+            self.reported = true;
+            return Some(rtf);
+        }
+        None
+    }
+}
+
+fn slow_message(rtf: f64, engine: &str) -> String {
+    format!(
+        "Spracherkennung ist auf diesem Rechner langsamer als Echtzeit (RTF {rtf:.2}, {engine}): \
+         der Text hinkt hinterher. Unter Voice & Modelle ein kleineres Modell wählen \
+         (z. B. Kroko DE/EN)."
+    )
 }
 
 /// Detects a microphone that delivers signal, but far too little: the 90th
@@ -785,6 +837,29 @@ mod tests {
         assert_eq!(early.block(-90.0), None);
         assert!(!early.done);
         assert!(quiet_message(-80.0, 40.0).contains("Eingangslautstärke"));
+    }
+
+    #[test]
+    fn realtime_watch_reports_sustained_slowness_once() {
+        let mut w = RealtimeWatch::default();
+        let block = 1600; // 100 ms
+        let fast = Duration::from_millis(30);
+        let slow = Duration::from_millis(120);
+        for _ in 0..100 {
+            assert_eq!(w.add(block, fast), None);
+        }
+        // One slow window alone is tolerated (model load, first chunk).
+        let mut hits = Vec::new();
+        for _ in 0..50 {
+            hits.extend(w.add(block, slow));
+        }
+        assert!(hits.is_empty());
+        for _ in 0..200 {
+            hits.extend(w.add(block, slow));
+        }
+        assert_eq!(hits.len(), 1, "reported only once");
+        assert!(hits[0] > 1.0);
+        assert!(slow_message(1.2, "x").contains("Kroko"));
     }
 
     #[test]

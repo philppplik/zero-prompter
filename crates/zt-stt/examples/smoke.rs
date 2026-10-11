@@ -4,7 +4,7 @@
 //!   --name kroko-de --dir models/kroko-de --encoder encoder.onnx \
 //!   --decoder decoder.onnx --joiner joiner.onnx --tokens tokens.txt \
 //!   --wav test.wav --expect "wort1,wort2" [--hotwords "a,b"] [--legacy-check] \
-//!   [--language de] [--threads 4]
+//!   [--language de] [--threads 4] [--lead-ms 500]
 //!
 //! Creates the recognizer (fallback ladder logged), optionally applies
 //! hotwords, streams the WAV in 100 ms chunks, prints the recognized text,
@@ -156,7 +156,11 @@ fn main() {
     let stage = eng.active_stage().to_string();
 
     let w = sherpa_onnx::Wave::read(&wav).unwrap_or_else(|| panic!("cannot read {wav}"));
-    let samples = resample(w.samples(), w.sample_rate() as u32);
+    // Lead silence (default 500 ms): in the app the microphone runs before
+    // the first word; test WAVs start almost immediately.
+    let lead_ms: usize = arg(&args, "--lead-ms").map_or(500, |v| v.parse().expect("--lead-ms"));
+    let mut samples = vec![0.0f32; SAMPLE_RATE as usize * lead_ms / 1000];
+    samples.extend(resample(w.samples(), w.sample_rate() as u32));
     let audio_s = samples.len() as f64 / SAMPLE_RATE as f64;
     let onset_s = wav_onset(&samples);
     let chunk = (SAMPLE_RATE / 10) as usize;
