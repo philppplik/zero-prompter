@@ -85,12 +85,10 @@ Sizes are the sums of the `size` fields of each entry. All entries pin their URL
 | `nemotron-3.5-streaming-0.6b-320ms-int8` | de, en | l | `online_nemo_transducer`, streaming | 0 | OpenMDW-1.1 | 682,215,471 |
 | `nemotron-3.5-streaming-0.6b-160ms-int8` | de, en | l | `online_nemo_transducer`, streaming | none | OpenMDW-1.1 | 682,215,471 |
 | `nemotron-3.5-streaming-0.6b-80ms-int8` | de, en | l | `online_nemo_transducer`, streaming | none | OpenMDW-1.1 | 682,215,469 |
-| `zipformer-de-kroko-2025-08-06` | de | s | `online_transducer`, streaming | 1 | CC-BY-SA-4.0 | 71,051,469 |
-| `zipformer-en-kroko-2025-08-06` | en | s | `online_transducer`, streaming | 1 | CC-BY-SA-4.0 | 71,053,214 |
 | `zipformer-en-20m-2023-02-17` | en | s | `online_transducer`, streaming | 2 | Apache-2.0 | 43,649,301 |
 | `parakeet-tdt-0.6b-v3-int8` | de, en | l | `offline_nemo_transducer`, resync | 0 | CC-BY-4.0 | 670,478,772 |
 
-The 320 ms Nemotron variant is the default streaming model (rank 0) and is labeled "recommended" in the manifest; the 160 ms and 80 ms variants react faster but need a stronger CPU, and are not auto-selected. Note: the Kroko attribution text in the manifest still contains a `TODO: confirm exact CC-BY-SA version`. See `THIRD_PARTY_MODELS.md` in the repository for license notices.
+The 320 ms Nemotron variant is the default streaming model (rank 0) and is labeled "recommended" in the manifest; the 160 ms and 80 ms variants react faster but need a stronger CPU, and are not auto-selected. Zipformer EN 20M (rank 1) is the light English option. The Kroko DE/EN models were removed on 2026-10-11 for license reasons. See `THIRD_PARTY_MODELS.md` in the repository for license notices.
 
 ## `ModelRow` (IPC payload)
 
