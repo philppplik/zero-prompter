@@ -3,11 +3,15 @@
 //! cargo run -p zt-stt --release --features sherpa --example smoke -- \
 //!   --name kroko-de --dir models/kroko-de --encoder encoder.onnx \
 //!   --decoder decoder.onnx --joiner joiner.onnx --tokens tokens.txt \
-//!   --wav test.wav --expect "wort1,wort2" [--hotwords "a,b"] [--legacy-check]
+//!   --wav test.wav --expect "wort1,wort2" [--hotwords "a,b"] [--legacy-check] \
+//!   [--language de] [--threads 4]
 //!
 //! Creates the recognizer (fallback ladder logged), optionally applies
 //! hotwords, streams the WAV in 100 ms chunks, prints the recognized text,
-//! RTF and per-chunk latency, and fails if an expected keyword is missing.
+//! RTF, per-chunk latency, the partial cadence (audio time between text
+//! changes = what the prompter cursor sees), the time from speech onset in
+//! the WAV (noise-floor relative, `zt_audio::OnsetDetector`) to the first
+//! partial, and fails if an expected keyword is missing.
 //! `--legacy-check` reproduces the 0.x bug: the old config
 //! (`modeling_unit = "bpe"` without `bpe_vocab`) must make
 //! `OnlineRecognizer::create` return `None`.
@@ -15,7 +19,29 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use zt_audio::{rms_dbfs, OnsetConfig, OnsetDetector};
 use zt_stt::{Hotword, LogSink, SherpaConfig, SherpaEngine, SpeechEngine, SttEvent, SAMPLE_RATE};
+
+/// Nearest-rank percentile of an ascending slice (`NaN` if empty).
+fn pct(sorted: &[f64], p: f64) -> f64 {
+    if sorted.is_empty() {
+        return f64::NAN;
+    }
+    sorted[((sorted.len() - 1) as f64 * p).round() as usize]
+}
+
+/// Speech onset in the WAV (seconds), 10 ms blocks.
+fn wav_onset(samples: &[f32]) -> Option<f64> {
+    let block = (SAMPLE_RATE / 100) as usize;
+    let mut d = OnsetDetector::<usize>::new(OnsetConfig::default());
+    for (i, b) in samples.chunks(block).enumerate() {
+        d.push(rms_dbfs(b), b.len(), i);
+        if d.in_speech() {
+            return d.claim().map(|i| (i * block) as f64 / SAMPLE_RATE as f64);
+        }
+    }
+    None
+}
 
 fn arg(args: &[String], key: &str) -> Option<String> {
     args.iter().position(|a| a == key).and_then(|i| args.get(i + 1)).cloned()
@@ -90,6 +116,11 @@ fn main() {
     cfg.joiner = dir.join(need("--joiner"));
     cfg.tokens = dir.join(need("--tokens"));
     cfg.debug = std::env::var_os("ZT_STT_DEBUG").is_some();
+    cfg.language = arg(&args, "--language");
+    if let Some(t) = arg(&args, "--threads") {
+        cfg.num_threads = t.parse().expect("--threads");
+    }
+    let threads = cfg.num_threads;
     cfg.log = Some(LogSink(Arc::new(move |m: &str| {
         println!("[{:>7.3}s] {m}", t_start.elapsed().as_secs_f64())
     })));
@@ -124,6 +155,7 @@ fn main() {
     let w = sherpa_onnx::Wave::read(&wav).unwrap_or_else(|| panic!("cannot read {wav}"));
     let samples = resample(w.samples(), w.sample_rate() as u32);
     let audio_s = samples.len() as f64 / SAMPLE_RATE as f64;
+    let onset_s = wav_onset(&samples);
     let chunk = (SAMPLE_RATE / 10) as usize;
     let mut tail = samples;
     tail.resize(tail.len() + SAMPLE_RATE as usize * 2, 0.0);
@@ -132,6 +164,8 @@ fn main() {
     let mut finals: Vec<String> = Vec::new();
     let mut partial = String::new();
     let mut first_partial_at: Option<f64> = None;
+    // Audio time of every text change (partial event).
+    let mut partial_times: Vec<f64> = Vec::new();
     let mut fed = 0usize;
     for c in tail.chunks(chunk) {
         let t = Instant::now();
@@ -141,7 +175,10 @@ fn main() {
         for ev in eng.poll() {
             match ev {
                 SttEvent::Partial(p) => {
-                    first_partial_at.get_or_insert(fed as f64 / SAMPLE_RATE as f64);
+                    let t_audio = fed as f64 / SAMPLE_RATE as f64;
+                    first_partial_at.get_or_insert(t_audio);
+                    partial_times.push(t_audio);
+                    println!("PARTIAL t={t_audio:.2}s {p}");
                     partial = p;
                 }
                 SttEvent::Final(f) => {
@@ -160,7 +197,13 @@ fn main() {
     let rtf = total.as_secs_f64() / (tail.len() as f64 / SAMPLE_RATE as f64);
     let mut ms: Vec<f64> = lat.iter().map(|d| d.as_secs_f64() * 1000.0).collect();
     ms.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let pct = |p: f64| ms[((ms.len() - 1) as f64 * p).round() as usize];
+    let mut gaps: Vec<f64> = partial_times.windows(2).map(|w| w[1] - w[0]).collect();
+    gaps.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let first_word_s = match (first_partial_at, onset_s) {
+        (Some(p), Some(o)) => format!("{:.2}", p - o),
+        _ => "-".into(),
+    };
+    let q = |p: f64| pct(&ms, p);
     let avg = ms.iter().sum::<f64>() / ms.len() as f64;
 
     let low = text.to_lowercase();
@@ -169,27 +212,22 @@ fn main() {
     ok &= missing.is_empty() && !text.trim().is_empty();
 
     println!("TEXT: {text}");
-    let line = format!(
+    // One machine-readable line; scripts/stt-smoke.py builds the comparison
+    // table (log + step summary) from it.
+    println!(
         "SMOKE model={name} platform={platform} stage={stage} create_ms={create_ms} audio_s={audio_s:.2} \
-         rtf={rtf:.3} chunk_ms_avg={avg:.1} p50={:.1} p95={:.1} max={:.1} first_partial_s={} missing={missing:?} ok={ok}",
-        pct(0.5),
-        pct(0.95),
-        pct(1.0),
-        first_partial_at.map_or("-".into(), |s| format!("{s:.1}")),
+         rtf={rtf:.3} chunk_ms_avg={avg:.1} p50={:.1} p95={:.1} max={:.1} first_partial_s={} \
+         onset_s={} first_word_s={first_word_s} partials={} cadence_s_p50={:.2} cadence_s_p95={:.2} \
+         threads={threads} missing={missing:?} ok={ok}",
+        q(0.5),
+        q(0.95),
+        q(1.0),
+        first_partial_at.map_or("-".into(), |s| format!("{s:.2}")),
+        onset_s.map_or("-".into(), |s| format!("{s:.2}")),
+        partial_times.len(),
+        pct(&gaps, 0.5),
+        pct(&gaps, 0.95),
     );
-    println!("{line}");
-    if let Some(p) = std::env::var_os("GITHUB_STEP_SUMMARY") {
-        use std::io::Write;
-        if let Ok(mut f) = std::fs::OpenOptions::new().append(true).create(true).open(p) {
-            let _ = writeln!(
-                f,
-                "| {name} | {platform} | {stage} | {rtf:.3} | {avg:.1} / {:.1} / {:.1} | {create_ms} | {} | {text} |",
-                pct(0.95),
-                pct(1.0),
-                if ok { "ok" } else { "FAIL" }
-            );
-        }
-    }
     if !ok {
         std::process::exit(1);
     }

@@ -54,6 +54,12 @@ pub enum Engine {
 pub enum ModelType {
     /// Streaming Zipformer transducer -> `OnlineRecognizer`.
     OnlineTransducer,
+    /// NeMo cache-aware streaming transducer (NVIDIA Nemotron 3.5 ASR
+    /// streaming) -> `OnlineRecognizer` with the same encoder/decoder/joiner
+    /// fields; sherpa detects the NeMo variant from the encoder metadata.
+    /// Multilingual: the target language is a per-stream option
+    /// (`stream.set_option("language", "de")`, empty/"auto" = auto-detect).
+    OnlineNemoTransducer,
     /// NeMo (Parakeet TDT) transducer -> `OfflineRecognizer`,
     /// `model_config.model_type = "nemo_transducer"`.
     OfflineNemoTransducer,
@@ -63,9 +69,19 @@ impl ModelType {
     /// sherpa-onnx `model_type` string (None = let sherpa auto-detect).
     pub fn sherpa_model_type(self) -> Option<&'static str> {
         match self {
-            ModelType::OnlineTransducer => None,
+            ModelType::OnlineTransducer | ModelType::OnlineNemoTransducer => None,
             ModelType::OfflineNemoTransducer => Some("nemo_transducer"),
         }
+    }
+
+    /// Decoded by sherpa's streaming `OnlineRecognizer`.
+    pub fn is_online(self) -> bool {
+        matches!(self, ModelType::OnlineTransducer | ModelType::OnlineNemoTransducer)
+    }
+
+    /// Takes a per-stream `language` option (multilingual prompt models).
+    pub fn takes_language_prompt(self) -> bool {
+        self == ModelType::OnlineNemoTransducer
     }
 }
 
@@ -144,9 +160,10 @@ impl ModelEntry {
         self.files.iter().find(|f| f.role.as_deref() == Some(role))
     }
 
-    /// Attribution must be shown for CC-BY models (About + download dialog).
+    /// Attribution must be shown for CC-BY models and OpenMDW models (whose
+    /// license asks to keep the license + notices with the materials).
     pub fn requires_attribution(&self) -> bool {
-        self.license.starts_with("CC-BY")
+        self.license.starts_with("CC-BY") || self.license.starts_with("OpenMDW")
     }
 
     /// Effective model type (explicit, else derived from `engine`).
@@ -164,7 +181,9 @@ impl ModelEntry {
             return self.roles.clone();
         }
         match self.model_type() {
-            Some(ModelType::OnlineTransducer) => vec![ModelRole::Streaming],
+            Some(ModelType::OnlineTransducer | ModelType::OnlineNemoTransducer) => {
+                vec![ModelRole::Streaming]
+            }
             Some(ModelType::OfflineNemoTransducer) => vec![ModelRole::Resync],
             None => vec![],
         }
@@ -176,6 +195,17 @@ impl ModelEntry {
 
     pub fn supports_language(&self, lang: &str) -> bool {
         self.languages.iter().any(|l| l == lang)
+    }
+
+    /// Language prompt for multilingual prompt models: the primary subtag of
+    /// `lang` if the model lists it, else "auto" (model detects the
+    /// language). `None` for models without a language prompt.
+    pub fn language_prompt(&self, lang: &str) -> Option<String> {
+        if !self.model_type()?.takes_language_prompt() {
+            return None;
+        }
+        let short = primary_language(lang);
+        Some(if self.supports_language(&short) { short } else { "auto".into() })
     }
 
     /// Files without a manifest hash (installed with size check only).

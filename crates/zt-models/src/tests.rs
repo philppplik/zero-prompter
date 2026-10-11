@@ -149,6 +149,9 @@ fn bundled_manifest_is_valid_and_complete() {
     assert!(vad[0].file_by_role("vad").is_some());
     assert!(vad[0].effective_roles().is_empty(), "VAD is never a streaming/resync candidate");
     for id in [
+        "nemotron-3.5-streaming-0.6b-160ms-int8",
+        "nemotron-3.5-streaming-0.6b-80ms-int8",
+        "nemotron-3.5-streaming-0.6b-320ms-int8",
         "zipformer-de-kroko-2025-08-06",
         "zipformer-en-kroko-2025-08-06",
         "zipformer-en-20m-2023-02-17",
@@ -170,11 +173,36 @@ fn bundled_manifest_is_valid_and_complete() {
 fn default_selection_and_fallback_chain() {
     let m = Manifest::parse(BUNDLED).unwrap();
     let ids = |v: Vec<&ModelEntry>| v.into_iter().map(|e| e.id.clone()).collect::<Vec<_>>();
-    assert_eq!(ids(m.candidates("de-DE", ModelRole::Streaming)), ["zipformer-de-kroko-2025-08-06"]);
+    const N160: &str = "nemotron-3.5-streaming-0.6b-160ms-int8";
+    const N80: &str = "nemotron-3.5-streaming-0.6b-80ms-int8";
+    const N320: &str = "nemotron-3.5-streaming-0.6b-320ms-int8";
+    // Nemotron 160 ms is the default for DE and EN, Kroko/20M stay selectable;
+    // the other chunk variants are user choices only (no defaultRank).
+    assert_eq!(
+        ids(m.candidates("de-DE", ModelRole::Streaming)),
+        [N160, "zipformer-de-kroko-2025-08-06", N80, N320]
+    );
     assert_eq!(
         ids(m.candidates("en", ModelRole::Streaming)),
-        ["zipformer-en-kroko-2025-08-06", "zipformer-en-20m-2023-02-17"]
+        [N160, "zipformer-en-kroko-2025-08-06", "zipformer-en-20m-2023-02-17", N80, N320]
     );
+    // Nemotron not installed (existing users): Kroko keeps being used.
+    assert_eq!(
+        m.select("de", ModelRole::Streaming, None, |e| !e.id.starts_with("nemotron")).unwrap().id,
+        "zipformer-de-kroko-2025-08-06"
+    );
+    let n = m.get(N160).unwrap();
+    assert_eq!(n.model_type(), Some(ModelType::OnlineNemoTransducer));
+    assert!(n.model_type().unwrap().is_online());
+    assert_eq!(n.model_type().unwrap().sherpa_model_type(), None);
+    assert_eq!(n.language_prompt("de-DE").as_deref(), Some("de"));
+    assert_eq!(n.language_prompt("fr").as_deref(), Some("auto"));
+    assert!(n.requires_attribution());
+    assert_eq!(m.get("zipformer-de-kroko-2025-08-06").unwrap().language_prompt("de"), None);
+    // Legacy expectations below: Nemotron unranked (as for users who pin Kroko).
+    let old = format!("\"id\": \"{N160}\", \"defaultRank\": 0");
+    let new = format!("\"id\": \"{N160}\"");
+    let m = Manifest::parse(&BUNDLED.replace(&old, &new)).unwrap();
     assert_eq!(ids(m.candidates("de", ModelRole::Resync)), ["parakeet-tdt-0.6b-v3-int8"]);
     // User preference moves to the front of the chain.
     assert_eq!(

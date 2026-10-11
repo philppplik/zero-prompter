@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """CI STT smoke test: fetch models from models.json (SHA-256 verified),
-fetch pinned test WAVs, run `cargo run --example smoke` per model.
+fetch pinned test WAVs, run the prebuilt smoke example per model (build it first:
+`cargo build --release -p zt-stt --features sherpa --example smoke`), print a
+comparison table (load time, RTF, chunk latency, partial cadence, time to first
+word, peak RSS via psutil if installed) to the log and the step summary.
 
 usage: stt-smoke.py <cache_dir> <model_id>...   (cargo is run from the repo root)
 """
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
+import threading
+import time
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,20 +40,28 @@ WAVS = {
     ),
 }
 
-# model id -> list of (wav, expected keywords, hotwords, legacy-check)
+NEMO = "nemotron-3.5-streaming-0.6b-160ms-int8"
+
+# model id -> list of (wav, expected keywords, hotwords, legacy-check, language)
 CASES = {
+    NEMO: [
+        ("de-kroko-0", "Ende,Wurst,zwei", "Teleprompter,Mikrofon", False, "de"),
+        ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", False, "en"),
+    ],
     "zipformer-de-kroko-2025-08-06": [
-        ("de-kroko-0", "Ende,Wurst,zwei", "Teleprompter,Mikrofon", True),
+        ("de-kroko-0", "Ende,Wurst,zwei", "Teleprompter,Mikrofon", True, None),
     ],
     "zipformer-en-kroko-2025-08-06": [
-        ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", True),
-        ("en-kroko-0", "country", "", False),
+        ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", True, None),
+        ("en-kroko-0", "country", "", False, None),
     ],
     "zipformer-en-20m-2023-02-17": [
-        ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", True),
+        ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", True, None),
     ],
 }
-
+# ONNX Runtime threads (the app uses the same: 4 for Nemotron, 2 otherwise).
+THREADS = {NEMO: 4}
+EXE = os.path.join(ROOT, "target", "release", "examples", "smoke" + (".exe" if os.name == "nt" else ""))
 
 def sha256(path):
     h = hashlib.sha256()
@@ -78,6 +92,7 @@ def main():
     for name, (url, digest) in WAVS.items():
         fetch(url, os.path.join(cache, "wavs", name + ".wav"), digest)
     failed = []
+    rows = []
     for mid in ids:
         m = models[mid]
         mdir = os.path.join(cache, mid)
@@ -85,28 +100,91 @@ def main():
         for f in m["files"]:
             fetch(f["url"], os.path.join(mdir, f["path"]), f["sha256"], f.get("size"))
             roles[f["role"]] = f["path"]
-        for wav, expect, hot, legacy in CASES[mid]:
+        for wav, expect, hot, legacy, lang in CASES[mid]:
             cmd = [
-                "cargo", "run", "-q", "--release", "-p", "zt-stt", "--features", "sherpa",
-                "--example", "smoke", "--",
+                EXE,
                 "--name", mid, "--dir", mdir,
                 "--encoder", roles["encoder"], "--decoder", roles["decoder"],
                 "--joiner", roles["joiner"], "--tokens", roles["tokens"],
                 "--wav", os.path.join(cache, "wavs", wav + ".wav"),
                 "--expect", expect,
+                "--threads", str(THREADS.get(mid, 2)),
             ]
             if hot:
                 cmd += ["--hotwords", hot]
             if legacy:
                 cmd.append("--legacy-check")
+            if lang:
+                cmd += ["--language", lang]
             print("::group::" + mid + " / " + wav, flush=True)
-            rc = subprocess.call(cmd, cwd=ROOT)
+            rc, out, peak = run(cmd)
             print("::endgroup::", flush=True)
+            row = parse(out)
+            row.update(case=wav, peak_rss_mb=peak, rc=rc)
+            rows.append(row)
             if rc != 0:
                 failed.append(f"{mid}/{wav} (exit {rc})")
+    report(rows)
     if failed:
         raise SystemExit("FAILED: " + ", ".join(failed))
 
+
+def run(cmd):
+    """Runs the smoke binary, echoes its output, samples the peak RSS."""
+    proc = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            text=True, encoding="utf-8", errors="replace")
+    peak = [0]
+
+    def sample():
+        try:
+            import psutil
+            p = psutil.Process(proc.pid)
+            while proc.poll() is None:
+                mi = p.memory_info()
+                peak[0] = max(peak[0], getattr(mi, "peak_wset", 0), mi.rss)
+                time.sleep(0.05)
+        except Exception:
+            pass
+
+    t = threading.Thread(target=sample, daemon=True)
+    t.start()
+    lines = []
+    for line in proc.stdout:
+        print(line, end="", flush=True)
+        lines.append(line)
+    rc = proc.wait()
+    t.join(timeout=1)
+    return rc, "".join(lines), round(peak[0] / 2**20) if peak[0] else None
+
+
+def parse(out):
+    row = {}
+    for line in out.splitlines():
+        if line.startswith("SMOKE "):
+            for kv in re.findall(r"(\w+)=(\[[^\]]*\]|\S+)", line):
+                row[kv[0]] = kv[1]
+        elif line.startswith("TEXT: "):
+            row["text"] = line[6:].strip()
+    return row
+
+
+def report(rows):
+    head = ["model", "case", "platform", "threads", "load ms", "RTF", "chunk p95 ms",
+            "cadence p50/p95 s", "partials", "first word s", "peak RSS MB", "ok", "text"]
+    lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
+    for r in rows:
+        g = lambda k: str(r.get(k, "-"))
+        lines.append("| " + " | ".join([
+            g("model"), g("case"), g("platform"), g("threads"), g("create_ms"), g("rtf"), g("p95"),
+            g("cadence_s_p50") + " / " + g("cadence_s_p95"), g("partials"), g("first_word_s"),
+            g("peak_rss_mb"), g("ok"), g("text")[:120],
+        ]) + " |")
+    table = "\n".join(lines)
+    print("\n=== STT comparison ===\n" + table, flush=True)
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as f:
+            f.write("\n### STT smoke comparison\n\n" + table + "\n")
 
 if __name__ == "__main__":
     main()

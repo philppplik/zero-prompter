@@ -62,6 +62,10 @@ pub struct SherpaConfig {
     pub provider: String,
     /// sherpa `debug` flag (verbose C++ output on stderr; diagnostics mode).
     pub debug: bool,
+    /// Per-stream `language` option for multilingual prompt models (NVIDIA
+    /// Nemotron 3.5 streaming: "de", "en", "auto"). Set right after
+    /// `create_stream` and after every `reset`. `None` for Zipformer models.
+    pub language: Option<String>,
     pub log: Option<LogSink>,
 }
 
@@ -86,6 +90,7 @@ impl SherpaConfig {
             model_name: model_name.into(),
             provider: "cpu".into(),
             debug: false,
+            language: None,
             log: None,
         }
     }
@@ -366,6 +371,15 @@ mod binding {
     struct Rec {
         recognizer: sherpa_onnx::OnlineRecognizer,
         stream: sherpa_onnx::OnlineStream,
+        language: Option<String>,
+    }
+
+    impl Rec {
+        fn apply_language(&self) {
+            if let Some(l) = &self.language {
+                self.stream.set_option("language", l);
+            }
+        }
     }
 
     impl StreamingRecognizer for Rec {
@@ -383,6 +397,7 @@ mod binding {
         }
         fn reset(&mut self) {
             self.recognizer.reset(&self.stream);
+            self.apply_language();
         }
     }
 
@@ -417,6 +432,8 @@ mod binding {
         let recognizer = sherpa_onnx::OnlineRecognizer::create(&c)
             .ok_or_else(|| SttError::Engine("OnlineRecognizer::create returned None".into()))?;
         let stream = recognizer.create_stream();
-        Ok(Box::new(Rec { recognizer, stream }))
+        let rec = Rec { recognizer, stream, language: cfg.language.clone() };
+        rec.apply_language();
+        Ok(Box::new(rec))
     }
 }

@@ -29,7 +29,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use zt_align::{ResyncOutcome, TrackerEvent, VoiceState};
-use zt_audio::{rms_dbfs, Agc, AudioSource, ChannelMode, GainMode};
+use zt_audio::{rms_dbfs, Agc, AudioSource, ChannelMode, GainMode, OnsetConfig, OnsetDetector};
 use zt_core::metrics::RateCounter;
 use zt_stt::{build_hotwords, Hotword, MockEngine, SpeechEngine, SttError, SttEvent};
 
@@ -41,8 +41,6 @@ pub const EV_TRANSCRIPT: &str = "voice://transcript";
 pub const EV_ENGINE: &str = "voice://engine";
 pub const EV_RESYNC: &str = "voice://resync";
 
-/// RMS above this marks speech onset for the onset->partial latency metric.
-const ONSET_DBFS: f32 = -45.0;
 /// After this long without any non-zero sample the microphone is reported.
 const MIC_SILENCE_REPORT: Duration = Duration::from_secs(3);
 /// Speech level (p90 of the raw input over QUIET_WINDOW) below which the
@@ -405,9 +403,9 @@ fn run(ctx: &Ctx) {
     let mut last_level = Instant::now();
     let mut fps = RateCounter::default();
     let mut mic_watch = MicWatch::new();
-    // Speech onset (capture time of the first voiced chunk) of the running utterance.
-    let mut onset: Option<Instant> = None;
-    let mut first_partial_done = false;
+    // Speech onset (capture time of the first voiced block, relative to the
+    // tracked noise floor; re-armed after silence) for onset->partial.
+    let mut onset = OnsetDetector::<Instant>::new(OnsetConfig::default());
     let mut last_state = VoiceState::Idle;
 
     while !ctx.stop.load(Ordering::SeqCst) {
@@ -449,10 +447,7 @@ fn run(ctx: &Ctx) {
             agc.process(&mut frame);
         }
         let frame_db = rms_dbfs(&frame);
-        if onset.is_none() && frame_db > ONSET_DBFS {
-            onset = Some(captured);
-            first_partial_done = false;
-        }
+        onset.push(frame_db, frame.len(), captured);
         level_acc.extend_from_slice(&frame);
         if let Some(rate) = fps.hit(t_start.elapsed().as_millis() as u64) {
             let db = rms_dbfs(&level_acc);
@@ -498,9 +493,11 @@ fn run(ctx: &Ctx) {
                     if !demo {
                         let mut d = diag::state();
                         d.lat.audio_to_partial.push(ms);
-                        if let (Some(on), false) = (onset, first_partial_done) {
-                            d.lat.onset_to_partial.push(on.elapsed().as_secs_f64() * 1000.0);
-                            first_partial_done = true;
+                        if let Some(on) = onset.claim() {
+                            let ms = on.elapsed().as_secs_f64() * 1000.0;
+                            d.lat.onset_to_partial.push(ms);
+                            tracing::debug!(target: "zt::stt", onset_ms = ms,
+                                noise_floor_db = ?onset.noise_floor(), "first partial of utterance");
                         }
                         d.last_partial = Some(text.clone());
                     }
@@ -511,7 +508,6 @@ fn run(ctx: &Ctx) {
                 SttEvent::Final(text) => {
                     tracing::info!(target: "zt::stt", t_ms = t_start.elapsed().as_millis() as u64,
                         %text, "final");
-                    onset = None;
                     let _ =
                         app.emit(EV_TRANSCRIPT, Transcript { text: text.clone(), is_final: true });
                     TrackerEvent::Hypothesis { text, is_final: true }
@@ -522,7 +518,6 @@ fn run(ctx: &Ctx) {
                 }
                 SttEvent::Vad(false) => {
                     tracing::debug!(target: "zt::vad", "speech end");
-                    onset = None;
                     TrackerEvent::VadSilence
                 }
                 SttEvent::Resync { text, age_ms } => {

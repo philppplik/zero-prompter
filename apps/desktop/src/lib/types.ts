@@ -151,7 +151,7 @@ export interface ScriptMeta {
   words: number;
 }
 
-export type ModelType = 'online_transducer' | 'offline_nemo_transducer';
+export type ModelType = 'online_transducer' | 'online_nemo_transducer' | 'offline_nemo_transducer';
 export type ModelRole = 'streaming' | 'resync';
 
 export interface ModelRow {

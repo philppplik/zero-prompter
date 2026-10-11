@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "_note": "All URLs are pinned (Hugging Face: commit hash; GitHub: k2-fsa/sherpa-onnx release asset) and every file carries a SHA-256 (tokens.txt hashed from a download on 2026-10-10). silero-vad is a small helper model (engine sherpaVad) that the app installs automatically together with any speech model; it drives resync segmentation.",
+  "_note": "All URLs are pinned (Hugging Face: commit hash; GitHub: k2-fsa/sherpa-onnx release asset) and every file carries a SHA-256 (tokens.txt hashed from a download on 2026-10-10; Nemotron tokens.txt on 2026-10-11). silero-vad is a small helper model (engine sherpaVad) that the app installs automatically together with any speech model; it drives resync segmentation.",
   "models": [
     {
       "id": "silero-vad", "defaultRank": 0,
@@ -15,7 +15,52 @@
       ]
     },
     {
-      "id": "zipformer-de-kroko-2025-08-06", "defaultRank": 0,
+      "id": "nemotron-3.5-streaming-0.6b-160ms-int8", "defaultRank": 0,
+      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 160 ms (DE/EN, empfohlen)",
+      "languages": ["de", "en"],
+      "tier": "l",
+      "engine": "sherpaOnlineTransducer", "modelType": "online_nemo_transducer", "roles": ["streaming"],
+      "license": "OpenMDW-1.1",
+      "attribution": "Nemotron 3.5 ASR Streaming 0.6B by NVIDIA (https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b), OpenMDW-1.1 (https://openmdw.ai/license/1-1/); ONNX int8 export (160ms chunk) by k2-fsa/sherpa-onnx.",
+      "files": [
+        { "path": "encoder.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11/resolve/b3a4dbde84fba1a13cb4270e6730b525ac6a2db6/encoder.int8.onnx", "sha256": "e1b39e5e16bef578a54ed2fba5f031438e000cc36c3ea2ca49d55699d5baebd4", "size": 657601518, "role": "encoder" },
+        { "path": "decoder.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11/resolve/b3a4dbde84fba1a13cb4270e6730b525ac6a2db6/decoder.int8.onnx", "sha256": "19f9c98fc6d0a2c33a65a43b36fdb2e914c26c0aa9764be3aebc502a1e982fb0", "size": 14978075, "role": "decoder" },
+        { "path": "joiner.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11/resolve/b3a4dbde84fba1a13cb4270e6730b525ac6a2db6/joiner.int8.onnx", "sha256": "4101c7c679a0bc30483794b27a059e34e79232aa2068d78d51231a22c8b0d7ce", "size": 9504438, "role": "joiner" },
+        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11/resolve/b3a4dbde84fba1a13cb4270e6730b525ac6a2db6/tokens.txt", "sha256": "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a", "size": 131440, "role": "tokens" }
+      ]
+    },
+    {
+      "id": "nemotron-3.5-streaming-0.6b-80ms-int8",
+      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 80 ms (schnellste Reaktion)",
+      "languages": ["de", "en"],
+      "tier": "l",
+      "engine": "sherpaOnlineTransducer", "modelType": "online_nemo_transducer", "roles": ["streaming"],
+      "license": "OpenMDW-1.1",
+      "attribution": "Nemotron 3.5 ASR Streaming 0.6B by NVIDIA (https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b), OpenMDW-1.1 (https://openmdw.ai/license/1-1/); ONNX int8 export (80ms chunk) by k2-fsa/sherpa-onnx.",
+      "files": [
+        { "path": "encoder.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-80ms-int8-2026-06-11/resolve/2ac5952ae18a2cc010c25e3fd96ad20cf254bd09/encoder.int8.onnx", "sha256": "411e1222810f4a4cf0a3704c7609597a12def5b4ad2c7347a24ccd40d895484d", "size": 657601516, "role": "encoder" },
+        { "path": "decoder.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-80ms-int8-2026-06-11/resolve/2ac5952ae18a2cc010c25e3fd96ad20cf254bd09/decoder.int8.onnx", "sha256": "19f9c98fc6d0a2c33a65a43b36fdb2e914c26c0aa9764be3aebc502a1e982fb0", "size": 14978075, "role": "decoder" },
+        { "path": "joiner.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-80ms-int8-2026-06-11/resolve/2ac5952ae18a2cc010c25e3fd96ad20cf254bd09/joiner.int8.onnx", "sha256": "4101c7c679a0bc30483794b27a059e34e79232aa2068d78d51231a22c8b0d7ce", "size": 9504438, "role": "joiner" },
+        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-80ms-int8-2026-06-11/resolve/2ac5952ae18a2cc010c25e3fd96ad20cf254bd09/tokens.txt", "sha256": "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a", "size": 131440, "role": "tokens" }
+      ]
+    },
+    {
+      "id": "nemotron-3.5-streaming-0.6b-320ms-int8",
+      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 320 ms (genauer, träger)",
+      "languages": ["de", "en"],
+      "tier": "l",
+      "engine": "sherpaOnlineTransducer", "modelType": "online_nemo_transducer", "roles": ["streaming"],
+      "license": "OpenMDW-1.1",
+      "attribution": "Nemotron 3.5 ASR Streaming 0.6B by NVIDIA (https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b), OpenMDW-1.1 (https://openmdw.ai/license/1-1/); ONNX int8 export (320ms chunk) by k2-fsa/sherpa-onnx.",
+      "files": [
+        { "path": "encoder.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-320ms-int8-2026-06-11/resolve/424ce58898995b713f84341f2e1492f9207a26aa/encoder.int8.onnx", "sha256": "f79c3fcc149f268b54b7d5754bdc2ba5c47c16b1fc70d15728a56f6efbf60ca5", "size": 657601518, "role": "encoder" },
+        { "path": "decoder.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-320ms-int8-2026-06-11/resolve/424ce58898995b713f84341f2e1492f9207a26aa/decoder.int8.onnx", "sha256": "19f9c98fc6d0a2c33a65a43b36fdb2e914c26c0aa9764be3aebc502a1e982fb0", "size": 14978075, "role": "decoder" },
+        { "path": "joiner.int8.onnx", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-320ms-int8-2026-06-11/resolve/424ce58898995b713f84341f2e1492f9207a26aa/joiner.int8.onnx", "sha256": "4101c7c679a0bc30483794b27a059e34e79232aa2068d78d51231a22c8b0d7ce", "size": 9504438, "role": "joiner" },
+        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-320ms-int8-2026-06-11/resolve/424ce58898995b713f84341f2e1492f9207a26aa/tokens.txt", "sha256": "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a", "size": 131440, "role": "tokens" }
+      ]
+    },
+    {
+      "id": "zipformer-de-kroko-2025-08-06", "defaultRank": 1,
       "name": "Kroko Streaming Zipformer DE (2025-08-06)",
       "languages": ["de"],
       "tier": "s",
@@ -30,7 +75,7 @@
       ]
     },
     {
-      "id": "zipformer-en-kroko-2025-08-06", "defaultRank": 0,
+      "id": "zipformer-en-kroko-2025-08-06", "defaultRank": 1,
       "name": "Kroko Streaming Zipformer EN (2025-08-06)",
       "languages": ["en"],
       "tier": "s",
@@ -45,7 +90,7 @@
       ]
     },
     {
-      "id": "zipformer-en-20m-2023-02-17", "defaultRank": 1,
+      "id": "zipformer-en-20m-2023-02-17", "defaultRank": 2,
       "name": "Streaming Zipformer EN 20M int8 (2023-02-17)",
       "languages": ["en"],
       "tier": "s",

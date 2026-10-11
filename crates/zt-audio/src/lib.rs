@@ -10,7 +10,9 @@
 //! closure; adapters should use a bounded, non-blocking channel behind it.
 
 mod gain;
+mod onset;
 mod resample;
+pub use onset::{OnsetConfig, OnsetDetector};
 pub use gain::{soft_limit, Agc, GainMode, AGC_TARGET_DBFS, MANUAL_GAIN_RANGE_DB};
 pub use resample::{downmix_to_mono, ChannelMode, ChannelSelector, Resampler};
 

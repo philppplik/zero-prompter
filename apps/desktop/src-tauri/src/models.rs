@@ -2,8 +2,9 @@
 //! remove, per-language model choice and engine construction (ADR-006).
 //!
 //! Manifest lookup order: `<app_data>/models/manifest.json` (user/updated) ->
-//! bundled `resources/models.json` (Silero VAD helper, Kroko DE, Kroko EN,
-//! Zipformer EN 20M as Apache-2.0 fallback, Parakeet TDT v3 for resync).
+//! bundled `resources/models.json` (Silero VAD helper, NVIDIA Nemotron 3.5
+//! streaming as DE/EN default (80/160/320 ms chunk variants), Kroko DE,
+//! Kroko EN, Zipformer EN 20M as Apache-2.0 fallback, Parakeet TDT v3 for resync).
 //!
 //! Engine choice: per primary language the user's pick (if installed) else
 //! the manifest's `defaultRank` order; if constructing an engine fails the
@@ -27,6 +28,9 @@ const BUNDLED_MANIFEST: &str = include_str!("../resources/models.json");
 /// Computed hashes of files the manifest could not verify (per model dir).
 const UNVERIFIED_FILE: &str = "unverified-sha256.json";
 const PREFS_FILE: &str = "voice-models.json";
+/// ONNX Runtime threads for the 0.6B Nemotron encoder (Zipformers use 2).
+#[cfg(feature = "sherpa")]
+const NEMO_THREADS: i32 = 4;
 /// Legacy location of a manually copied Silero VAD model (`<models>/silero_vad.onnx`).
 /// The manifest entry `silero-vad` (engine `sherpaVad`) is preferred.
 pub const SILERO_VAD_FILE: &str = "silero_vad.onnx";
@@ -424,7 +428,7 @@ pub fn build_engine(
     // Streaming chain for the script language; if none is installed, any
     // installed streaming model of another language (reported, not silent).
     let plan = m.streaming_plan(&short, pref, |e| {
-        is_installed(&store, e) && e.model_type() == Some(ModelType::OnlineTransducer)
+        is_installed(&store, e) && e.model_type().is_some_and(ModelType::is_online)
     });
     let chain = plan.chain;
     tracing::info!(
@@ -462,6 +466,12 @@ pub fn build_engine(
         path_of(e, "decoder", &mut cfg.decoder);
         path_of(e, "joiner", &mut cfg.joiner);
         path_of(e, "tokens", &mut cfg.tokens);
+        // Nemotron 3.5 streaming: per-stream language prompt ("de"/"en", else
+        // "auto"); 0.6B encoder -> more threads than the small Zipformers.
+        cfg.language = e.language_prompt(&short);
+        if cfg.language.is_some() {
+            cfg.num_threads = NEMO_THREADS;
+        }
         // Diagnostics mode: sherpa's own verbose output (stderr, visible when
         // started from a console). Stage/preflight lines go to the log file.
         cfg.debug = std::env::var_os("ZT_STT_DEBUG").is_some();
@@ -474,7 +484,8 @@ pub fn build_engine(
             let t0 = std::time::Instant::now();
             tracing::info!(target: "zt::engine", model = %id, encoder = %cfg.encoder.display(),
                 tokens = %cfg.tokens.display(), bpe_vocab = ?cfg.bpe_vocab,
-                decoding = %cfg.decoding_method, threads = cfg.num_threads, "creating recognizer");
+                decoding = %cfg.decoding_method, threads = cfg.num_threads,
+                language = ?cfg.language, "creating recognizer");
             let r = SherpaEngine::new(cfg);
             match &r {
                 Ok(_) => tracing::info!(target: "zt::engine", model = %id,

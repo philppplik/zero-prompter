@@ -4,7 +4,7 @@ import type { DiagReport, EngineInfo } from './types';
 export type LatencyKey = keyof DiagReport['latency'];
 
 export const LATENCY_ROWS: { key: LatencyKey; label: string; hint: string }[] = [
-  { key: 'onsetToPartial', label: 'Sprechbeginn → erste Hypothese', hint: 'Erster lauter Audio-Chunk bis zur ersten Partial-Hypothese (inkl. Modell-Lookahead)' },
+  { key: 'onsetToPartial', label: 'Sprechbeginn → erste Hypothese', hint: 'Sprechbeginn (Pegel über dem Rauschboden, nach Pause neu) bis zur ersten Partial-Hypothese (inkl. Modell-Chunk/Lookahead)' },
   { key: 'audioToPartial', label: 'Audio-Chunk → Hypothese', hint: 'Aufnahmezeitpunkt des Chunks bis Partial (Queue + Decode)' },
   { key: 'hypToCursor', label: 'Hypothese → Cursor', hint: 'Tracker-Alignment bis Cursor-Event' },
   { key: 'endToEnd', label: 'Audio → Cursor (gesamt)', hint: 'Aufnahme des Chunks bis voice://word (ohne Scroll-Animation)' },
