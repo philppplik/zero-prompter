@@ -2,7 +2,6 @@
 title = "zero-teleprompter - Handbook"
 authors = ["zero-teleprompter contributors"]
 language = "en"
-multilingual = false
 src = "src"
 description = "User and developer handbook for zero-teleprompter (v0.1, untested)"
 
