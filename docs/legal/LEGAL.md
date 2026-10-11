@@ -9,7 +9,7 @@
 |---|-------|-------|-----------|
 | 1 | Patent US 9,953,646 (PromptSmart/VoiceTrack) | 🟡 | Laut Google Patents „Expired - Fee Related“. Den Status selbst nicht geprüft, USPTO-Bestätigung fehlt |
 | 1b | Weitere Patente (Microsoft US11902690B2 / EP4423748B1) | 🟡 | Ansprüche nicht gelesen |
-| 2 | Modelllizenzen | 🟡/🔴 | Parakeet CC-BY-4.0 ok (Attribution nötig). Kroko-de: Lizenz unklar, evtl. nur nicht-kommerziell → 🔴 |
+| 2 | Modelllizenzen | 🟢 | Parakeet CC-BY-4.0, Nemotron OpenMDW-1.1, Zipformer EN 20M Apache-2.0, Silero VAD MIT: ok (Attribution). Kroko DE/EN **entfernt** (2026-10-11) |
 | 3 | Lizenzen der Abhängigkeiten | 🟢/🟡 | MIT/Apache/MPL-2.0 sind kompatibel; Audit mit cargo-deny fehlt |
 | 4 | Code Signing (Windows/macOS) | 🟢 | Azure Artifact Signing ist für EU-Organisationen verfügbar; Apple Developer Program |
 | 5 | DSGVO | 🟢 | Rein lokale Verarbeitung ohne Telemetrie. Kaum Pflichten, Datenschutzhinweis trotzdem empfohlen |
@@ -37,12 +37,15 @@ Quelle: https://patents.google.com/patent/US9953646B2/en
 | Modell | Lizenz | Kommerziell | Pflichten | Quelle |
 |---|---|---|---|---|
 | NVIDIA Parakeet TDT 0.6B v3 (25 Sprachen inkl. DE) | CC-BY-4.0 | ja | Namensnennung, Lizenzlink, Änderungen kenntlich machen | https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 |
-| Kroko-ASR (Banafo), DE-Streaming-Zipformer | **unklar**. Ein Drittanbieter nennt „Dual-license (Free for non-commercial use)“ | **nicht belegt** | – | https://www.promptlayer.com/models/kroko-asr , https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06 |
+| NVIDIA Nemotron 3.5 ASR Streaming 0.6B | OpenMDW-1.1 | ja | Lizenz und Hinweise beilegen bzw. anzeigen | https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b |
+| Zipformer EN 20M (k2-fsa) | Apache-2.0 | ja | Lizenzhinweis | https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17 |
+| Silero VAD | MIT | ja | Lizenzhinweis | https://github.com/snakers4/silero-vad |
+| Kroko-ASR (Banafo), DE/EN-Streaming-Zipformer – **entfernt** | Community CC-BY-SA, kommerziell separate Lizenz | nicht ohne OEM-Lizenz | – | https://www.promptlayer.com/models/kroko-asr , https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06 |
 | Whisper (OpenAI) | MIT (laut Wissensstand, in dieser Sitzung nicht neu geprüft) | ja | Copyright- und Lizenzhinweis beilegen | https://github.com/openai/whisper/blob/main/LICENSE |
 | Andere sherpa-onnx-Zipformer | je nach Modell (oft Apache-2.0), pro Modell prüfen | – | – | Model Cards |
 
 - **CC-BY-4.0 hat kein ShareAlike.** Unsere App wird also nicht „infiziert“. Ein separater Download ist unproblematisch, solange in der App bzw. im Download-Dialog Folgendes steht: „Parakeet TDT 0.6B v3 © NVIDIA, CC BY 4.0, Link, ggf. ‚konvertiert nach ONNX/int8‘“. Erst bei CC-BY-**SA**-Modellen wären *Änderungen am Modell* (z. B. Quantisierung) wieder unter SA zu stellen. Die App selbst bleibt auch dann frei, weil sie nur ein separates Werk nutzt (Einschätzung).
-- **🔴 Kroko-de:** Nicht ausliefern und keinen Download anbieten, bevor die Lizenz im offiziellen Repo (Banafo/Kroko-ASR) gelesen bzw. eine kommerzielle Lizenz bei Banafo eingeholt ist.
+- **Kroko DE/EN entfernt (2026-10-11):** Für ein lizenzsauberes öffentliches Release bietet die App die Kroko-Modelle nicht mehr an (kein Download, kein Default). Bereits heruntergeladene Ordner werden ignoriert. Ein leichtes deutsches Modell gibt es damit nicht; Deutsch läuft über Nemotron oder die Windows-Spracherkennung (Betriebssystem, keine Weitergabe durch uns).
 
 ## 3. Lizenzen der Abhängigkeiten
 - MIT, Apache-2.0 (bzw. Dual), BSD, ISC, Zlib und Unicode-3.0 sind untereinander und für proprietären Vertrieb kompatibel. Pflicht: Lizenztexte und NOTICE-Dateien (Apache §4) mit ausliefern.
@@ -62,7 +65,7 @@ Quelle: https://patents.google.com/patent/US9953646B2/en
 - Impressum (§ 5 DDG) auf der Website, AGB/EULA für den Verkauf. **[ANWALT]** für EULA und Haftungsausschluss.
 
 ## To-dos (priorisiert)
-1. 🔴 Kroko-de-Lizenz klären oder auf Parakeet bzw. Apache-Zipformer ausweichen.
+1. ✅ Kroko entfernt; Modellstack: Nemotron (OpenMDW-1.1), Zipformer EN 20M (Apache-2.0), Parakeet (CC-BY-4.0), Silero VAD (MIT), Windows-Spracherkennung (OS).
 2. 🟡 **[ANWALT]** FTO: US 9,953,646 (Fee-Status/Wiedereinsetzung), EP4423748B1, Google WO2020050820.
 3. 🟡 Fenstergröße des Alignments nicht an Font oder Orientierung koppeln (Designentscheidung dokumentieren).
 4. 🟡 `cargo deny` + `cargo about` + npm-Lizenzreport in die CI; THIRD_PARTY_LICENSES und ein Modell-Attributionsdialog in die App.

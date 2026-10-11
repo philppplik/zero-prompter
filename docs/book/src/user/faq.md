@@ -14,7 +14,7 @@ Deutsch und Englisch, für die Normalisierung und die Wahl des Modells. Jeder Sp
 ## Probleme
 
 **Voice bewegt den Text, obwohl ich nichts sage („Demo“).**
-Dann läuft der **Demo-Modus**: Es ist kein Streaming-Modell installiert (Parakeet und Silero VAD allein reichen nicht), oder der Build enthält keine Spracherkennung. Klicke auf „Demo · Modell laden“ neben dem Voice-Status und lade z. B. „Kroko Streaming Zipformer DE“. Eine laufende Voice-Sitzung übernimmt das Modell nach dem Download automatisch. Siehe [Voice-Tracking](voice-tracking.md).
+Dann läuft der **Demo-Modus**: Es ist kein Streaming-Modell installiert (Parakeet und Silero VAD allein reichen nicht), oder der Build enthält keine Spracherkennung. Klicke auf „Demo · Modell laden“ neben dem Voice-Status und lade „NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 320 ms“ (Deutsch und Englisch; nur Englisch und klein: „Streaming Zipformer EN 20M“). Unter Windows geht ohne Download auch „Windows Spracherkennung (System)“. Eine laufende Voice-Sitzung übernimmt das Modell nach dem Download automatisch. Siehe [Voice-Tracking](voice-tracking.md).
 
 **„Modellfehler“ oder „Sprachmodell konnte nicht geladen werden“.**
 Ein Modell ist installiert, lässt sich aber nicht öffnen (beschädigte oder fehlende Datei, zu wenig Speicher). Die Meldung nennt die Datei. Entferne das Modell unter Voice & Modelle und lade es neu. Details stehen im Diagnose-Tab und im Log.

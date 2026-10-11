@@ -6,9 +6,13 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 
 > Noch nie kompiliert oder ausgeführt (Erstellung ohne Toolchain). Siehe README → „Erste Schritte nach dem Klonen“.
 
+### Entfernt (2026-10-11, lizenzsauberer Modellstack)
+- **Kroko DE/EN** (`zipformer-de-kroko-2025-08-06`, `zipformer-en-kroko-2025-08-06`, Banafo, CC-BY-SA-Community-Lizenz mit separater kommerzieller Lizenz) aus Manifest, Standard-/Fallback-Reihenfolge, CI-`stt-smoke` und Tests entfernt. Modellstack jetzt: Nemotron 3.5 Streaming (OpenMDW-1.1; 320 ms Standard, 160/80 ms optional), Zipformer EN 20M (Apache-2.0, leichte EN-Option, jetzt `defaultRank 1`), Parakeet TDT 0.6B v3 (CC-BY-4.0, Resync), Silero VAD (MIT), Windows-Spracherkennung (OS).
+- Bestehende Installationen: Kroko-Ordner werden ignoriert (von Hand löschbar), gespeicherte Kroko-Auswahl fällt auf Nemotron bzw. die Standardkette zurück. Ein leichtes deutsches Modell gibt es nicht mehr: Deutsch ohne Nemotron nutzt unter Windows die Windows-Spracherkennung statt eines englischen Modells, sonst Demo-Modus mit „Modell laden“.
+
 ### Hinzugefügt (2026-10-11, Windows-Spracherkennung)
 - **Windows-Spracherkennung als Fallback-Engine** (ADR-008, nur Windows, Feature `winspeech`, in den Windows-Release-Builds aktiv): `Windows.Media.SpeechRecognition` mit Diktat (Partials über `HypothesisGenerated`, Finals über `ResultGenerated`, VAD über `StateChanged`). Ohne Online-Spracherkennung läuft ein Offline-Skriptwort-Modus (List-Constraint). Die Engine nimmt selbst auf (neue Trait-Methode `SpeechEngine::self_capturing`) und läuft auf einem eigenen MTA-Thread.
-- Fallback-Kette: Modelle (Nemotron/Kroko/20M) → Windows-Spracherkennung → Fehlerstatus bzw. Demo. Zusätzlich in der Modellauswahl wählbar: „Windows Spracherkennung (System)“, ohne Download.
+- Fallback-Kette: Modelle (Nemotron/20M) → Windows-Spracherkennung → Fehlerstatus bzw. Demo. Zusätzlich in der Modellauswahl wählbar: „Windows Spracherkennung (System)“, ohne Download.
 - Präzise Fehlerhinweise: Sprachpaket fehlt, Online-Spracherkennung aus (`0x80045509`), Mikrofon verweigert, jeweils mit Pfad und `ms-settings:`-Link. Logging unter `zt::engine` mit Initialisierungszeit. Latenz als Sprechbeginn → Partial.
 - CI-Job `winspeech` (windows-latest + windows-11-arm): Build/clippy/Tests mit Feature und Initialisierungs-Probe (`examples/winspeech_probe`).
 

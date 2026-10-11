@@ -7,22 +7,22 @@ Beim Voice-Tracking hört die App über das Mikrofon zu, erkennt die gesprochene
 | Baustein | Woher |
 |---|---|
 | Mikrofon | Build-Feature `cpal` (Standard) |
-| Spracherkennung | Build-Feature `sherpa` (in allen Release-Builds enthalten) und ein installiertes Streaming-Modell (NVIDIA Nemotron 3.5 Streaming, Kroko- oder Zipformer-Transducer) |
+| Spracherkennung | Build-Feature `sherpa` (in allen Release-Builds enthalten) und ein installiertes Streaming-Modell (NVIDIA Nemotron 3.5 Streaming oder, nur Englisch, Zipformer EN 20M) oder die Windows-Spracherkennung |
 
 Welche Engine läuft, entscheidet die App beim Start von Voice oder Mikrofontest ([ADR-007](../../../adr/ADR-007-voice-pipeline-tuning.md)):
 
 | Situation | Was passiert |
 |---|---|
 | Streaming-Modell für die eingestellte Sprache installiert | echte Erkennung mit diesem Modell |
-| nur ein Streaming-Modell einer **anderen** Sprache installiert | dieses Modell wird genutzt, ein Hinweis erscheint |
+| nur ein Streaming-Modell einer **anderen** Sprache installiert (z. B. Deutsch, aber nur Zipformer EN 20M) | unter Windows: Windows-Spracherkennung in der richtigen Sprache; sonst wird das andere Modell genutzt und ein Hinweis erscheint. Für Deutsch Nemotron laden |
 | **kein** Streaming-Modell installiert (Parakeet und Silero VAD zählen nicht, sie sind Hilfsmodelle) | **Demo-Modus**: eine Mock-Engine „liest“ das Skript mit ca. 2,3 Wörtern/s. Neben dem Status erscheint „Demo · Modell laden“ und führt direkt zu Voice & Modelle |
 | Build ohne Spracherkennung (Feature `sherpa`) | Demo-Modus mit Hinweis |
 | Modell installiert, lässt sich aber nicht laden | **kein** Demo: Fehlermeldung, Badge „Modellfehler · Details“ (öffnet den Diagnose-Tab), der Text bewegt sich nicht von selbst |
 
 Nach einem Modell-Download startet eine laufende Voice-Sitzung automatisch neu und nutzt das neue Modell.
-> `resources/models.json` enthält Nemotron 3.5 Streaming (80/160/320 ms), Kroko DE/EN, Zipformer EN 20M als Fallback, Parakeet TDT 0.6B v3 für Resync und Silero VAD, alle URLs auf Commits gepinnt und mit SHA-256; Details und Quellen in [`docs/research/MODELS.md`](../../../research/MODELS.md). Das Kroko-DE-Modell hat eine ungeklärte Lizenz (siehe [LEGAL.md](../../../legal/LEGAL.md)) und darf bis zur Klärung nicht ausgeliefert werden. Alternativ lässt sich ein eigenes Manifest als `<Datenordner>/models/manifest.json` ablegen. Erlaubt sind nur HTTPS-URLs mit SHA-256-Prüfung.
+> `resources/models.json` enthält Nemotron 3.5 Streaming (80/160/320 ms, OpenMDW-1.1), Zipformer EN 20M (Apache-2.0) als leichte EN-Option, Parakeet TDT 0.6B v3 (CC-BY-4.0) für Resync und Silero VAD (MIT), alle URLs auf Commits gepinnt und mit SHA-256; Details und Quellen in [`docs/research/MODELS.md`](../../../research/MODELS.md). Die früheren Kroko-Modelle DE/EN wurden aus Lizenzgründen entfernt (siehe [LEGAL.md](../../../legal/LEGAL.md)). Alternativ lässt sich ein eigenes Manifest als `<Datenordner>/models/manifest.json` ablegen. Erlaubt sind nur HTTPS-URLs mit SHA-256-Prüfung.
 >
-> Hotwords (Skriptbegriffe) wirken nur mit `modified_beam_search` (Kroko, Zipformer). Nemotron läuft in sherpa-onnx 1.13.8 nur mit `greedy_search` und damit ohne Hotwords; `set_hotwords` meldet dann `Unsupported`.
+> Hotwords (Skriptbegriffe) wirken nur mit `modified_beam_search` (Zipformer EN 20M). Nemotron läuft in sherpa-onnx 1.13.8 nur mit `greedy_search` und damit ohne Hotwords; `set_hotwords` meldet dann `Unsupported`.
 
 ## Modellwahl und Resync
 
@@ -32,10 +32,12 @@ In den Einstellungen (`Ctrl+,`) unter Voice & Modelle → Spracherkennung wähls
 |---|---|---|---|---|
 | **Nemotron 3.5 Streaming, 320 ms** (Standard DE + EN) | 682 MB, ca. 0,8–1 GB RAM | etwa alle 0,3 s | mittel (CI: RTF 0,3 Arm64, 0,6 x86) | Groß-/Kleinschreibung und Satzzeichen, keine Hotwords |
 | Nemotron 3.5 Streaming, 160 ms / 80 ms | je 682 MB | etwa alle 0,2 s | hoch (CI x86: RTF über 1 bei 160 ms) | nur für starke CPUs |
-| Kroko DE / EN | 71 MB | etwa alle 1,3 s (Modell-Chunk 1,28 s) | sehr gering | Hotwords |
-| Zipformer EN 20M | 44 MB | etwa alle 0,3 s | sehr gering | nur Großbuchstaben, schwächer bei freier Rede |
+| Zipformer EN 20M (nur Englisch) | 44 MB | etwa alle 0,3 s | sehr gering | nur Großbuchstaben, schwächer bei freier Rede, Hotwords |
+| Windows Spracherkennung (System) | – | je nach Windows | gering | kein Download; Diktat ist ein Microsoft-Clouddienst |
 
-„Automatisch“ nimmt das erste **installierte** Modell der Reihenfolge Nemotron 320 ms → Kroko → (EN) Zipformer 20M; wer Nemotron nicht lädt, behält Kroko. Lässt sich ein Modell nicht laden, springt die App auf das nächste installierte. Rechnet ein Modell auf dem Rechner langsamer als Echtzeit (der Text würde immer weiter hinterherhinken), erscheint nach etwa 10 s eine Warnung mit der Empfehlung, ein kleineres Modell zu wählen. Messwerte: [`docs/research/MODELS.md`](../../../research/MODELS.md).
+Ein leichtes deutsches Modell gibt es nicht mehr (Kroko wurde aus Lizenzgründen entfernt). Für Deutsch ohne Nemotron bleibt die Windows-Spracherkennung; sonst zeigt die App 
+
+„Automatisch“ nimmt das erste **installierte** Modell der Reihenfolge Nemotron 320 ms → (EN) Zipformer 20M → Windows-Spracherkennung. Wer früher Kroko geladen hat: Die Ordner werden ignoriert (von Hand aus `<Datenordner>/models/` löschbar), eine gespeicherte Kroko-Auswahl fällt auf „Automatisch“ (Nemotron) zurück. Lässt sich ein Modell nicht laden, springt die App auf das nächste installierte. Rechnet ein Modell auf dem Rechner langsamer als Echtzeit (der Text würde immer weiter hinterherhinken), erscheint nach etwa 10 s eine Warnung mit der Empfehlung, ein leichteres Modell zu wählen. Messwerte: [`docs/research/MODELS.md`](../../../research/MODELS.md).
 
 Der Schalter **Resync im Hintergrund** (Stufe L, standardmäßig aus) lädt zusätzlich Parakeet TDT 0.6B v3. Es dekodiert abgeschlossene Sprachsegmente im Hintergrund und verankert den Cursor neu, wenn das Streaming-Modell danebenlag. Das Scrollen wird dadurch nie verzögert. Segmentiert wird mit Silero VAD, wenn `silero_vad.onnx` im Modellordner liegt, sonst über den Pegel. Änderungen gelten beim nächsten Start von Voice. Hintergrund: [ADR-006](../../../adr/ADR-006-hybrid-stt.md).
 
@@ -43,7 +45,7 @@ Der Schalter **Resync im Hintergrund** (Stufe L, standardmäßig aus) lädt zus�
 
 Windows-Builds können die Spracherkennung des Betriebssystems nutzen ([ADR-008](../../../adr/ADR-008-windows-speech-fallback.md)). Dafür muss nichts heruntergeladen werden.
 
-- **Automatisch als Fallback:** Ist kein Streaming-Modell installiert oder lässt sich keins laden, versucht die App die Windows-Spracherkennung, bevor sie in den Demo-Modus bzw. auf „Modellfehler“ geht. Unter der Modellauswahl steht dann z. B. „Nemotron → Kroko → Windows Spracherkennung (System)“.
+- **Automatisch als Fallback:** Ist kein Streaming-Modell installiert oder lässt sich keins laden, versucht die App die Windows-Spracherkennung, bevor sie in den Demo-Modus bzw. auf „Modellfehler“ geht. Unter der Modellauswahl steht dann z. B. „Nemotron → Windows Spracherkennung (System)“.
 - **Manuell:** In Voice & Modelle → Spracherkennung „Windows Spracherkennung (System)“ wählen.
 - **Voraussetzungen:**
   - Das Sprachpaket mit Spracherkennung ist installiert: Einstellungen → Zeit und Sprache → Sprache und Region → Deutsch → Sprachoptionen → „Spracherkennung“ (`ms-settings:regionlanguage`). Die Sprache wählst du unter Zeit und Sprache → Spracherkennung (`ms-settings:speech`).
@@ -112,4 +114,4 @@ Ziel: gesprochenes Wort → Scrollbeginn unter 300 ms (p50), höchstens 1 s.
 | Hypothese → Cursor | Abgleich im Tracker |
 | Audio → Cursor (gesamt) | Aufnahme bis Cursor-Event; danach startet die Scroll-Bewegung im nächsten Tick (≤ 16 ms) mit einer Zeitkonstante von 150 ms |
 
-Wie oft sich der Cursor bewegen kann, bestimmt vor allem der Decoder-Takt des Modells: Kroko rechnet in Blöcken von 1,28 s Audio und liefert deshalb nur etwa alle 1,3 s neue Wörter (meist 1–3 auf einmal), auch wenn „Audio-Chunk → Hypothese“ und „Hypothese → Cursor“ klein sind. Nemotron 320 ms liefert etwa alle 0,3 s (CI-Messung, [MODELS.md](../../../research/MODELS.md)). Die Werte auf deinem Rechner zeigt der Diagnose-Tab.
+Wie oft sich der Cursor bewegen kann, bestimmt vor allem der Decoder-Takt des Modells: Nemotron 320 ms liefert etwa alle 0,3 s neue Wörter, 160 ms etwa alle 0,2 s (CI-Messung, [MODELS.md](../../../research/MODELS.md)). Die Werte auf deinem Rechner zeigt der Diagnose-Tab.

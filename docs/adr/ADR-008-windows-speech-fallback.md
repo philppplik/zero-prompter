@@ -24,7 +24,7 @@ Die Engines aus ADR-006 (Nemotron 3.5, Kroko, Zipformer 20M via sherpa-onnx) bra
    - Scheitert das Diktat (Datenschutz-Einstellung aus oder kein Netz) und ist für die Sprache eine Grammatik-Erkennung installiert, wechselt die Engine in den **Skriptwort-Modus**: eine `SpeechRecognitionListConstraint` aus den Skriptwörtern (Hotwords, max. 2000). Sie läuft offline, erkennt aber nur genau diese Wörter bzw. Phrasen. Sie startet, sobald `set_hotwords` die Wörter liefert.
    - Topic- und List-Constraints werden nicht gemischt.
 6. **Fallback-Kette** (`apps/desktop/src-tauri/src/winspeech.rs`, `voice::make_engine`):
-   1. installierte Modelle (Nemotron → Kroko → 20M)
+   1. installierte Modelle (Nemotron → 20M; Kroko seit 2026-10-11 entfernt)
    2. Windows-Spracherkennung
    3. Fehlerstatus (`engineError`, die Meldung nennt beide Ursachen). Ist gar kein Modell installiert, bleibt es beim Demo-Modus, und die Notiz erklärt, warum Windows nicht verfügbar war.
 7. **Manuelle Wahl:** Unter Einstellungen → Voice steht „Windows Spracherkennung (System)“ (id `windows-speech`) in der Modellauswahl. Es gibt nichts herunterzuladen. `Selection.windowsSpeech` meldet, ob der Build die Engine enthält.

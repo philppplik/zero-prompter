@@ -16,4 +16,4 @@ zero-teleprompter steht wahlweise unter MIT oder Apache-2.0.
 
 ## Nachtrag 2026-10-10: Modelle
 
-Modelle werden separat heruntergeladen und fallen nicht unter die Projektlizenz. Die Lizenzlage pro Modell steht in `THIRD_PARTY_MODELS.md`, `docs/research/MODELS.md` und `docs/legal/LEGAL.md`. Insbesondere ist die Lizenz von Kroko-DE (CC-BY-SA laut Modellseite vs. „non-commercial“ laut Drittquelle) ungeklärt.
+Modelle werden separat heruntergeladen und fallen nicht unter die Projektlizenz. Die Lizenzlage pro Modell steht in `THIRD_PARTY_MODELS.md`, `docs/research/MODELS.md` und `docs/legal/LEGAL.md`. Die Kroko-Modelle (CC-BY-SA-Community-Lizenz, kommerziell separat) wurden am 2026-10-11 entfernt; alle angebotenen Modelle sind permissiv bzw. CC-BY-4.0/OpenMDW-1.1.

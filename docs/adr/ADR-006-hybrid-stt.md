@@ -49,3 +49,5 @@ an die richtige Stelle finden.
   der Feature-Build geprüft (nicht blockierend), Laufzeittests mit echten
   Modellen fehlen noch.
 - − SHA-256 der `tokens.txt` vor einem Release pinnen.
+
+> Nachtrag 2026-10-11: Kroko DE/EN entfernt (Lizenz). Standard ist Nemotron 3.5 Streaming 320 ms (ADR-007), leichte EN-Option Zipformer EN 20M, Fallback Windows-Spracherkennung (ADR-008).
