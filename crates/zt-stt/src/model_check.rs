@@ -87,7 +87,9 @@ pub fn validate_spec(s: &RecognizerSpec<'_>) -> Result<(), String> {
             Some(v) if v.is_file() => {}
             Some(v) => return Err(format!("bpe_vocab: '{}' does not exist", v.display())),
             None => {
-                return Err("bpe_vocab: '' does not exist (modeling_unit=bpe requires bpe_vocab)".into())
+                return Err(
+                    "bpe_vocab: '' does not exist (modeling_unit=bpe requires bpe_vocab)".into()
+                )
             }
         },
         Some("cjkchar") | None => {}
@@ -122,7 +124,10 @@ impl TokenVocab {
                 continue;
             };
             let Ok(id) = id.parse::<i64>() else { continue };
-            chars.extend(piece.chars().filter(|c| *c != SP_MARK));
+            // Specials (<blk>, <unk>, <sos/eos>) say nothing about the casing.
+            if !(piece.len() > 2 && piece.starts_with('<') && piece.ends_with('>')) {
+                chars.extend(piece.chars().filter(|c| *c != SP_MARK));
+            }
             pieces.push((piece.to_string(), id));
         }
         Self { pieces, chars }
@@ -190,7 +195,11 @@ pub fn ensure_bpe_vocab(tokens: &Path, vocab: &TokenVocab) -> Result<PathBuf, St
     let primary = tokens.with_file_name(name);
     let fallback = std::env::temp_dir().join(format!(
         "zt-{}-{name}",
-        tokens.parent().and_then(Path::file_name).map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()
+        tokens
+            .parent()
+            .and_then(Path::file_name)
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default()
     ));
     for p in [primary, fallback] {
         if std::fs::read_to_string(&p).map(|t| t == text).unwrap_or(false) {

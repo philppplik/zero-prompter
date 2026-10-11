@@ -105,9 +105,15 @@ fn main() {
     let mut eng = SherpaEngine::new(cfg).unwrap_or_else(|e| panic!("engine: {e}"));
     let create_ms = t0.elapsed().as_millis();
     if !hotwords.is_empty() {
-        let hw: Vec<Hotword> = hotwords.iter().map(|t| Hotword { text: t.clone(), score: 1.5 }).collect();
+        let hw: Vec<Hotword> =
+            hotwords.iter().map(|t| Hotword { text: t.clone(), score: 1.5 }).collect();
         let r = eng.set_hotwords(&hw);
-        println!("hotwords {} -> {:?}, stage={}", hw.len(), r.as_ref().map_err(|e| e.to_string()), eng.active_stage());
+        println!(
+            "hotwords {} -> {:?}, stage={}",
+            hw.len(),
+            r.as_ref().map_err(|e| e.to_string()),
+            eng.active_stage()
+        );
         if r.is_err() || eng.active_stage() != "beam+hotwords" {
             println!("FAIL: hotwords not active");
             ok = false;
@@ -158,7 +164,8 @@ fn main() {
     let avg = ms.iter().sum::<f64>() / ms.len() as f64;
 
     let low = text.to_lowercase();
-    let missing: Vec<&String> = expect.iter().filter(|k| !low.contains(&k.to_lowercase())).collect();
+    let missing: Vec<&String> =
+        expect.iter().filter(|k| !low.contains(&k.to_lowercase())).collect();
     ok &= missing.is_empty() && !text.trim().is_empty();
 
     println!("TEXT: {text}");

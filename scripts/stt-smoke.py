@@ -37,11 +37,11 @@ WAVS = {
 # model id -> list of (wav, expected keywords, hotwords, legacy-check)
 CASES = {
     "zipformer-de-kroko-2025-08-06": [
-        ("de-kroko-0", "", "Teleprompter,Mikrofon", True),
+        ("de-kroko-0", "Ende,Wurst,zwei", "Teleprompter,Mikrofon", True),
     ],
     "zipformer-en-kroko-2025-08-06": [
         ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", True),
-        ("en-kroko-0", "", "", False),
+        ("en-kroko-0", "country", "", False),
     ],
     "zipformer-en-20m-2023-02-17": [
         ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", True),

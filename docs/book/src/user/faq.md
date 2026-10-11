@@ -19,6 +19,9 @@ Dann läuft der **Demo-Modus**: Es ist kein Streaming-Modell installiert (Parake
 **„Modellfehler“ oder „Sprachmodell konnte nicht geladen werden“.**
 Ein Modell ist installiert, lässt sich aber nicht öffnen (beschädigte oder fehlende Datei, zu wenig Speicher). Die Meldung nennt die Datei. Entferne das Modell unter Voice & Modelle und lade es neu. Details stehen im Diagnose-Tab und im Log.
 
+**Log: „recognizer failed … failed to create OnlineRecognizer“ (nach ~1 ms).**
+Bis einschließlich der ersten Testbuilds lag das an der Konfiguration, nicht am Modell: sherpa-onnx verlangt bei `modeling_unit = bpe` eine Datei `bpe.vocab`, die keines der angebotenen Modelle mitbringt. Behoben: Die App prüft vor dem Start alle Modelldateien (Name + Größe stehen als `preflight ok` im Log; fehlende Dateien werden einzeln genannt), erzeugt die für Hotwords nötige Vokabeldatei `zt-generated-bpe.vocab` aus `tokens.txt` und probiert der Reihe nach `beam+hotwords` → `beam` → `greedy`. Jede Stufe steht im Log (`stage … ok` / `stage … failed`). Scheitern alle Stufen, enthält die Meldung die Gründe je Stufe. Für die interne Ausgabe von sherpa-onnx die App aus einer Konsole mit `ZT_STT_DEBUG=1` starten (die C++-Bibliothek schreibt nur nach stderr). Pfade mit Umlauten können unter Windows Probleme machen; das Log warnt dann.
+
 **„Mikrofon liefert keine Daten“ / „nur digitale Stille“.**
 Das Gerät wurde geöffnet, liefert aber nichts. Unter Windows meist: Einstellungen → Datenschutz und Sicherheit → Mikrofon → „Desktop-Apps den Zugriff auf das Mikrofon erlauben“ ist aus, oder das Mikrofon ist stummgeschaltet. Auf macOS: Systemeinstellungen → Datenschutz → Mikrofon. Danach Mikrofontest erneut starten.
 
