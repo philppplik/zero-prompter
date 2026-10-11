@@ -14,11 +14,11 @@
 //! handlers run on the WinRT thread pool and only push into a channel.
 //!
 //! Constraint modes:
-//! - [`WinSpeechMode::Dictation`]: `SpeechRecognitionTopicConstraint`
+//! - Dictation ([`WinSpeechMode::Dictation`]), `SpeechRecognitionTopicConstraint`
 //!   (scenario Dictation). Needs the speech language installed and the
 //!   privacy setting "Online-Spracherkennung" enabled (Windows uses the
 //!   cloud dictation service for this constraint).
-//! - [`WinSpeechMode::ScriptList`]: `SpeechRecognitionListConstraint` built
+//! - Script list ([`WinSpeechMode::ScriptList`]), `SpeechRecognitionListConstraint` built
 //!   from the script words (hotwords); works offline but only recognizes
 //!   exactly those phrases. Started once hotwords are set.
 
