@@ -175,9 +175,9 @@ jobs:
       - name: psutil (peak RSS sampling)
         shell: bash
         run: python -m pip install --quiet psutil || echo "psutil unavailable, no RAM column"
-      - name: Smoke (Nemotron 3.5 160 ms, Kroko DE, Kroko EN, Zipformer EN 20M)
+      - name: Smoke (Nemotron 3.5 160/320 ms, Kroko DE, Kroko EN, Zipformer EN 20M)
         shell: bash
-        run: python scripts/stt-smoke.py stt-cache nemotron-3.5-streaming-0.6b-160ms-int8 zipformer-de-kroko-2025-08-06 zipformer-en-kroko-2025-08-06 zipformer-en-20m-2023-02-17
+        run: python scripts/stt-smoke.py stt-cache nemotron-3.5-streaming-0.6b-160ms-int8 nemotron-3.5-streaming-0.6b-320ms-int8 zipformer-de-kroko-2025-08-06 zipformer-en-kroko-2025-08-06 zipformer-en-20m-2023-02-17
   frontend:
     name: Frontend (check, test, build)
     runs-on: ubuntu-22.04
