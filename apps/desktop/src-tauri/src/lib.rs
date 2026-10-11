@@ -18,6 +18,7 @@ mod hotkeys;
 mod models;
 mod persist;
 mod voice;
+mod winspeech;
 
 use tauri::{Emitter, Manager, WindowEvent};
 use zt_core::{Command, Controller, Settings, Tokens};

@@ -20,7 +20,11 @@
 
   const mb = (n: number) => `${Math.round(n / 1_000_000)} MB`;
   const fail = (e: unknown) => store.toast(errorText(e), 'error');
-  const nameOf = (id: string) => models.find((m) => m.entry.id === id)?.entry.name ?? id;
+  // Windows speech recognition (ADR-008): system engine, nothing to download.
+  const WINSPEECH_ID = 'windows-speech';
+  const WINSPEECH_NAME = 'Windows Spracherkennung (System)';
+  const nameOf = (id: string) =>
+    id === WINSPEECH_ID ? WINSPEECH_NAME : (models.find((m) => m.entry.id === id)?.entry.name ?? id);
   const roleLabel = (m: ModelRow) =>
     m.entry.engine === 'sherpaVad' ? 'Segmentierung (wird automatisch mitgeladen)' : m.roles.includes('resync') ? 'Resync' : 'Streaming';
   const installed = (id: string) => models.find((m) => m.entry.id === id)?.status === 'installed';
@@ -87,6 +91,9 @@
         {#each streamingFor(lang) as m (m.entry.id)}
           <option value={m.entry.id}>{m.entry.name}{installed(m.entry.id) ? '' : ' (nicht geladen)'}</option>
         {/each}
+        {#if selection?.windowsSpeech}
+          <option value={WINSPEECH_ID}>{WINSPEECH_NAME}</option>
+        {/if}
       </select>
     </label>
   {/each}

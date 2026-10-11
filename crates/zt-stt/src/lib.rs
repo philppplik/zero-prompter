@@ -42,6 +42,20 @@ pub use sherpa_offline::{
     SherpaOfflineConfig, SherpaOfflineEngine, SileroSegmenter, SileroVadConfig,
 };
 
+// Windows speech recognition (system fallback, ADR-008).
+#[cfg(all(windows, feature = "winspeech"))]
+mod windows_speech;
+#[cfg(all(windows, feature = "winspeech"))]
+pub use windows_speech::{
+    probe as winspeech_probe, ProbeReport as WinSpeechProbe, WinSpeechConfig, WinSpeechEngine,
+    WinSpeechMode, HINT_LANGUAGE as WINSPEECH_HINT_LANGUAGE,
+    HINT_MICROPHONE as WINSPEECH_HINT_MICROPHONE, HINT_PRIVACY as WINSPEECH_HINT_PRIVACY,
+};
+/// Model id / display name of the Windows speech engine (all platforms, so
+/// the UI and preferences can refer to it).
+pub const WINSPEECH_ID: &str = "windows-speech";
+pub const WINSPEECH_NAME: &str = "Windows Spracherkennung (System)";
+
 pub const SAMPLE_RATE: u32 = 16_000;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -79,6 +93,12 @@ pub trait SpeechEngine: Send {
     fn set_hotwords(&mut self, hotwords: &[Hotword]) -> Result<(), SttError>;
     /// Drops the current utterance (e.g. after a manual seek).
     fn reset(&mut self);
+    /// True if the engine records the microphone itself (Windows speech,
+    /// ADR-008): `accept_waveform` is ignored and latency is measured from
+    /// speech onset instead of from the fed audio block.
+    fn self_capturing(&self) -> bool {
+        false
+    }
 }
 
 /// Name used in ADR-006 for the streaming port (same trait).
@@ -99,5 +119,8 @@ impl<E: SpeechEngine + ?Sized> SpeechEngine for Box<E> {
     }
     fn reset(&mut self) {
         (**self).reset()
+    }
+    fn self_capturing(&self) -> bool {
+        (**self).self_capturing()
     }
 }

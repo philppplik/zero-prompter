@@ -246,6 +246,9 @@ jobs:
         run: cargo clippy -p zero-teleprompter --all-targets
       - name: clippy (app, sherpa)
         run: cargo clippy -p zero-teleprompter --all-targets --features sherpa
+      # ADR-008: Windows speech fallback (feature is a no-op off Windows).
+      - name: clippy (app, sherpa + winspeech)
+        run: cargo clippy -p zero-teleprompter --all-targets --features sherpa,winspeech
       - name: test (app)
         run: cargo test -p zero-teleprompter
       # A partially restored cache (lockfile changed) can contain
@@ -291,3 +294,40 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npx --yes license-checker-rseidelsohn --production --onlyAllow "MIT;Apache-2.0;ISC;BSD-2-Clause;BSD-3-Clause;0BSD;OFL-1.1;CC0-1.0;Unlicense;MIT OR Apache-2.0;Apache-2.0 OR MIT" --excludePrivatePackages
+
+  # ADR-008: Windows speech recognition fallback (Windows.Media.SpeechRecognition).
+  # Builds the adapter on x64 + ARM64 and probes initialization (create
+  # SpeechRecognizer, CompileConstraintsAsync; no microphone). Runners usually
+  # have no speech language pack / dictation consent: the probe then reports
+  # SKIP instead of failing (see the example's header).
+  winspeech:
+    name: Windows speech (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Static MSVC CRT (mirrors .cargo/config.toml)
+        shell: bash
+        run: echo 'RUSTFLAGS=-D warnings -C target-feature=+crt-static' >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-winspeech
+      - name: clippy (zt-stt, winspeech)
+        run: cargo clippy -p zt-stt --all-targets --features winspeech
+      - name: test (zt-stt, winspeech)
+        run: cargo test -p zt-stt --features winspeech
+      - name: Installed speech languages (informational)
+        shell: pwsh
+        run: |
+          Get-WinUserLanguageList | Format-List LanguageTag
+          Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Speech_OneCore\Recognizers\Tokens' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty PSChildName
+      - name: Probe initialization (de, then system language)
+        run: cargo run -p zt-stt --features winspeech --example winspeech_probe -- de
+      - name: Probe initialization (en-US)
+        run: cargo run -p zt-stt --features winspeech --example winspeech_probe -- en-US

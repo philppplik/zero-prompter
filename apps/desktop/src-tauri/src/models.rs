@@ -172,6 +172,9 @@ pub struct Selection {
     pub resync: Option<String>,
     pub resync_options: Vec<String>,
     pub silero_vad: bool,
+    /// Windows speech recognition usable in this build (ADR-008): offered as
+    /// model "windows-speech" and appended to the chain as fallback.
+    pub windows_speech: bool,
 }
 
 pub fn selection(
@@ -185,11 +188,18 @@ pub fn selection(
     let short = primary_language(lang);
     let pref = prefs.streaming.get(&short).map(String::as_str);
     let ids = |v: Vec<&ModelEntry>| v.into_iter().map(|e| e.id.clone()).collect::<Vec<_>>();
-    let streaming_chain = ids(m
+    let mut streaming_chain = ids(m
         .fallback_chain(&short, ModelRole::Streaming, pref)
         .into_iter()
         .filter(|e| is_installed(&store, e))
         .collect());
+    if crate::winspeech::AVAILABLE {
+        if pref == Some(zt_stt::WINSPEECH_ID) {
+            streaming_chain = vec![zt_stt::WINSPEECH_ID.to_string()];
+        } else {
+            streaming_chain.push(zt_stt::WINSPEECH_ID.to_string());
+        }
+    }
     let resync = prefs
         .resync
         .then(|| {
@@ -206,6 +216,7 @@ pub fn selection(
         resync,
         resync_options: ids(m.candidates(&short, ModelRole::Resync)),
         silero_vad: vad_model_path(&m, &store, &root).is_some(),
+        windows_speech: crate::winspeech::AVAILABLE,
     })
 }
 

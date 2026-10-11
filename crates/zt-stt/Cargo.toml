@@ -13,6 +13,16 @@ thiserror = { workspace = true }
 zt-audio = { workspace = true }
 sherpa-onnx = { workspace = true, optional = true }
 
+# Windows speech recognition fallback (ADR-008). windows 0.61.3 = last
+# release with MSRV <= 1.80 (0.62 needs 1.82); API checked on docs.rs 0.61.3.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "=0.61.3", optional = true, features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Globalization",
+    "Media_SpeechRecognition",
+] }
+
 [features]
 default = []
 # Official k2-fsa sherpa-onnx Rust bindings (Apache-2.0), verified 1.13.8
@@ -21,10 +31,17 @@ default = []
 # -lib archive. For shared libs: default-features = false, features = ["shared"].
 # Off by default: pulls in onnxruntime and needs models.
 sherpa = ["dep:sherpa-onnx"]
+# Windows.Media.SpeechRecognition as self-capturing fallback engine (ADR-008).
+# No-op on other platforms (the dependency is Windows-only).
+winspeech = ["dep:windows"]
 
 [[example]]
 name = "smoke"
 required-features = ["sherpa"]
+
+[[example]]
+name = "winspeech_probe"
+required-features = ["winspeech"]
 
 [lints]
 workspace = true

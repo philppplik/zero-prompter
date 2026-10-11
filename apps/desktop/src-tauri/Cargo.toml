@@ -40,6 +40,8 @@ default = ["cpal", "download"]
 cpal = ["zt-audio/cpal"]
 # Real STT via sherpa-onnx (bundles onnxruntime). Without it, voice runs in demo mode (MockEngine).
 sherpa = ["zt-stt/sherpa"]
+# Windows speech recognition as system fallback engine (ADR-008); no-op off Windows.
+winspeech = ["zt-stt/winspeech"]
 # Model download via HTTP.
 download = ["dep:ureq"]
 

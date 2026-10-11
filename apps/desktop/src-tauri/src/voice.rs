@@ -259,7 +259,7 @@ fn demo_engine(ctx: &Ctx, reason: &'static str, notes: Vec<String>) -> MadeEngin
 }
 
 #[cfg(feature = "sherpa")]
-fn make_engine(ctx: &Ctx) -> MadeEngine {
+fn make_model_engine(ctx: &Ctx) -> MadeEngine {
     match crate::models::build_engine(&ctx.app, &ctx.lang, &ctx.prefs) {
         Ok(Some(b)) => MadeEngine {
             engine: b.engine,
@@ -286,10 +286,54 @@ fn make_engine(ctx: &Ctx) -> MadeEngine {
 }
 
 #[cfg(not(feature = "sherpa"))]
-fn make_engine(ctx: &Ctx) -> MadeEngine {
+fn make_model_engine(ctx: &Ctx) -> MadeEngine {
     tracing::warn!(target: "zt::engine", "build without `sherpa` feature -> demo mode");
     let note = "Dieser Build enthält keine Spracherkennung (sherpa).".to_string();
     demo_engine(ctx, "noSherpa", vec![note])
+}
+
+/// Engine for the session: explicit Windows speech choice, else the model
+/// chain; if that ends in demo/error mode, Windows speech as fallback (ADR-008).
+fn make_engine(ctx: &Ctx) -> MadeEngine {
+    let ok = |engine, notes| MadeEngine {
+        engine,
+        demo: false,
+        reason: None,
+        resync: false,
+        error: None,
+        notes,
+    };
+    if crate::winspeech::chosen(&ctx.prefs, &ctx.lang) {
+        return match crate::winspeech::build(&ctx.lang) {
+            Ok(engine) => ok(engine, vec![]),
+            Err(e) => MadeEngine {
+                engine: Box::new(NullEngine),
+                demo: false,
+                reason: Some("engineError"),
+                resync: false,
+                error: Some(e),
+                notes: vec![],
+            },
+        };
+    }
+    let made = make_model_engine(ctx);
+    if !crate::winspeech::AVAILABLE || !(made.demo || made.error.is_some()) {
+        return made;
+    }
+    match crate::winspeech::build(&ctx.lang) {
+        Ok(engine) => {
+            let why = made.error.clone().unwrap_or_else(|| "kein Sprachmodell installiert".into());
+            let mut notes = made.notes;
+            notes.push(format!("Fallback auf {} ({why})", zt_stt::WINSPEECH_NAME));
+            tracing::warn!(target: "zt::engine", reason = %why, "fallback to windows speech");
+            ok(engine, notes)
+        }
+        Err(e) => {
+            let mut made = made;
+            made.notes.push(format!("{} nicht verfügbar: {e}", zt_stt::WINSPEECH_NAME));
+            made
+        }
+    }
 }
 
 type Frame = (Instant, Vec<f32>);
@@ -338,6 +382,7 @@ fn run(ctx: &Ctx) {
     if let Some(e) = &engine_err {
         diag::report_error(app, "stt", e.clone());
     }
+    let self_capturing = engine.self_capturing();
     let hotwords = build_hotwords(ctx.words.iter().map(String::as_str), 5, 200, 1.5);
     match engine.set_hotwords(&hotwords) {
         Ok(()) => tracing::info!(target: "zt::stt", count = hotwords.len(), "hotwords applied"),
@@ -492,7 +537,11 @@ fn run(ctx: &Ctx) {
                         latency_ms = ms, %text, "partial");
                     if !demo {
                         let mut d = diag::state();
-                        d.lat.audio_to_partial.push(ms);
+                        // Self-capturing engines (Windows speech) never see
+                        // our audio blocks: only onset->partial is meaningful.
+                        if !self_capturing {
+                            d.lat.audio_to_partial.push(ms);
+                        }
                         if let Some(on) = onset.claim() {
                             let ms = on.elapsed().as_secs_f64() * 1000.0;
                             d.lat.onset_to_partial.push(ms);
@@ -537,7 +586,7 @@ fn run(ctx: &Ctx) {
                 };
                 apply_tracker_output(app, &ctx.shared, out);
                 let mut d = diag::state();
-                if out.cursor_token != before && !demo {
+                if out.cursor_token != before && !demo && !self_capturing {
                     let align_ms = t_hyp.elapsed().as_secs_f64() * 1000.0;
                     let e2e_ms = captured.elapsed().as_secs_f64() * 1000.0;
                     d.lat.hyp_to_cursor.push(align_ms);

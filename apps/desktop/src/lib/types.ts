@@ -204,6 +204,8 @@ export interface ModelSelection {
   resync: string | null;
   resyncOptions: string[];
   sileroVad: boolean;
+  /** Windows speech recognition usable (ADR-008), model id `windows-speech`. */
+  windowsSpeech?: boolean;
 }
 
 export interface EngineInfo {
