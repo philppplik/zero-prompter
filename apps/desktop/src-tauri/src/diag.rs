@@ -74,6 +74,14 @@ pub struct DiagState {
     pub engine: Option<EngineInfo>,
     pub audio: Option<String>,
     pub level_db: f32,
+    /// Microphone level before digital gain (dBFS).
+    pub raw_level_db: f32,
+    /// Digital gain currently applied (dB).
+    pub gain_db: f32,
+    /// Smoothed per-channel level of the native stream (dBFS).
+    pub channel_db: Vec<f32>,
+    /// Channel used for mono (None = mix).
+    pub active_channel: Option<usize>,
     pub frames_per_s: f64,
     pub tick_hz: f64,
     pub voice_state: String,
@@ -86,9 +94,13 @@ pub struct DiagState {
     pub log_dir: Option<PathBuf>,
 }
 
+fn initial_state() -> Mutex<DiagState> {
+    Mutex::new(DiagState { level_db: -100.0, raw_level_db: -100.0, ..Default::default() })
+}
+
 pub fn state() -> MutexGuard<'static, DiagState> {
     STATE
-        .get_or_init(|| Mutex::new(DiagState { level_db: -100.0, ..Default::default() }))
+        .get_or_init(initial_state)
         .lock()
         .unwrap_or_else(|e| e.into_inner())
 }
@@ -210,6 +222,10 @@ pub struct Snapshot {
     pub engine: Option<EngineInfo>,
     pub audio: Option<String>,
     pub level_db: f32,
+    pub raw_level_db: f32,
+    pub gain_db: f32,
+    pub channel_db: Vec<f32>,
+    pub active_channel: Option<usize>,
     pub frames_per_s: f64,
     pub tick_hz: f64,
     pub voice_state: String,
@@ -233,6 +249,10 @@ pub fn snapshot() -> Snapshot {
         engine: s.engine.clone(),
         audio: s.audio.clone(),
         level_db: s.level_db,
+        raw_level_db: s.raw_level_db,
+        gain_db: s.gain_db,
+        channel_db: s.channel_db.clone(),
+        active_channel: s.active_channel,
         frames_per_s: s.frames_per_s,
         tick_hz: s.tick_hz,
         voice_state: s.voice_state.clone(),

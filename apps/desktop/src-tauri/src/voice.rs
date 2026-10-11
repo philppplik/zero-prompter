@@ -29,7 +29,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use zt_align::{ResyncOutcome, TrackerEvent, VoiceState};
-use zt_audio::{rms_dbfs, AudioSource};
+use zt_audio::{rms_dbfs, Agc, AudioSource, ChannelMode, GainMode};
 use zt_core::metrics::RateCounter;
 use zt_stt::{build_hotwords, Hotword, MockEngine, SpeechEngine, SttError, SttEvent};
 
@@ -45,6 +45,13 @@ pub const EV_RESYNC: &str = "voice://resync";
 const ONSET_DBFS: f32 = -45.0;
 /// After this long without any non-zero sample the microphone is reported.
 const MIC_SILENCE_REPORT: Duration = Duration::from_secs(3);
+/// Speech level (p90 of the raw input over QUIET_WINDOW) below which the
+/// microphone is reported as very quiet.
+const QUIET_DBFS: f32 = -50.0;
+/// Observation window of the quiet-microphone check.
+const QUIET_WINDOW: Duration = Duration::from_secs(10);
+/// How often the gain / channel settings are re-read while running.
+const SETTINGS_POLL: Duration = Duration::from_millis(500);
 
 #[derive(Debug)]
 pub struct VoiceRuntime {
@@ -61,7 +68,12 @@ impl VoiceRuntime {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Level {
+    /// Level after gain (what the speech engine gets).
     db: f32,
+    /// Level of the microphone itself (before gain).
+    raw_db: f32,
+    /// Applied digital gain (dB).
+    gain_db: f32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -155,6 +167,14 @@ struct Ctx {
     lang: String,
     device: Option<String>,
     prefs: crate::models::VoiceModelPrefs,
+    gain: GainMode,
+    channel: ChannelMode,
+}
+
+/// Gain + channel mode from the settings (micGainAuto, micGainDb, micChannel).
+pub fn mic_config(s: &zt_core::Settings) -> (GainMode, ChannelMode) {
+    let gain = if s.mic_gain_auto { GainMode::Auto } else { GainMode::Manual(s.mic_gain_db) };
+    (gain, ChannelMode::parse(&s.mic_channel))
 }
 
 fn start(app: &AppHandle, shared: &Shared, tracking: bool) {
@@ -162,6 +182,7 @@ fn start(app: &AppHandle, shared: &Shared, tracking: bool) {
     let ctx = {
         let mut g = shared.lock();
         g.voice_rt = Some(VoiceRuntime { stop: stop.clone(), tracking });
+        let (gain, channel) = mic_config(&g.ctl.state().settings);
         Ctx {
             app: app.clone(),
             shared: shared.clone(),
@@ -171,6 +192,8 @@ fn start(app: &AppHandle, shared: &Shared, tracking: bool) {
             lang: g.ctl.state().settings.language.clone(),
             device: g.audio_device.clone(),
             prefs: g.voice_models.clone(),
+            gain,
+            channel,
         }
     };
     let spawned = std::thread::Builder::new().name("zt-voice".into()).spawn(move || {
@@ -188,6 +211,9 @@ fn start(app: &AppHandle, shared: &Shared, tracking: bool) {
         let mut d = diag::state();
         d.running = false;
         d.level_db = -100.0;
+        d.raw_level_db = -100.0;
+        d.channel_db.clear();
+        d.active_channel = None;
     });
     if let Err(e) = spawned {
         diag::report_error(app, "voice-thread", format!("Voice-Thread nicht startbar: {e}"));
@@ -328,6 +354,7 @@ fn run(ctx: &Ctx) {
     let mut mic_err = None;
     let mut audio_desc = None;
     if let Some(src) = source.as_mut() {
+        src.set_channel_mode(ctx.channel);
         let tx2 = tx.clone();
         match src.start(
             ctx.device.as_deref(),
@@ -338,7 +365,8 @@ fn run(ctx: &Ctx) {
             Ok(()) => {
                 mic_ok = true;
                 audio_desc = src.describe();
-                tracing::info!(target: "zt::audio", stream = ?audio_desc, "microphone started");
+                tracing::info!(target: "zt::audio", stream = ?audio_desc, gain = ?ctx.gain,
+                    channel = ?ctx.channel, "microphone started");
             }
             Err(e) => {
                 let msg = format!("Mikrofon konnte nicht geöffnet werden: {e}");
@@ -368,6 +396,11 @@ fn run(ctx: &Ctx) {
     let _ = app.emit(EV_ENGINE, info);
 
     let mut level_acc: Vec<f32> = Vec::with_capacity(2048);
+    let mut raw_acc: Vec<f32> = Vec::with_capacity(2048);
+    let mut agc = Agc::new(ctx.gain, zt_audio::TARGET_RATE);
+    let mut channel = ctx.channel;
+    let mut last_settings = Instant::now();
+    let mut quiet = QuietWatch::new();
     let mut last_level = Instant::now();
     let mut fps = RateCounter::default();
     let mut mic_watch = MicWatch::new();
@@ -377,7 +410,7 @@ fn run(ctx: &Ctx) {
     let mut last_state = VoiceState::Idle;
 
     while !ctx.stop.load(Ordering::SeqCst) {
-        let (captured, frame) = match rx.recv_timeout(Duration::from_millis(50)) {
+        let (captured, mut frame) = match rx.recv_timeout(Duration::from_millis(50)) {
             Ok(f) => f,
             // No microphone: feed realtime silence so demo/mock engines advance.
             Err(RecvTimeoutError::Timeout) if !mic_ok => (Instant::now(), vec![0.0; 800]),
@@ -395,6 +428,25 @@ fn run(ctx: &Ctx) {
                 diag::report_error(app, "audio", msg);
             }
         }
+        if last_settings.elapsed() >= SETTINGS_POLL {
+            last_settings = Instant::now();
+            let (g, ch) = mic_config(&ctx.shared.lock().ctl.state().settings);
+            if g != agc.mode() {
+                tracing::info!(target: "zt::audio", gain = ?g, "mic gain changed");
+                agc.set_mode(g);
+            }
+            if ch != channel {
+                tracing::info!(target: "zt::audio", channel = ?ch, "mic channel mode changed");
+                channel = ch;
+                if let Some(src) = source.as_mut() {
+                    src.set_channel_mode(ch);
+                }
+            }
+        }
+        raw_acc.extend_from_slice(&frame);
+        if mic_ok {
+            agc.process(&mut frame);
+        }
         let frame_db = rms_dbfs(&frame);
         if onset.is_none() && frame_db > ONSET_DBFS {
             onset = Some(captured);
@@ -403,14 +455,36 @@ fn run(ctx: &Ctx) {
         level_acc.extend_from_slice(&frame);
         if let Some(rate) = fps.hit(t_start.elapsed().as_millis() as u64) {
             let db = rms_dbfs(&level_acc);
-            tracing::debug!(target: "zt::audio", frames_per_s = rate, rms_dbfs = db, "audio stats");
-            diag::state().frames_per_s = rate;
+            let raw = rms_dbfs(&raw_acc);
+            let ch = source.as_ref().and_then(|s| s.channel_levels());
+            let ch_db: Vec<f32> = ch.as_ref().map(|c| c.dbfs.clone()).unwrap_or_default();
+            let active = ch.as_ref().and_then(|c| c.active);
+            tracing::debug!(target: "zt::audio", frames_per_s = rate, rms_dbfs = db, raw_dbfs = raw,
+                gain_db = agc.gain_db(), channels_dbfs = ?ch_db, active_channel = ?active,
+                "audio stats");
+            let mut d = diag::state();
+            d.frames_per_s = rate;
+            d.channel_db = ch_db;
+            d.active_channel = active;
         }
         if last_level.elapsed() >= Duration::from_millis(66) {
             let db = rms_dbfs(&level_acc);
-            diag::state().level_db = db;
-            let _ = app.emit(EV_LEVEL, Level { db });
+            let raw_db = rms_dbfs(&raw_acc);
+            let gain_db = agc.gain_db();
+            {
+                let mut d = diag::state();
+                d.level_db = db;
+                d.raw_level_db = raw_db;
+                d.gain_db = gain_db;
+            }
+            let _ = app.emit(EV_LEVEL, Level { db, raw_db, gain_db });
+            if mic_ok {
+                if let Some(p90) = quiet.block(raw_db) {
+                    diag::report_error(app, "audio", quiet_message(p90, gain_db));
+                }
+            }
             level_acc.clear();
+            raw_acc.clear();
             last_level = Instant::now();
         }
         engine.accept_waveform(&frame);
@@ -491,7 +565,7 @@ fn run(ctx: &Ctx) {
     }
     drop(tx);
     tracing::info!(target: "zt::voice", secs = t_start.elapsed().as_secs_f64(), "voice stop");
-    let _ = app.emit(EV_LEVEL, Level { db: -100.0 });
+    let _ = app.emit(EV_LEVEL, Level { db: -100.0, raw_db: -100.0, gain_db: 0.0 });
 }
 
 /// Watches the microphone for "opened but delivers nothing": Windows privacy
@@ -533,6 +607,56 @@ fn mic_silence_message(got_frame: bool) -> &'static str {
         "Mikrofon liefert keine Daten. Mikrofonzugriff in den System-Datenschutzeinstellungen \
          prüfen oder ein anderes Eingabegerät wählen."
     }
+}
+
+/// Detects a microphone that delivers signal, but far too little: the 90th
+/// percentile of the raw level blocks (~66 ms) over the first QUIET_WINDOW
+/// stays below QUIET_DBFS although the user is expected to speak
+/// (Surface/Snapdragon arrays with low Windows input volume).
+#[derive(Debug)]
+struct QuietWatch {
+    t_start: Instant,
+    blocks: Vec<f32>,
+    done: bool,
+}
+
+impl QuietWatch {
+    fn new() -> Self {
+        Self { t_start: Instant::now(), blocks: Vec::new(), done: false }
+    }
+
+    /// Adds one raw level block; returns the p90 level once, if too quiet.
+    fn block(&mut self, raw_db: f32) -> Option<f32> {
+        if self.done {
+            return None;
+        }
+        self.blocks.push(raw_db);
+        if self.t_start.elapsed() < QUIET_WINDOW {
+            return None;
+        }
+        self.done = true;
+        let p90 = percentile(&mut self.blocks, 0.9);
+        // Pure digital silence is reported by MicWatch instead.
+        (p90 < QUIET_DBFS && p90 > -100.0).then_some(p90)
+    }
+}
+
+fn percentile(v: &mut [f32], q: f32) -> f32 {
+    if v.is_empty() {
+        return -100.0;
+    }
+    v.sort_by(|a, b| a.total_cmp(b));
+    let i = ((v.len() - 1) as f32 * q).round() as usize;
+    v[i.min(v.len() - 1)]
+}
+
+fn quiet_message(p90: f32, gain_db: f32) -> String {
+    format!(
+        "Mikrofon sehr leise (Sprachpegel ca. {p90:.0} dBFS, < {QUIET_DBFS:.0} dBFS beim Sprechen; \
+         digitale Verstärkung aktuell {gain_db:+.0} dB). Windows: Einstellungen > System > Sound > \
+         Eingabe > Gerät > Eingangslautstärke erhöhen (z. B. 80-100 %), ggf. anderes Mikrofon \
+         wählen; in den Voice-Einstellungen Mikrofon-Gain auf Auto lassen."
+    )
 }
 
 /// Feeds an offline resync hypothesis into the tracker (ADR-006). Runs on the
@@ -586,6 +710,49 @@ mod tests {
         assert_eq!(w.check(), None);
         let mut early = MicWatch::new();
         assert_eq!(early.check(), None);
+    }
+
+    fn quiet_started_ago(secs: u64) -> QuietWatch {
+        let mut w = QuietWatch::new();
+        w.t_start = Instant::now().checked_sub(Duration::from_secs(secs)).unwrap_or(w.t_start);
+        w
+    }
+
+    #[test]
+    fn quiet_watch_reports_low_speech_level_once() {
+        let mut w = quiet_started_ago(11);
+        for _ in 0..140 {
+            w.blocks.push(-90.0);
+        }
+        assert_eq!(w.block(-43.0), Some(-90.0), "one loud block does not hide a quiet mic");
+        assert_eq!(w.block(-90.0), None, "reported only once");
+    }
+
+    #[test]
+    fn quiet_watch_silent_for_normal_level_digital_silence_or_early() {
+        let mut w = quiet_started_ago(11);
+        w.blocks.extend([-80.0; 50]);
+        w.blocks.extend([-30.0; 50]);
+        assert_eq!(w.block(-30.0), None);
+        let mut w = quiet_started_ago(11);
+        assert_eq!(w.block(-100.0), None, "digital silence is MicWatch's job");
+        let mut early = QuietWatch::new();
+        assert_eq!(early.block(-90.0), None);
+        assert!(!early.done);
+        assert!(quiet_message(-80.0, 40.0).contains("Eingangslautstärke"));
+    }
+
+    #[test]
+    fn mic_config_from_settings() {
+        let s = zt_core::Settings::default();
+        assert_eq!(mic_config(&s), (GainMode::Auto, ChannelMode::Auto));
+        let s = zt_core::Settings {
+            mic_gain_auto: false,
+            mic_gain_db: 12.0,
+            mic_channel: "2".into(),
+            ..Default::default()
+        };
+        assert_eq!(mic_config(&s), (GainMode::Manual(12.0), ChannelMode::Channel(1)));
     }
 
     #[test]

@@ -301,6 +301,25 @@
                     {#each devices as d (d.id)}<option value={d.id}>{d.name}{d.isDefault ? ' (Standard)' : ''}</option>{/each}
                   </select>
                 </label>
+                <label class="field">
+                  <span class="lbl">Mikrofon-Gain</span>
+                  <select value={st.settings.micGainAuto ? 'auto' : 'manual'} onchange={(e) => update({ micGainAuto: (e.currentTarget as HTMLSelectElement).value === 'auto' })}>
+                    <option value="auto">Auto (Ziel ca. −20 dBFS)</option><option value="manual">Manuell</option>
+                  </select>
+                </label>
+                {#if !st.settings.micGainAuto}
+                  <label class="field">
+                    <span class="lbl">Verstärkung {st.settings.micGainDb > 0 ? '+' : ''}{Math.round(st.settings.micGainDb)} dB</span>
+                    <input type="range" min="-20" max="40" step="1" value={st.settings.micGainDb} onchange={(e) => update({ micGainDb: Number((e.currentTarget as HTMLInputElement).value) })} />
+                  </label>
+                {/if}
+                <label class="field">
+                  <span class="lbl">Mikrofon-Kanal</span>
+                  <select value={st.settings.micChannel} onchange={(e) => update({ micChannel: (e.currentTarget as HTMLSelectElement).value })}>
+                    <option value="auto">Auto (lautester Kanal)</option><option value="mix">Alle mischen</option>
+                    {#each ['1', '2', '3', '4'] as n (n)}<option value={n}>Kanal {n}</option>{/each}
+                  </select>
+                </label>
                 <div class="field">
                   <div class="meter" role="meter" aria-label="Eingangspegel" aria-valuemin={-60} aria-valuemax={0} aria-valuenow={Math.round(store.level)}>
                     <span style:width="{levelPct}%"></span>

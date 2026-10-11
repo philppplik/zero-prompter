@@ -20,11 +20,24 @@
   const voiceOn = $derived(store.state?.voice.enabled ?? false);
   const levelPct = $derived(Math.max(0, Math.min(100, ((store.level + 60) / 60) * 100)));
   const headline = $derived(report ? engineHeadline(report) : '');
+  // Raw level samples (every 500 ms, last 30 s). Their 90th percentile stands in
+  // for "level while speaking"; below −50 dBFS the microphone is too quiet.
+  let rawSamples = $state<number[]>([]);
+  const rawP90 = $derived.by(() => {
+    if (rawSamples.length < 10) return null;
+    const s = [...rawSamples].sort((a, b) => a - b);
+    return s[Math.round((s.length - 1) * 0.9)];
+  });
+  const rawQuiet = $derived(!!report?.running && rawP90 != null && rawP90 > -100 && rawP90 < -50);
+  const fmtDb = (db: number | undefined) => (db == null || db <= -100 ? '–' : `${db.toFixed(0)} dBFS`);
 
   async function refresh() {
     try {
-      report = await api.diagSnapshot();
+      const r = await api.diagSnapshot();
+      report = r;
       loadError = null;
+      if (r.running && r.rawLevelDb != null) rawSamples = [...rawSamples.slice(-59), r.rawLevelDb];
+      else if (!r.running) rawSamples = [];
     } catch (e) {
       loadError = errorText(e);
     }
@@ -103,6 +116,21 @@
       <button class="btn outline" disabled={voiceOn} onclick={toggleMic}><Icon name="mic" />{micTest ? 'Test beenden' : 'Mikrofontest'}</button>
       <span class="footnote">{Math.round(store.level)} dBFS{voiceOn ? ' · Test nicht während Voice-Tracking' : ''}</span>
     </div>
+    {#if report?.running}
+      <dl class="kv">
+        <dt>Mikrofon roh</dt><dd class:warn={rawQuiet}>{fmtDb(report.rawLevelDb)} · Gain {report.gainDb != null ? `${report.gainDb >= 0 ? '+' : ''}${report.gainDb.toFixed(0)} dB` : '–'}</dd>
+        {#if report.channelDb?.length}
+          <dt>Kanäle</dt>
+          <dd>
+            {#each report.channelDb as db, i (i)}<span class:active={report.activeChannel === i}>K{i + 1} {fmtDb(db)}</span>{i < report.channelDb.length - 1 ? ' · ' : ''}{/each}
+            {report.activeChannel == null ? ' (gemischt)' : ''}
+          </dd>
+        {/if}
+      </dl>
+      {#if rawQuiet}
+        <p class="footnote warn">Mikrofon sehr leise (&lt; −50 dBFS beim Sprechen). Windows: Einstellungen → System → Sound → Eingabe → Eingangslautstärke erhöhen; Mikrofon-Gain unter Voice &amp; Modelle auf Auto lassen.</p>
+      {/if}
+    {/if}
   </section>
 
   <section>
@@ -151,6 +179,7 @@
   .kv dt { color: var(--ui-text-muted); }
   .kv dd { margin: 0; overflow-wrap: anywhere; }
   .partial { font-style: italic; }
+  .kv .active { font-weight: 600; }
   .meter { height: 6px; border-radius: 3px; background: var(--ui-surface-sunken); overflow: hidden; margin-bottom: 8px; }
   .meter span { display: block; height: 100%; background: var(--state-tracking); transition: width 66ms linear; }
   .lat { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }

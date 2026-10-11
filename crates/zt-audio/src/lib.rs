@@ -9,8 +9,10 @@
 //! The audio callback must never block: frames are handed to a [`FrameSink`]
 //! closure; adapters should use a bounded, non-blocking channel behind it.
 
+mod gain;
 mod resample;
-pub use resample::{downmix_to_mono, Resampler};
+pub use gain::{soft_limit, Agc, GainMode, AGC_TARGET_DBFS, MANUAL_GAIN_RANGE_DB};
+pub use resample::{downmix_to_mono, ChannelMode, ChannelSelector, Resampler};
 
 #[cfg(feature = "cpal")]
 mod cpal_source;
@@ -56,6 +58,21 @@ pub trait AudioSource {
     fn describe(&self) -> Option<String> {
         None
     }
+    /// How multi-channel input is reduced to mono (may change while running).
+    fn set_channel_mode(&mut self, _mode: ChannelMode) {}
+    /// Smoothed per-channel input level before downmix, for diagnostics.
+    fn channel_levels(&self) -> Option<ChannelLevels> {
+        None
+    }
+}
+
+/// Per-channel input level (native stream, before downmix/gain).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ChannelLevels {
+    /// Smoothed RMS per channel in dBFS.
+    pub dbfs: Vec<f32>,
+    /// Channel used for mono (None = mix of all).
+    pub active: Option<usize>,
 }
 
 /// Replays a fixed 16 kHz buffer synchronously in `chunk`-sized frames on `start`.

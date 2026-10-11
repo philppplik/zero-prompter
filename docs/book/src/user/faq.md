@@ -22,6 +22,13 @@ Ein Modell ist installiert, lässt sich aber nicht öffnen (beschädigte oder fe
 **„Mikrofon liefert keine Daten“ / „nur digitale Stille“.**
 Das Gerät wurde geöffnet, liefert aber nichts. Unter Windows meist: Einstellungen → Datenschutz und Sicherheit → Mikrofon → „Desktop-Apps den Zugriff auf das Mikrofon erlauben“ ist aus, oder das Mikrofon ist stummgeschaltet. Auf macOS: Systemeinstellungen → Datenschutz → Mikrofon. Danach Mikrofontest erneut starten.
 
+**„Mikrofon sehr leise (< −50 dBFS beim Sprechen)“.**
+Das Mikrofon liefert Signal, aber viel zu wenig für die Spracherkennung (typisch: Surface/Snapdragon-Geräte mit „Microphone Array … Static Endpoints“, Pegel −85 bis −100 dBFS in Pausen, kaum über −45 dBFS beim Sprechen).
+1. Windows: Einstellungen → System → Sound → Eingabe → das Mikrofon wählen → **Eingangslautstärke** auf 80–100 % stellen. Bei manchen Treibern gibt es dort zusätzlich „Audioverbesserungen“ bzw. „Sprachfokus“; ausprobieren.
+2. Einstellungen → Voice & Modelle → **Mikrofon-Gain** auf „Auto“ lassen. Die App verstärkt dann digital (bis +40 dB) auf ca. −20 dBFS Sprachpegel; ein Limiter verhindert Übersteuern. „Manuell“ setzt eine feste Verstärkung von −20 bis +40 dB.
+3. **Mikrofon-Kanal**: Mikrofon-Arrays liefern mehrere Kanäle, von denen einer leer oder gegenphasig sein kann. „Auto“ nimmt den lautesten Kanal (Standard), „Alle mischen“ mittelt (kann bei Arrays Pegel kosten), „Kanal N“ erzwingt einen Kanal. Der Diagnose-Tab zeigt den Pegel jedes Kanals und den gewählten Kanal.
+4. Im Diagnose-Tab sollte „Mikrofon roh“ beim Sprechen über −50 dBFS liegen; ohne Windows-Anpassung hebt nur die digitale Verstärkung auch das Rauschen an.
+
 **Sprache synchronisiert nicht, obwohl ein Modell geladen ist.**
 1. Einstellungen → **Diagnose** öffnen und Voice starten.
 2. „Engine“ muss den Modellnamen zeigen, „Audio“ ein Gerät, der Pegel beim Sprechen deutlich über −40 dBFS liegen.

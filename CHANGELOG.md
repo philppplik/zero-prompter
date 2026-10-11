@@ -11,6 +11,12 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 - Skripte-Drawer: Umschalter in einer schmalen, animierten Leiste links statt in der oberen Aktionsleiste (`Ctrl+B` unverändert).
 - Capabilities `control`: `core:window:allow-minimize`, `allow-toggle-maximize`, `allow-internal-toggle-maximize`, `allow-is-maximized`, `allow-start-dragging`.
 
+### Behoben (2026-10-11, Mikrofonpegel)
+- Sehr leises Mikrofon auf Surface/Snapdragon (Mikrofon-Array, 48 kHz, 2 Kanäle, −85 bis −100 dBFS): Der Downmix mittelte alle Kanäle; ein leerer Kanal kostete 6 dB, gegenphasige Kanäle löschten sich aus. Neu: Kanalwahl **Auto** (lautester Kanal, geglättet, 3 dB Hysterese), „Alle mischen“ oder fester Kanal (Einstellung „Mikrofon-Kanal“).
+- Digitale Vorverstärkung: **Mikrofon-Gain** Auto (AGC auf ca. −20 dBFS Sprache, max. +40 dB, passt sich nur über −75 dBFS an, Soft-Limiter gegen Clipping) oder manuell (−20 bis +40 dB). Wirkt live, auch während Voice läuft.
+- Diagnose: Rohpegel vor Gain, aktuelle Verstärkung, Pegel pro Kanal und aktiver Kanal (Diagnose-Tab und Log `zt::audio`). Warnung „Mikrofon sehr leise (< −50 dBFS beim Sprechen)“ mit Hinweis auf die Windows-Eingangslautstärke.
+- Resampler 48k→16k geprüft: Skalierung und Filterverstärkung korrekt (Test: 1-kHz-Sinus behält die Amplitude ±1 dB).
+
 ### Hinzugefügt (2026-10-11)
 - Einstellungen → **Über**: Version (`getVersion`), Build-Commit, Lizenz, Links zu Repo, Third-Party-Notices, Modelllizenzen und Changelog (Befehl `open_link` mit fester Link-Liste), Credits.
 

@@ -9,16 +9,131 @@
 use std::f32::consts::PI;
 
 /// Averages interleaved channels into mono.
+///
+/// Caution with microphone arrays: an empty channel halves the level (−6 dB),
+/// phase-inverted channels cancel each other. [`Resampler`] therefore uses
+/// [`ChannelMode::Auto`] (loudest channel) by default.
 pub fn downmix_to_mono(interleaved: &[f32], channels: usize, out: &mut Vec<f32>) {
     let ch = channels.max(1);
     out.extend(interleaved.chunks_exact(ch).map(|f| f.iter().sum::<f32>() / ch as f32));
+}
+
+/// How multi-channel input becomes mono.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ChannelMode {
+    /// Loudest channel (smoothed RMS, 3 dB hysteresis). Robust for mic arrays
+    /// with silent or phase-inverted channels.
+    #[default]
+    Auto,
+    /// Average of all channels (classic downmix).
+    Mix,
+    /// One fixed channel (0-based); falls back to Auto if out of range.
+    Channel(usize),
+}
+
+impl ChannelMode {
+    /// Parses the settings value: "auto" | "mix" | "1".."N" (1-based).
+    pub fn parse(s: &str) -> Self {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "mix" => Self::Mix,
+            n => match n.parse::<usize>() {
+                Ok(i) if i >= 1 => Self::Channel(i - 1),
+                _ => Self::Auto,
+            },
+        }
+    }
+}
+
+/// Smoothing time constant of the per-channel level (seconds).
+const CHANNEL_TAU_S: f32 = 0.5;
+/// A different channel must be this much louder (dB) before Auto switches.
+const SWITCH_HYSTERESIS_DB: f32 = 3.0;
+
+/// Per-channel level tracking + channel selection (state of [`ChannelMode::Auto`]).
+#[derive(Debug, Clone)]
+pub struct ChannelSelector {
+    pub mode: ChannelMode,
+    channels: usize,
+    rate: u32,
+    /// Smoothed mean square per channel.
+    ms: Vec<f32>,
+    selected: usize,
+}
+
+impl ChannelSelector {
+    pub fn new(channels: usize, rate: u32, mode: ChannelMode) -> Self {
+        let channels = channels.max(1);
+        Self { mode, channels, rate: rate.max(1), ms: vec![0.0; channels], selected: 0 }
+    }
+
+    /// Smoothed level per channel in dBFS (−100 for silence).
+    pub fn channel_dbfs(&self) -> Vec<f32> {
+        self.ms.iter().map(|m| ms_to_dbfs(*m)).collect()
+    }
+
+    /// Channel currently used (None = mix).
+    pub fn active_channel(&self) -> Option<usize> {
+        match self.mode {
+            ChannelMode::Mix if self.channels > 1 => None,
+            ChannelMode::Channel(i) if i < self.channels => Some(i),
+            _ => Some(self.selected),
+        }
+    }
+
+    /// Converts interleaved input to mono according to `mode`, appending to `out`.
+    pub fn process(&mut self, interleaved: &[f32], out: &mut Vec<f32>) {
+        let ch = self.channels;
+        let frames = interleaved.len() / ch;
+        if frames == 0 {
+            return;
+        }
+        // Per-channel block energy -> exponential smoothing.
+        let mut block = vec![0.0f32; ch];
+        for f in interleaved.chunks_exact(ch) {
+            for (b, s) in block.iter_mut().zip(f) {
+                *b += s * s;
+            }
+        }
+        let alpha = 1.0 - (-(frames as f32) / (self.rate as f32 * CHANNEL_TAU_S)).exp();
+        for (m, b) in self.ms.iter_mut().zip(&block) {
+            *m += alpha * (b / frames as f32 - *m);
+        }
+        if ch == 1 {
+            out.extend_from_slice(&interleaved[..frames]);
+            return;
+        }
+        // Auto: switch only when another channel is clearly louder.
+        let mut best = 0;
+        for (i, m) in self.ms.iter().enumerate() {
+            if *m > self.ms[best] {
+                best = i;
+            }
+        }
+        let gain_db = ms_to_dbfs(self.ms[best]) - ms_to_dbfs(self.ms[self.selected]);
+        if gain_db >= SWITCH_HYSTERESIS_DB {
+            self.selected = best;
+        }
+        match self.active_channel() {
+            None => downmix_to_mono(interleaved, ch, out),
+            Some(i) => out.extend(interleaved.chunks_exact(ch).map(|f| f[i])),
+        }
+    }
+}
+
+fn ms_to_dbfs(ms: f32) -> f32 {
+    if ms <= 1e-10 {
+        -100.0
+    } else {
+        10.0 * ms.log10()
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Resampler {
     in_rate: u32,
     out_rate: u32,
-    channels: usize,
+    /// Channel selection / downmix (public for diagnostics and mode changes).
+    pub selector: ChannelSelector,
     taps: Vec<f32>,
     /// FIR history (last taps.len()-1 input samples).
     history: Vec<f32>,
@@ -41,7 +156,7 @@ impl Resampler {
         Self {
             in_rate,
             out_rate,
-            channels: channels.max(1),
+            selector: ChannelSelector::new(channels, in_rate, ChannelMode::Auto),
             history: vec![0.0; taps.len() - 1],
             taps,
             pos: 0.0,
@@ -61,7 +176,7 @@ impl Resampler {
     /// Processes interleaved input and appends resampled mono output to `out`.
     pub fn process(&mut self, interleaved: &[f32], out: &mut Vec<f32>) {
         self.mono.clear();
-        downmix_to_mono(interleaved, self.channels, &mut self.mono);
+        self.selector.process(interleaved, &mut self.mono);
 
         // FIR low-pass (direct form over history ++ new samples).
         let n_hist = self.history.len();
@@ -160,6 +275,77 @@ mod tests {
         r.process(&stereo, &mut out);
         let expected = (mono.len() as f64 / (44_100.0 / 16_000.0)) as i64;
         assert!((out.len() as i64 - expected).abs() <= 2);
+    }
+
+    fn db(x: f32) -> f32 {
+        20.0 * x.log10()
+    }
+
+    #[test]
+    fn sine_1k_48k_to_16k_keeps_amplitude_within_1db() {
+        let input = sine(48_000, 1000.0, 1.0);
+        let mut r = Resampler::to_16k(48_000, 1);
+        let mut out = Vec::new();
+        for c in input.chunks(480) {
+            r.process(c, &mut out); // 10 ms callbacks like cpal
+        }
+        let g = db(rms(&out[400..]) / rms(&input));
+        assert!(g.abs() <= 1.0, "gain {g} dB");
+        let peak = out[400..].iter().fold(0.0f32, |a, s| a.max(s.abs()));
+        assert!((0.89..=1.0).contains(&peak), "peak {peak}");
+    }
+
+    fn interleave(chs: &[Vec<f32>]) -> Vec<f32> {
+        (0..chs[0].len()).flat_map(|i| chs.iter().map(move |c| c[i])).collect()
+    }
+
+    fn run_mode(chs: &[Vec<f32>], mode: ChannelMode) -> (Vec<f32>, Resampler) {
+        let mut r = Resampler::to_16k(48_000, chs.len());
+        r.selector.mode = mode;
+        let mut out = Vec::new();
+        for c in interleave(chs).chunks(480 * chs.len()) {
+            r.process(c, &mut out);
+        }
+        (out, r)
+    }
+
+    #[test]
+    fn downmix_antiphase_channels_auto_keeps_level_mix_cancels() {
+        let a = sine(48_000, 500.0, 1.0);
+        let b: Vec<f32> = a.iter().map(|s| -s).collect();
+        let (mix, _) = run_mode(&[a.clone(), b.clone()], ChannelMode::Mix);
+        assert!(rms(&mix[400..]) < 1e-3, "mix cancels antiphase channels");
+        let (auto, _) = run_mode(&[a, b], ChannelMode::Auto);
+        assert!(db(rms(&auto[400..]) / 0.7071).abs() < 1.0);
+    }
+
+    #[test]
+    fn downmix_empty_channel_auto_picks_loud_one() {
+        let a = sine(48_000, 500.0, 1.0);
+        let z = vec![0.0; a.len()];
+        // Signal on the second channel: Auto must switch away from channel 0.
+        let (auto, r) = run_mode(&[z.clone(), a.clone()], ChannelMode::Auto);
+        assert_eq!(r.selector.active_channel(), Some(1));
+        assert!(db(rms(&auto[8000..]) / 0.7071).abs() < 1.0);
+        let lv = r.selector.channel_dbfs();
+        assert_eq!(lv[0], -100.0);
+        assert!((lv[1] + 3.0).abs() < 1.0, "{lv:?}"); // EMA ~86 % settled after 2 tau
+        // Mix loses 6 dB.
+        let (mix, _) = run_mode(&[z.clone(), a.clone()], ChannelMode::Mix);
+        assert!((db(rms(&mix[400..]) / 0.7071) + 6.02).abs() < 1.0);
+        // Fixed channel.
+        let (fixed, r) = run_mode(&[z, a], ChannelMode::Channel(0));
+        assert_eq!(r.selector.active_channel(), Some(0));
+        assert!(rms(&fixed) < 1e-6);
+    }
+
+    #[test]
+    fn channel_mode_parse() {
+        assert_eq!(ChannelMode::parse("auto"), ChannelMode::Auto);
+        assert_eq!(ChannelMode::parse("MIX"), ChannelMode::Mix);
+        assert_eq!(ChannelMode::parse("2"), ChannelMode::Channel(1));
+        assert_eq!(ChannelMode::parse("0"), ChannelMode::Auto);
+        assert_eq!(ChannelMode::parse("x"), ChannelMode::Auto);
     }
 
     #[test]

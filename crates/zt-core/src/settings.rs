@@ -131,6 +131,14 @@ pub struct Settings {
     pub reduced_motion: bool,
     /// Action id -> key chord, e.g. "togglePlay" -> "Space".
     pub hotkeys: BTreeMap<String, String>,
+    /// Microphone gain: automatic (AGC towards about -20 dBFS) when true,
+    /// otherwise the fixed [Self::mic_gain_db].
+    pub mic_gain_auto: bool,
+    /// Manual microphone gain in dB ([Self::MIC_GAIN_MIN_DB]..=[Self::MIC_GAIN_MAX_DB]).
+    pub mic_gain_db: f32,
+    /// Multi-channel input -> mono: "auto" (loudest channel), "mix" (average)
+    /// or a 1-based channel number ("1", "2", ...).
+    pub mic_channel: String,
 }
 
 impl Settings {
@@ -140,6 +148,9 @@ impl Settings {
     /// frontend (Inspector slider, marker drag) uses the same bounds.
     pub const FOCUS_LINE_MIN: f32 = 0.05;
     pub const FOCUS_LINE_MAX: f32 = 0.70;
+    /// Manual microphone gain range (dB); matches zt_audio::MANUAL_GAIN_RANGE_DB.
+    pub const MIC_GAIN_MIN_DB: f32 = -20.0;
+    pub const MIC_GAIN_MAX_DB: f32 = 40.0;
 
     pub fn from_tokens(t: &Tokens) -> Self {
         let p = t.typography.prompter;
@@ -182,6 +193,9 @@ impl Settings {
             language: "de".to_string(),
             reduced_motion: false,
             hotkeys,
+            mic_gain_auto: true,
+            mic_gain_db: 0.0,
+            mic_channel: "auto".to_string(),
         }
     }
 
@@ -196,6 +210,14 @@ impl Settings {
             t.layout.focus_line_default.clamp(Self::FOCUS_LINE_MIN, Self::FOCUS_LINE_MAX)
         };
         self.line_height = self.line_height.clamp(1.0, 3.0);
+        self.mic_gain_db = if self.mic_gain_db.is_finite() {
+            self.mic_gain_db.clamp(Self::MIC_GAIN_MIN_DB, Self::MIC_GAIN_MAX_DB)
+        } else {
+            0.0
+        };
+        let ch = self.mic_channel.trim().to_ascii_lowercase();
+        let valid = ch == "auto" || ch == "mix" || ch.parse::<u8>().is_ok_and(|n| n >= 1);
+        self.mic_channel = if valid { ch } else { "auto".to_string() };
         if !t.prompter.contains_key(&self.theme) {
             self.theme = ThemeSet::DEFAULT.to_string();
         }
@@ -247,6 +269,28 @@ mod tests {
         assert!((Settings::FOCUS_LINE_MIN..=Settings::FOCUS_LINE_MAX).contains(&at(f32::NAN)));
         let range = Settings::FOCUS_LINE_MIN..=Settings::FOCUS_LINE_MAX;
         assert!(range.contains(&t.layout.focus_line_default));
+    }
+
+    #[test]
+    fn mic_settings_sanitized() {
+        let t = Tokens::embedded();
+        let d = Settings::default();
+        assert!(d.mic_gain_auto);
+        assert_eq!(d.mic_channel, "auto");
+        let s = Settings { mic_gain_db: 99.0, mic_channel: "0".into(), ..Default::default() }
+            .sanitized(&t);
+        assert_eq!(s.mic_gain_db, Settings::MIC_GAIN_MAX_DB);
+        assert_eq!(s.mic_channel, "auto");
+        let s = Settings {
+            mic_gain_db: f32::NAN,
+            mic_channel: " MIX ".into(),
+            ..Default::default()
+        }
+        .sanitized(&t);
+        assert_eq!(s.mic_gain_db, 0.0);
+        assert_eq!(s.mic_channel, "mix");
+        let s = Settings { mic_channel: "2".into(), ..Default::default() }.sanitized(&t);
+        assert_eq!(s.mic_channel, "2");
     }
 
     #[test]

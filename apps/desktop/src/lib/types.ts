@@ -78,6 +78,12 @@ export interface Settings {
   language: string;
   reducedMotion: boolean;
   hotkeys: Record<string, string>;
+  /** Microphone gain: AGC (true) or fixed `micGainDb`. */
+  micGainAuto: boolean;
+  /** Manual microphone gain in dB (−20..40). */
+  micGainDb: number;
+  /** Multi-channel -> mono: 'auto' (loudest), 'mix' or a 1-based channel number. */
+  micChannel: string;
 }
 
 export interface AppState {
@@ -228,6 +234,14 @@ export interface DiagReport {
   engine: EngineInfo | null;
   audio: string | null;
   levelDb: number;
+  /** Microphone level before digital gain. */
+  rawLevelDb?: number;
+  /** Digital gain applied (dB). */
+  gainDb?: number;
+  /** Smoothed level per native channel (dBFS). */
+  channelDb?: number[];
+  /** Channel used for mono (null = mix). */
+  activeChannel?: number | null;
   framesPerS: number;
   tickHz: number;
   voiceState: string;
