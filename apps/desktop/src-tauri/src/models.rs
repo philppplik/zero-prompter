@@ -462,6 +462,13 @@ pub fn build_engine(
         path_of(e, "decoder", &mut cfg.decoder);
         path_of(e, "joiner", &mut cfg.joiner);
         path_of(e, "tokens", &mut cfg.tokens);
+        // Diagnostics mode: sherpa's own verbose output (stderr, visible when
+        // started from a console). Stage/preflight lines go to the log file.
+        cfg.debug = std::env::var_os("ZT_STT_DEBUG").is_some();
+        let log_id = e.id.clone();
+        cfg.log = Some(zt_stt::LogSink(std::sync::Arc::new(move |msg: &str| {
+            tracing::info!(target: "zt::engine", model = %log_id, "{msg}");
+        })));
         let id = e.id.clone();
         let make = move || -> Result<Box<dyn SpeechEngine>, SttError> {
             let t0 = std::time::Instant::now();

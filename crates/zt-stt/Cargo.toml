@@ -22,5 +22,9 @@ default = []
 # Off by default: pulls in onnxruntime and needs models.
 sherpa = ["dep:sherpa-onnx"]
 
+[[example]]
+name = "smoke"
+required-features = ["sherpa"]
+
 [lints]
 workspace = true
