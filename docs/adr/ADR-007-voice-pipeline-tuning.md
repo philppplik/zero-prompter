@@ -45,7 +45,7 @@ Gemessen wird im Voice-Thread (rollierend, letzte 200 Werte, `zt_core::metrics::
 
 | Metrik | Start | Ende |
 |---|---|---|
-| `onsetToPartial` | Aufnahmezeit des ersten Chunks > −45 dBFS einer Äußerung | erste Partial-Hypothese |
+| `onsetToPartial` | Sprechbeginn relativ zum Rauschboden (`OnsetDetector`, siehe Nachtrag 2026-10-11; vorher fester Wert −45 dBFS) | erste Partial-Hypothese |
 | `audioToPartial` | Aufnahmezeit des Chunks, der eine neue Partial auslöste | Partial emittiert |
 | `hypToCursor` | Hypothese an Tracker | Cursor-Wechsel |
 | `endToEnd` | Aufnahmezeit des Chunks | `voice://word` emittiert |
@@ -85,6 +85,58 @@ Quelle: https://github.com/ShayneP/local-teleprompter (Lizenz **MIT**, geprüft 
 Übernommen (eigene Implementierung, kein Code kopiert, Attribution in THIRD_PARTY_NOTICES.md): **Nahpfad** – wenn das SW-Alignment zu wenig Evidenz hat (`min_matches = 2`), darf das *neueste* Wort den Cursor trotzdem bewegen, sofern es eines der nächsten drei Skriptwörter trifft (exakt oder nach der strikten Fuzzy-Regel). Nur mit vorhandenem Anker (`tracking`/`hold`/`resync`), nie in `listening`/`lost`. Begründung „nachweislich besser“: Nach manuellem Seek, Re-Anchor oder Sprung ist der Hypothesenpuffer leer; bisher brauchte die erste Bewegung zwei passende Wörter (≈ 1 Wort ≈ 250–400 ms zusätzliche Latenz bei 2,5–4 Wörtern/s). Mit Nahpfad bewegt sich der Cursor beim ersten Wort (Test `near_fast_path_moves_on_first_word_after_seek`). Die strikte Fuzzy-Regel verhindert, dass kurze Wörter („und“/„uns“) den Cursor ziehen (Test `near_word_match_rules`); die bestehende Szenario-Tabelle (u. a. „ein Wort reicht in `listening` nicht“) bleibt unverändert grün.
 
 Nicht übernommen, weil nicht besser belegt: das Bigramm-Gate fürs Fernfenster (unsere 2×-Sprungbestätigung erfüllt denselben Zweck mit Zeit-Hysterese) und der Re-Anchor über 6 Wörter (bei uns globale SW-Suche + Offline-Resync).
+
+## Nachtrag 2026-10-11: Partial-Kadenz, Onset-Metrik, Nemotron
+
+**Befund (Nutzer-Log, Win11 ARM64, Kroko DE):** Partials nur alle ~1,27 s
+(t_ms 19180 → 20430 → 21747 → 23020), je 1–3 Wörter; `audioToPartial` 80 ms,
+`hypToCursor` 0,3 ms, der Scroll ruckelt im 1,3-s-Takt. `onsetToPartial`
+p50 2649 ms / p95 46154 ms.
+
+**Ursache Kadenz: Modell, nicht Code.** Encoder-Metadaten der Kroko-Modelle:
+`decode_chunk_len = 128`, `T = 141` (10-ms-Frames) → ein Decoder-Schritt pro
+1,28 s Audio. Unsere Schleife dekodiert nach jedem Audio-Block
+(`while is_ready { decode }`) und meldet jede Textänderung; Endpoint-Regeln
+betreffen nur Finals. Gegenprobe im CI mit identischem Code: Zipformer EN 20M
+0,3 s, Nemotron 160 ms 0,2 s, Nemotron 320 ms 0,3 s, Kroko 1,30 s (p50 = p95).
+Die Annahme oben („typisch 320 ms bei Streaming-Zipformer“) gilt für Kroko
+nicht. Kein Code-Fix möglich; Abhilfe ist ein Modell mit kleinerem Chunk.
+
+**Ursache Onset-Metrik:** fester Schwellwert −45 dBFS *nach* AGC. Bei leisem
+Mikrofon hebt die AGC das Rauschen über −45 dBFS → „Onset“ auf Rauschen,
+zurückgesetzt nur bei Endpoint/Final → Sekunden bis Minuten. Neu:
+`zt_audio::OnsetDetector` – Schwelle = Rauschboden + 12 dB (Boden folgt
+schnell nach unten, langsam nach oben mit 3 dB/s, eingefroren während
+Sprache), mindestens 60 ms laut, Neu-Scharfschaltung nach 0,5 s Stille,
+unbeanspruchter Onset bleibt 2,5 s für eine späte erste Hypothese gültig.
+Derselbe Detektor misst im CI „Zeit bis erstes Wort“.
+
+**Entscheidung Modell:** NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8
+(OpenMDW-1.1, sherpa-onnx-Export `csukuangfj2/…-2026-06-11`) wird Standard für
+DE und EN, als **320-ms-Variante**; 80/160 ms wählbar, Kroko und 20M bleiben
+wählbar und sind Fallback, solange Nemotron nicht installiert ist. Umsetzung:
+`ModelType::OnlineNemoTransducer`, `SherpaConfig::nemotron` (Transducer-Felder,
+`greedy_search`, 4 Threads, `stream.set_option("language", "de"|"en")` nach
+`create_stream` und jedem `reset`, sonst `"auto"`). sherpa-onnx 1.13.8 kennt
+für Streaming-NeMo nur `greedy_search`; `modified_beam_search` beendet den
+Prozess (`exit(-1)`), daher keine Beam-Stufe und keine Hotwords.
+
+Gemessen (CI-Lauf 38132699828, 4-vCPU-Runner, 100-ms-Blöcke, 500 ms
+Vorlauf-Stille; vollständige Tabelle in `docs/research/MODELS.md`):
+
+| Modell | RTF Arm64 / x86 | Kadenz p50 / p95 | erstes Wort DE / EN | Laden | RSS |
+|---|---|---|---|---|---|
+| Nemotron 320 ms | 0,31 / 0,59 | 0,3 / 0,4 s | 0,59 / 0,90 s | ~1,5–1,8 s | 0,76–0,97 GB |
+| Nemotron 160 ms | 0,53–0,60 / **1,05–1,23** | 0,2 / 0,3–0,5 s | 0,59 / 0,90 s | ~1,5–1,8 s | 0,76–0,97 GB |
+| Kroko DE / EN | 0,03–0,04 | **1,3 / 1,3 s** | 0,99 / 1,0–2,3 s | ~2,4–2,8 s | 0,25 GB |
+| Zipformer EN 20M | 0,03–0,04 | 0,3 / 0,4 s | – / 1,2 s | ~0,6 s | 0,15 GB |
+
+Warum 320 statt 160 ms: 160 ms ist auf den x86-Runnern nicht echtzeitfähig
+(in einem zweiten Lauf sogar RTF 2,4 auf windows-latest), 320 ms braucht überall
+die Hälfte der Rechenzeit bei 0,3 s Kadenz (Kroko: 1,3 s). Damit ein zu
+langsames Modell nicht unbemerkt hinterherläuft, misst `RealtimeWatch`
+(`voice.rs`) die Dekodierzeit je 5 s Audio und warnt einmal, wenn RTF > 0,9 in
+zwei Fenstern hintereinander.
 
 ## Konsequenzen
 

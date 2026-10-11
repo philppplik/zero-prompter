@@ -15,8 +15,8 @@
       ]
     },
     {
-      "id": "nemotron-3.5-streaming-0.6b-160ms-int8", "defaultRank": 0,
-      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 160 ms (DE/EN, empfohlen)",
+      "id": "nemotron-3.5-streaming-0.6b-160ms-int8",
+      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 160 ms (schnellere Reaktion, braucht starke CPU)",
       "languages": ["de", "en"],
       "tier": "l",
       "engine": "sherpaOnlineTransducer", "modelType": "online_nemo_transducer", "roles": ["streaming"],
@@ -31,7 +31,7 @@
     },
     {
       "id": "nemotron-3.5-streaming-0.6b-80ms-int8",
-      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 80 ms (schnellste Reaktion)",
+      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 80 ms (schnellste Reaktion, braucht sehr starke CPU)",
       "languages": ["de", "en"],
       "tier": "l",
       "engine": "sherpaOnlineTransducer", "modelType": "online_nemo_transducer", "roles": ["streaming"],
@@ -45,8 +45,8 @@
       ]
     },
     {
-      "id": "nemotron-3.5-streaming-0.6b-320ms-int8",
-      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 320 ms (genauer, träger)",
+      "id": "nemotron-3.5-streaming-0.6b-320ms-int8", "defaultRank": 0,
+      "name": "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 320 ms (DE/EN, empfohlen)",
       "languages": ["de", "en"],
       "tier": "l",
       "engine": "sherpaOnlineTransducer", "modelType": "online_nemo_transducer", "roles": ["streaming"],

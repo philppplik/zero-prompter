@@ -7,7 +7,7 @@ Beim Voice-Tracking hört die App über das Mikrofon zu, erkennt die gesprochene
 | Baustein | Woher |
 |---|---|
 | Mikrofon | Build-Feature `cpal` (Standard) |
-| Spracherkennung | Build-Feature `sherpa` (in allen Release-Builds enthalten) und ein installiertes Streaming-Modell (Zipformer-Transducer) |
+| Spracherkennung | Build-Feature `sherpa` (in allen Release-Builds enthalten) und ein installiertes Streaming-Modell (NVIDIA Nemotron 3.5 Streaming, Kroko- oder Zipformer-Transducer) |
 
 Welche Engine läuft, entscheidet die App beim Start von Voice oder Mikrofontest ([ADR-007](../../../adr/ADR-007-voice-pipeline-tuning.md)):
 
@@ -20,13 +20,22 @@ Welche Engine läuft, entscheidet die App beim Start von Voice oder Mikrofontest
 | Modell installiert, lässt sich aber nicht laden | **kein** Demo: Fehlermeldung, Badge „Modellfehler · Details“ (öffnet den Diagnose-Tab), der Text bewegt sich nicht von selbst |
 
 Nach einem Modell-Download startet eine laufende Voice-Sitzung automatisch neu und nutzt das neue Modell.
-> `resources/models.json` enthält vier Modelle (Kroko DE/EN, Zipformer EN 20M als Fallback, Parakeet TDT 0.6B v3 für Resync), Details und Quellen in [`docs/research/MODELS.md`](../../../research/MODELS.md). Für `tokens.txt` steht kein SHA-256 im Manifest: Diese Dateien werden nur auf Größe geprüft, ihr Hash wird nach dem Download berechnet und in den Einstellungen als „unverifiziert“ angezeigt. Die URLs zeigen auf `main` und sind noch nicht auf Commits gepinnt. Das Kroko-DE-Modell hat eine ungeklärte Lizenz (siehe [LEGAL.md](../../../legal/LEGAL.md)) und darf bis zur Klärung nicht ausgeliefert werden. Alternativ lässt sich ein eigenes Manifest als `<Datenordner>/models/manifest.json` ablegen. Erlaubt sind nur HTTPS-URLs mit SHA-256-Prüfung.
+> `resources/models.json` enthält Nemotron 3.5 Streaming (80/160/320 ms), Kroko DE/EN, Zipformer EN 20M als Fallback, Parakeet TDT 0.6B v3 für Resync und Silero VAD, alle URLs auf Commits gepinnt und mit SHA-256; Details und Quellen in [`docs/research/MODELS.md`](../../../research/MODELS.md). Das Kroko-DE-Modell hat eine ungeklärte Lizenz (siehe [LEGAL.md](../../../legal/LEGAL.md)) und darf bis zur Klärung nicht ausgeliefert werden. Alternativ lässt sich ein eigenes Manifest als `<Datenordner>/models/manifest.json` ablegen. Erlaubt sind nur HTTPS-URLs mit SHA-256-Prüfung.
 >
-> Hotwords (Skriptbegriffe) wirken nur mit `modified_beam_search` und Transducer-Modellen. Bei BPE-Modellen braucht es zusätzlich `bpe.vocab` (nicht `bpe.model`), sonst meldet `set_hotwords` `Unsupported`.
+> Hotwords (Skriptbegriffe) wirken nur mit `modified_beam_search` (Kroko, Zipformer). Nemotron läuft in sherpa-onnx 1.13.8 nur mit `greedy_search` und damit ohne Hotwords; `set_hotwords` meldet dann `Unsupported`.
 
 ## Modellwahl und Resync
 
-In den Einstellungen (`Ctrl+,`) unter Voice & Modelle → Spracherkennung wählst du pro Sprache das Streaming-Modell oder „Automatisch“ (Standard: Kroko DE bzw. Kroko EN; lässt sich ein Modell nicht laden, springt die App auf das nächste installierte, z. B. Zipformer EN 20M). Hinweise dazu erscheinen unter der Auswahl.
+In den Einstellungen (`Ctrl+,`) unter Voice & Modelle → Spracherkennung wählst du pro Sprache das Streaming-Modell oder „Automatisch“. Hinweise dazu erscheinen unter der Auswahl.
+
+| Modell | Download | Cursor bewegt sich | CPU | Hinweis |
+|---|---|---|---|---|
+| **Nemotron 3.5 Streaming, 320 ms** (Standard DE + EN) | 682 MB, ca. 0,8–1 GB RAM | etwa alle 0,3 s | mittel (CI: RTF 0,3 Arm64, 0,6 x86) | Groß-/Kleinschreibung und Satzzeichen, keine Hotwords |
+| Nemotron 3.5 Streaming, 160 ms / 80 ms | je 682 MB | etwa alle 0,2 s | hoch (CI x86: RTF über 1 bei 160 ms) | nur für starke CPUs |
+| Kroko DE / EN | 71 MB | etwa alle 1,3 s (Modell-Chunk 1,28 s) | sehr gering | Hotwords |
+| Zipformer EN 20M | 44 MB | etwa alle 0,3 s | sehr gering | nur Großbuchstaben, schwächer bei freier Rede |
+
+„Automatisch“ nimmt das erste **installierte** Modell der Reihenfolge Nemotron 320 ms → Kroko → (EN) Zipformer 20M; wer Nemotron nicht lädt, behält Kroko. Lässt sich ein Modell nicht laden, springt die App auf das nächste installierte. Rechnet ein Modell auf dem Rechner langsamer als Echtzeit (der Text würde immer weiter hinterherhinken), erscheint nach etwa 10 s eine Warnung mit der Empfehlung, ein kleineres Modell zu wählen. Messwerte: [`docs/research/MODELS.md`](../../../research/MODELS.md).
 
 Der Schalter **Resync im Hintergrund** (Stufe L, standardmäßig aus) lädt zusätzlich Parakeet TDT 0.6B v3. Es dekodiert abgeschlossene Sprachsegmente im Hintergrund und verankert den Cursor neu, wenn das Streaming-Modell danebenlag. Das Scrollen wird dadurch nie verzögert. Segmentiert wird mit Silero VAD, wenn `silero_vad.onnx` im Modellordner liegt, sonst über den Pegel. Änderungen gelten beim nächsten Start von Voice. Hintergrund: [ADR-006](../../../adr/ADR-006-hybrid-stt.md).
 
@@ -98,9 +107,9 @@ Ziel: gesprochenes Wort → Scrollbeginn unter 300 ms (p50), höchstens 1 s.
 
 | Messpunkt im Diagnose-Tab | misst |
 |---|---|
-| Sprechbeginn → erste Hypothese | erster lauter Audio-Chunk bis zur ersten Partial (enthält den Modell-Lookahead) |
+| Sprechbeginn → erste Hypothese | Sprechbeginn bis zur ersten Partial der Äußerung (enthält Modell-Chunk und Lookahead). Sprechbeginn = Pegel mindestens 12 dB über dem laufend geschätzten Rauschboden für 60 ms; nach 0,5 s Stille wird neu gemessen. Von der AGC angehobenes Rauschen zählt so nicht mehr als Sprechbeginn |
 | Audio-Chunk → Hypothese | Aufnahmezeit des Chunks bis Partial (Warteschlange + Dekodieren) |
 | Hypothese → Cursor | Abgleich im Tracker |
 | Audio → Cursor (gesamt) | Aufnahme bis Cursor-Event; danach startet die Scroll-Bewegung im nächsten Tick (≤ 16 ms) mit einer Zeitkonstante von 150 ms |
 
-Geschätzte Kette (noch nicht auf Zielhardware gemessen): Audio-Callback ~10 ms → Modell-Chunk Ø ~160 ms + Rechnen 20–60 ms → Tracker < 1 ms → Tick ≤ 16 ms ≈ 230 ms p50. Die gemessenen Werte zeigt der Diagnose-Tab.
+Wie oft sich der Cursor bewegen kann, bestimmt vor allem der Decoder-Takt des Modells: Kroko rechnet in Blöcken von 1,28 s Audio und liefert deshalb nur etwa alle 1,3 s neue Wörter (meist 1–3 auf einmal), auch wenn „Audio-Chunk → Hypothese“ und „Hypothese → Cursor“ klein sind. Nemotron 320 ms liefert etwa alle 0,3 s (CI-Messung, [MODELS.md](../../../research/MODELS.md)). Die Werte auf deinem Rechner zeigt der Diagnose-Tab.

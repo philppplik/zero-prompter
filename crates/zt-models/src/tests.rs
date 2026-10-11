@@ -176,15 +176,16 @@ fn default_selection_and_fallback_chain() {
     const N160: &str = "nemotron-3.5-streaming-0.6b-160ms-int8";
     const N80: &str = "nemotron-3.5-streaming-0.6b-80ms-int8";
     const N320: &str = "nemotron-3.5-streaming-0.6b-320ms-int8";
-    // Nemotron 160 ms is the default for DE and EN, Kroko/20M stay selectable;
+    // Nemotron 320 ms is the default for DE and EN (CI: half the CPU of the
+    // 160 ms export, real time on all runners), Kroko/20M stay selectable;
     // the other chunk variants are user choices only (no defaultRank).
     assert_eq!(
         ids(m.candidates("de-DE", ModelRole::Streaming)),
-        [N160, "zipformer-de-kroko-2025-08-06", N80, N320]
+        [N320, "zipformer-de-kroko-2025-08-06", N160, N80]
     );
     assert_eq!(
         ids(m.candidates("en", ModelRole::Streaming)),
-        [N160, "zipformer-en-kroko-2025-08-06", "zipformer-en-20m-2023-02-17", N80, N320]
+        [N320, "zipformer-en-kroko-2025-08-06", "zipformer-en-20m-2023-02-17", N160, N80]
     );
     // Nemotron not installed (existing users): Kroko keeps being used.
     assert_eq!(
@@ -200,8 +201,8 @@ fn default_selection_and_fallback_chain() {
     assert!(n.requires_attribution());
     assert_eq!(m.get("zipformer-de-kroko-2025-08-06").unwrap().language_prompt("de"), None);
     // Legacy expectations below: Nemotron unranked (as for users who pin Kroko).
-    let old = format!("\"id\": \"{N160}\", \"defaultRank\": 0");
-    let new = format!("\"id\": \"{N160}\"");
+    let old = format!("\"id\": \"{N320}\", \"defaultRank\": 0");
+    let new = format!("\"id\": \"{N320}\"");
     let m = Manifest::parse(&BUNDLED.replace(&old, &new)).unwrap();
     assert_eq!(ids(m.candidates("de", ModelRole::Resync)), ["parakeet-tdt-0.6b-v3-int8"]);
     // User preference moves to the front of the chain.

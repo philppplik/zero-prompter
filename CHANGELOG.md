@@ -11,6 +11,15 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 - Fallback-Kette: Modelle (Nemotron/Kroko/20M) → Windows-Spracherkennung → Fehlerstatus bzw. Demo. Zusätzlich in der Modellauswahl wählbar: „Windows Spracherkennung (System)“, ohne Download.
 - Präzise Fehlerhinweise: Sprachpaket fehlt, Online-Spracherkennung aus (`0x80045509`), Mikrofon verweigert, jeweils mit Pfad und `ms-settings:`-Link. Logging unter `zt::engine` mit Initialisierungszeit. Latenz als Sprechbeginn → Partial.
 - CI-Job `winspeech` (windows-latest + windows-11-arm): Build/clippy/Tests mit Feature und Initialisierungs-Probe (`examples/winspeech_probe`).
+### Hinzugefügt / Geändert (2026-10-11, Spracherkennung Nemotron)
+- **NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8** (OpenMDW-1.1) als Standard-Streaming-Modell für Deutsch und Englisch, Variante **320 ms** (682 MB). 80 ms und 160 ms sind wählbar, Kroko DE/EN und Zipformer EN 20M bleiben wählbar und werden genutzt, solange Nemotron nicht installiert ist. Sprache wird pro Stream vorgegeben (`de`/`en`, sonst `auto`); Ausgabe mit Groß-/Kleinschreibung und Satzzeichen. Hotwords gibt es für Nemotron nicht (sherpa-onnx 1.13.8: nur `greedy_search`).
+- Grund für den Wechsel: Kroko liefert nur etwa alle 1,3 s neue Wörter, weil das Modell in Blöcken von 1,28 s dekodiert (`decode_chunk_len = 128`) – nicht durch unseren Code. Nemotron 320 ms: etwa alle 0,3 s (CI-Messung, Tabelle in `docs/research/MODELS.md` und ADR-007).
+- Warnung, wenn das Sprachmodell auf dem Rechner langsamer als Echtzeit rechnet (RTF > 0,9 über 10 s), mit Empfehlung eines kleineren Modells.
+- CI `stt-smoke`: Nemotron 160/320 ms zusätzlich zu Kroko und 20M auf Ubuntu, Windows x64 und Windows ARM64; Vergleichstabelle (Ladezeit, RTF, Chunk-Latenz p95, Partial-Kadenz, Zeit bis erstes Wort, Peak-RAM) im Log und in der Job-Zusammenfassung.
+
+### Behoben (2026-10-11, Latenzmetrik)
+- „Sprechbeginn → erste Hypothese“ zeigte unsinnige Werte (p95 46 s): der Sprechbeginn war ein fester Pegel nach der AGC, die bei leisem Mikrofon das Rauschen darüber hob, und wurde nur am Satzende zurückgesetzt. Jetzt relativ zum laufend geschätzten Rauschboden (+12 dB, 60 ms), Neustart nach 0,5 s Stille.
+
 ### Hinzugefügt (2026-10-11, Typografie & Mausrad)
 - **Schriftarten:** 12 lokal gebündelte Prompter-Schriften (OFL-1.1, offline, überwiegend variabel): Atkinson Hyperlegible Next, Inter, Lexend, Source Sans 3, Open Sans, Roboto Flex, IBM Plex Sans, Source Serif 4, Literata, Merriweather, OpenDyslexic, JetBrains Mono – plus „Systemschrift…“ mit freiem Namen. `serif` ist jetzt Source Serif 4 statt Georgia; das Talent-Fenster lädt jetzt alle Schriften (vorher fehlte JetBrains Mono).
 - **Typografie** (Kern-Settings, `sanitized()` + Tests): Schriftstärke 100–900 (an die `wght`-Achse gebunden, Fallback auf vorhandene Gewichte), Zeichen-, Wort- und Absatzabstand, Ausrichtung (links/zentriert/Blocksatz), GROSSBUCHSTABEN. Live-Vorschau im Tab Darstellung; der Prompter misst die Layout-Map bei jeder Typo-Änderung und nach dem Nachladen von Schriften neu. Theme-Zeilenhöhe gilt jetzt als Minimum statt den Regler zu überstimmen.
