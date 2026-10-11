@@ -28,15 +28,11 @@ WAVS = {
         "d42f2d9f7ca24806fb667456a18a9f1b60f70d16/test_wavs/0.wav",
         "6bc58a4efdf20daac252b6b1502632601a71efe0308f6757dc1eda34891a7e4f",
     ),
-    "de-kroko-0": (
+    # German clip: test audio only (CI download, never shipped).
+    "de-0": (
         f"{HF}/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/"
         "887db3d083240198c2d2b99fb66cfcfe6948ced8/test_wavs/0.wav",
         "36d3c4845b9808a1656a2a2e92d884590e2db94389e6fe559643291ae0cd3710",
-    ),
-    "en-kroko-0": (
-        f"{HF}/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/"
-        "572aaf4e2e0c603c3fc2a574d096e755a178faa1/test_wavs/0.wav",
-        "148b936b43ce7c546a866e64da059f0458aee2d65e617f16e9d94f06e8d99ed6",
     ),
 }
 
@@ -47,19 +43,12 @@ NEMO320 = "nemotron-3.5-streaming-0.6b-320ms-int8"
 # Nemotron: no hotwords (sherpa-onnx 1.13.8 streaming NeMo = greedy_search only).
 CASES = {
     NEMO: [
-        ("de-kroko-0", "Ende,Wurst,zwei", "", False, "de"),
+        ("de-0", "Ende,Wurst,zwei", "", False, "de"),
         ("en-librispeech-0", "yellow,lamps,quarter", "", False, "en"),
     ],
     NEMO320: [
-        ("de-kroko-0", "Ende,Wurst,zwei", "", False, "de"),
+        ("de-0", "Ende,Wurst,zwei", "", False, "de"),
         ("en-librispeech-0", "yellow,lamps,quarter", "", False, "en"),
-    ],
-    "zipformer-de-kroko-2025-08-06": [
-        ("de-kroko-0", "Ende,Wurst,zwei", "Teleprompter,Mikrofon", True, None),
-    ],
-    "zipformer-en-kroko-2025-08-06": [
-        ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", True, None),
-        ("en-kroko-0", "country", "", False, None),
     ],
     "zipformer-en-20m-2023-02-17": [
         ("en-librispeech-0", "yellow,lamps,quarter", "nightfall,brothels", True, None),

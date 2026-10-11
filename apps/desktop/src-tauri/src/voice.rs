@@ -98,7 +98,7 @@ pub struct EngineInfo {
     pub error: Option<String>,
     /// Offline resync running (ADR-006).
     pub resync: bool,
-    /// Fallback / resync notes, e.g. "zipformer-en-kroko-2025-08-06 failed, fallback".
+    /// Fallback / resync notes, e.g. "nemotron-3.5-streaming-0.6b-320ms-int8 failed, fallback".
     pub notes: Vec<String>,
     /// Primary script language the engine was chosen for.
     pub language: String,
@@ -701,8 +701,8 @@ impl RealtimeWatch {
 fn slow_message(rtf: f64, engine: &str) -> String {
     format!(
         "Spracherkennung ist auf diesem Rechner langsamer als Echtzeit (RTF {rtf:.2}, {engine}): \
-         der Text hinkt hinterher. Unter Voice & Modelle ein kleineres Modell wählen \
-         (z. B. Kroko DE/EN)."
+         der Text hinkt hinterher. Unter Voice & Modelle ein leichteres Modell wählen \
+         (Englisch: Zipformer EN 20M) oder Windows Spracherkennung (System)."
     )
 }
 
@@ -859,7 +859,7 @@ mod tests {
         }
         assert_eq!(hits.len(), 1, "reported only once");
         assert!(hits[0] > 1.0);
-        assert!(slow_message(1.2, "x").contains("Kroko"));
+        assert!(slow_message(1.2, "x").contains("Zipformer EN 20M"));
     }
 
     #[test]

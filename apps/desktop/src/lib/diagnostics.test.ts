@@ -3,7 +3,7 @@ import { engineHeadline, fmtMs, showDemoBadge } from './diagnostics';
 import type { EngineInfo } from './types';
 
 const base: EngineInfo = {
-  name: 'Kroko Streaming Zipformer DE (2025-08-06)',
+  name: 'Streaming Zipformer EN 20M int8 (2023-02-17)',
   demo: false,
   reason: null,
   microphone: true,
