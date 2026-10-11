@@ -146,7 +146,7 @@ impl TokenVocab {
         self.pieces.iter().any(|(p, _)| p.starts_with(SP_MARK))
     }
 
-    /// True if the model emits lower-case letters (Kroko: mixed case);
+    /// True if the model emits lower-case letters (mixed case, e.g. SentencePiece DE models);
     /// false for upper-case-only models (LibriSpeech Zipformer).
     pub fn has_lowercase(&self) -> bool {
         self.chars.iter().any(|c| c.is_lowercase())
@@ -216,12 +216,12 @@ pub fn ensure_bpe_vocab(tokens: &Path, vocab: &TokenVocab) -> Result<PathBuf, St
 mod tests {
     use super::*;
 
-    const KROKO: &str = "<blk> 0\n<sos/eos> 1\n<unk> 2\n\u{2581} 3\nt 4\ne 5\n\u{2581}und 14\n\u{2581}T 85\nele 900\np 39\nr 12\no 13\nm 19\n#0 650\n";
+    const MIXED: &str = "<blk> 0\n<sos/eos> 1\n<unk> 2\n\u{2581} 3\nt 4\ne 5\n\u{2581}und 14\n\u{2581}T 85\nele 900\np 39\nr 12\no 13\nm 19\n#0 650\n";
     const LIBRI: &str = "<blk> 0\n\u{2581}THE 3\nS 4\nA 5\nB 6\n";
 
     #[test]
     fn detects_sentencepiece_and_case() {
-        let k = TokenVocab::parse(KROKO);
+        let k = TokenVocab::parse(MIXED);
         assert!(k.is_sentencepiece());
         assert!(k.has_lowercase());
         let l = TokenVocab::parse(LIBRI);
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn bpe_vocab_skips_specials_and_is_two_columns() {
-        let v = TokenVocab::parse(KROKO).bpe_vocab_text();
+        let v = TokenVocab::parse(MIXED).bpe_vocab_text();
         assert!(!v.contains("<blk>") && !v.contains("#0"));
         for line in v.lines() {
             assert_eq!(line.split_whitespace().count(), 2, "{line}");
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn hotword_casing_follows_model() {
-        let k = TokenVocab::parse(KROKO);
+        let k = TokenVocab::parse(MIXED);
         assert_eq!(k.hotword_line("Tempo", 1.5).as_deref(), Some("Tempo :1.50"));
         assert_eq!(k.hotword_line("  tempo  ", 1.5).as_deref(), Some("tempo :1.50"));
         assert_eq!(k.hotword_line("Zebra", 1.5), None);

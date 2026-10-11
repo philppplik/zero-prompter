@@ -8,7 +8,7 @@
 
 ## Context
 
-The engines from ADR-006 (Nemotron 3.5, Kroko, Zipformer 20M via sherpa-onnx) need a downloaded model. If it is missing, cannot be loaded, or construction fails, the app previously ended up in the demo or error state. Windows ships a system speech recognizer, `Windows.Media.SpeechRecognition`, which is usable without a download as soon as the language pack is installed.
+The engines from ADR-006 (Nemotron 3.5, Zipformer 20M via sherpa-onnx) need a downloaded model. If it is missing, cannot be loaded, or construction fails, the app previously ended up in the demo or error state. Windows ships a system speech recognizer, `Windows.Media.SpeechRecognition`, which is usable without a download as soon as the language pack is installed.
 
 ## Decision
 
@@ -26,7 +26,7 @@ The engines from ADR-006 (Nemotron 3.5, Kroko, Zipformer 20M via sherpa-onnx) ne
    - If dictation fails (privacy setting off or no network) and a grammar recognizer is installed for the language, the engine switches to **script-word mode**: a `SpeechRecognitionListConstraint` built from the script words (hotwords, max. 2000). It runs offline but recognizes only exactly those words or phrases. It starts as soon as `set_hotwords` supplies the words.
    - Topic and list constraints are not mixed.
 6. **Fallback chain** (`apps/desktop/src-tauri/src/winspeech.rs`, `voice::make_engine`):
-   1. installed models (Nemotron -> Kroko -> 20M)
+   1. installed models (Nemotron -> 20M; Kroko was removed on 2026-10-11)
    2. Windows speech recognition
    3. error status (`engineError`, the message names both causes). If no model is installed at all, it stays in demo mode, and the note explains why Windows was not available.
 7. **Manual choice:** Under Settings -> Voice, "Windows Spracherkennung (System)" (id `windows-speech`) appears in the model selection (the label is a UI string and is currently German). There is nothing to download. `Selection.windowsSpeech` reports whether the build contains the engine.

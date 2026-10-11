@@ -8,9 +8,13 @@ All notable changes. Format follows [Keep a Changelog](https://keepachangelog.co
 
 > Historical note: this entry was written before the first CI builds. See [Project Status](docs/book/src/status.md) for the current state.
 
+### Removed (2026-10-11, license-clean model stack)
+- **Kroko DE/EN** (`zipformer-de-kroko-2025-08-06`, `zipformer-en-kroko-2025-08-06`, Banafo, CC-BY-SA community license with a separate commercial license) removed from the manifest, the default/fallback order, CI `stt-smoke` and the tests. The model stack is now: Nemotron 3.5 Streaming (OpenMDW-1.1; 320 ms default, 160/80 ms optional), Zipformer EN 20M (Apache-2.0, light English option, now `defaultRank 1`), Parakeet TDT 0.6B v3 (CC-BY-4.0, resync), Silero VAD (MIT), Windows speech recognition (OS).
+- Existing installations: Kroko folders are ignored (can be deleted by hand), and a saved Kroko choice falls back to Nemotron or the default chain. There is no light German model any more: German without Nemotron uses Windows speech recognition on Windows instead of an English model, otherwise demo mode with "Load model".
+
 ### Added (2026-10-11, Windows speech recognition)
 - **Windows speech recognition as a fallback engine** (ADR-008, Windows only, feature `winspeech`, enabled in the Windows release builds): `Windows.Media.SpeechRecognition` with dictation (partials via `HypothesisGenerated`, finals via `ResultGenerated`, VAD via `StateChanged`). Without online speech recognition, an offline script-word mode (list constraint) runs instead. The engine captures audio itself (new trait method `SpeechEngine::self_capturing`) and runs on its own MTA thread.
-- Fallback chain: models (Nemotron/Kroko/20M) -> Windows speech recognition -> error state or demo. "Windows Speech Recognition (System)" can also be selected explicitly in the model picker, with no download.
+- Fallback chain: models (Nemotron/20M) -> Windows speech recognition -> error state or demo. "Windows Speech Recognition (System)" can also be selected explicitly in the model picker, with no download.
 - Precise error hints: language pack missing, online speech recognition off (`0x80045509`), microphone denied, each with the path and an `ms-settings:` link. Logging under `zt::engine` with initialization time. Latency is measured as speech onset -> partial.
 - CI job `winspeech` (windows-latest + windows-11-arm): build/clippy/tests with the feature and an initialization probe (`examples/winspeech_probe`).
 
@@ -114,7 +118,7 @@ All notable changes. Format follows [Keep a Changelog](https://keepachangelog.co
 
 ### Known issues
 - Model manifest not yet loadable: SHA-256 values for `tokens.txt` missing, URLs not pinned to commits. Without `sherpa` and without a model, voice tracking runs in demo mode.
-- Kroko DE license unresolved (release-critical); patent situation US 9,953,646 not reviewed by a lawyer, see `docs/legal/LEGAL.md`.
+- Patent situation US 9,953,646 not reviewed by a lawyer, see `docs/legal/LEGAL.md`.
 - `cargo fmt --check`, `clippy -D warnings`, Prettier never run.
 - No `package-lock.json`. Icons are generated via `npx tauri icon`.
 - Remote control (WebSocket/PWA), MIDI/HID/gamepad, overlay, `.docx`, updater and signing follow from v0.2.

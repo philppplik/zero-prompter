@@ -78,14 +78,12 @@ The manifest is [`apps/desktop/src-tauri/resources/models.json`](apps/desktop/sr
 | `nemotron-3.5-streaming-0.6b-320ms-int8` | streaming (default) | de, en | ~651 MiB | OpenMDW-1.1 | Recommended. Partial results about every 0.3 s (CI measurement, see `docs/research/MODELS.md`) |
 | `nemotron-3.5-streaming-0.6b-160ms-int8` | streaming | de, en | ~651 MiB | OpenMDW-1.1 | Faster reaction, needs a strong CPU |
 | `nemotron-3.5-streaming-0.6b-80ms-int8` | streaming | de, en | ~651 MiB | OpenMDW-1.1 | Fastest reaction, needs a very strong CPU |
-| `zipformer-de-kroko-2025-08-06` | streaming | de | ~68 MiB | CC-BY-SA-4.0 | Small; decodes in 1.28 s blocks, so new words arrive roughly every 1.3 s. German license status is flagged in [LEGAL.md](docs/legal/LEGAL.md) |
-| `zipformer-en-kroko-2025-08-06` | streaming | en | ~68 MiB | CC-BY-SA-4.0 | Small, same block behavior |
 | `zipformer-en-20m-2023-02-17` | streaming | en | ~42 MiB | Apache-2.0 | Smallest; English only |
 | `parakeet-tdt-0.6b-v3-int8` | resync (offline) | de, en | ~639 MiB | CC-BY-4.0 | Offline transducer used to correct the position after segments |
 | `silero-vad` | VAD helper | - | ~0.6 MiB | MIT | Installed automatically; drives segmentation for resync |
 | Windows speech recognition | system fallback | system languages | none | OS component | Windows only, `winspeech` feature, selectable without download |
 
-If Nemotron is not installed, the app uses another installed streaming model (Kroko / Zipformer) automatically. Hotwords are not available for Nemotron (the pinned sherpa-onnx 1.13.8 supports only greedy search there). All figures come from `models.json` and `CHANGELOG.md`; latency figures depend on your CPU.
+If Nemotron is not installed, the app uses another installed streaming model (Zipformer EN 20M, English only) automatically; on Windows, German without Nemotron falls back to Windows speech recognition. The Kroko models were removed for license reasons (2026-10-11). Hotwords are not available for Nemotron (the pinned sherpa-onnx 1.13.8 supports only greedy search there). All figures come from `models.json` and `CHANGELOG.md`; latency figures depend on your CPU.
 
 ## Build from source
 
@@ -194,7 +192,7 @@ Parts of the documentation are still German; English versions are being added.
 
 - Pre-release v0.1. Behavior described in the manual is behavior according to the code unless stated otherwise.
 - Some external APIs are marked `// VERIFY` in the source (for example parts of cpal 0.15, ureq 2 and `tauri-plugin-global-shortcut`). Find them with `rg "VERIFY"`.
-- **Licensing is not final for every model.** The German Kroko model's license is flagged as unresolved in [LEGAL.md](docs/legal/LEGAL.md), and a patent note requires legal review. This is not legal advice.
+- **Licensing is not final.** The Kroko models were removed for license reasons; all offered models are permissive, CC-BY-4.0 or OpenMDW-1.1 ([LEGAL.md](docs/legal/LEGAL.md)). A patent note still requires legal review. This is not legal advice.
 - No code signing or notarization by default; no auto-updater.
 - Global hotkeys may not work under Wayland, depending on the compositor; whether `Ctrl+Shift+F6` to `F11` is free on every system is not verified.
 - Nemotron 160 ms and 80 ms variants need a fast CPU. The app warns when the speech model runs slower than real time (RTF above 0.9 over 10 seconds).

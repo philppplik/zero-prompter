@@ -93,12 +93,11 @@ third-party code; it is not a dependency of the shipped app.
 Icons in `apps/desktop/src/components/Icon.svelte` and `app-icon.png` are
 original drawings (no icon library copied).
 
-Model licences (Kroko DE/EN CC-BY-SA per model page, unresolved; Zipformer
-EN 20M Apache-2.0; Zipformer EN 2023-06-26 unknown; Parakeet TDT 0.6B v3
-CC-BY-4.0) are tracked separately in `THIRD_PARTY_MODELS.md`,
+Model licences (Nemotron 3.5 ASR Streaming OpenMDW-1.1; Zipformer EN 20M
+Apache-2.0; Parakeet TDT 0.6B v3 CC-BY-4.0; Silero VAD MIT; the Kroko models
+were removed) are tracked separately in `THIRD_PARTY_MODELS.md`,
 `docs/research/MODELS.md` and in the `license`/`attribution` fields of the
-model manifest (`zt-models`). Legal assessment: `docs/legal/LEGAL.md`
-(Kroko-DE must not ship until its licence is clarified).
+model manifest (`zt-models`). Legal assessment: `docs/legal/LEGAL.md`.
 
 ### Documentation tooling (not shipped)
 

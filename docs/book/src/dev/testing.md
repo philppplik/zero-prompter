@@ -78,9 +78,9 @@ p.run_secs(5.0);
 Matrix: ubuntu-22.04, windows-latest, windows-11-arm. The job builds `examples/smoke.rs` in release mode with `--features sherpa`, then runs `scripts/stt-smoke.py stt-cache <model ids...>`:
 
 - Reads the model list from `apps/desktop/src-tauri/resources/models.json`, downloads the files with SHA-256 verification into a cached directory (`actions/cache`, keyed by the hash of `models.json` and the script).
-- Downloads pinned test WAVs (hash-checked): a German clip (`de-kroko-0`) and English clips.
+- Downloads pinned test WAVs (hash-checked): a German clip (`de-0`, taken from the former Kroko repository, used in CI only) and English clips.
 - Runs the smoke example per model and case. The example creates the recognizer (the fallback ladder is logged), optionally applies hotwords, streams the WAV in 100 ms chunks, prints text, RTF, per-chunk latency, partial cadence, and the time from speech onset (`OnsetDetector`) to the first partial, and fails if an expected keyword is missing. `--legacy-check` reproduces the 0.x bug: the old configuration (`modeling_unit = "bpe"` without `bpe_vocab`) must make `OnlineRecognizer::create` return `None`.
-- Models in the CI invocation: Nemotron 3.5 160 ms and 320 ms, Kroko DE, Kroko EN, Zipformer EN 20M. Nemotron cases run without hotwords (greedy search only).
+- Models in the CI invocation: Nemotron 3.5 160 ms and 320 ms, Zipformer EN 20M (Kroko was removed on 2026-10-11; see the CHANGELOG). Nemotron cases run without hotwords (greedy search only).
 - Optionally samples peak RSS with `psutil` and prints a comparison table to the log and the step summary.
 
 The measured values recorded in `docs/research/MODELS.md` come from this job; see the latency section of [Data flow](dataflow.md).

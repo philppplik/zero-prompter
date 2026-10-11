@@ -1,7 +1,7 @@
 //! End-to-end smoke test of the sherpa streaming adapter (CI: `stt-smoke`).
 //!
 //! cargo run -p zt-stt --release --features sherpa --example smoke -- \
-//!   --name kroko-de --dir models/kroko-de --encoder encoder.onnx \
+//!   --name zipformer-en-20m --dir models/zipformer-en-20m --encoder encoder.onnx \
 //!   --decoder decoder.onnx --joiner joiner.onnx --tokens tokens.txt \
 //!   --wav test.wav --expect "wort1,wort2" [--hotwords "a,b"] [--legacy-check] \
 //!   [--language de] [--threads 4] [--lead-ms 500]

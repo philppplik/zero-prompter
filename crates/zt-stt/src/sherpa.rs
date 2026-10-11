@@ -7,7 +7,7 @@
 //! All calls into the crate are confined to `binding` below.
 //!
 //! Robustness (bug fixed 2026-10: "failed to create OnlineRecognizer" after
-//! 1 ms with the Kroko models): sherpa's `OnlineModelConfig::Validate`
+//! 1 ms with the Zipformer models): sherpa's `OnlineModelConfig::Validate`
 //! rejects `modeling_unit = "bpe"` whenever `bpe_vocab` does not exist, and
 //! none of the bundled models ships a `bpe.vocab`. Now:
 //! 1. preflight checks every file (existence + size) and mirrors sherpa's
@@ -35,7 +35,7 @@ impl std::fmt::Debug for LogSink {
 }
 
 /// Model + decoding configuration for a streaming Zipformer transducer
-/// (e.g. `sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06`).
+/// (e.g. `sherpa-onnx-streaming-zipformer-en-20M-2023-02-17`).
 #[derive(Debug, Clone)]
 pub struct SherpaConfig {
     pub encoder: PathBuf,

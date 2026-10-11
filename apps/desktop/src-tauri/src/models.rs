@@ -3,8 +3,11 @@
 //!
 //! Manifest lookup order: `<app_data>/models/manifest.json` (user/updated) ->
 //! bundled `resources/models.json` (Silero VAD helper, NVIDIA Nemotron 3.5
-//! streaming as DE/EN default (80/160/320 ms chunk variants), Kroko DE,
-//! Kroko EN, Zipformer EN 20M as Apache-2.0 fallback, Parakeet TDT v3 for resync).
+//! streaming as DE/EN default (80/160/320 ms chunk variants), Zipformer EN
+//! 20M as light Apache-2.0 EN option, Parakeet TDT v3 for resync). The Kroko
+//! models were removed (licence); leftover Kroko folders under `<models>` are
+//! simply ignored (only manifest entries are listed/loaded) and saved
+//! preferences naming them fall through to the default chain.
 //!
 //! Engine choice: per primary language the user's pick (if installed) else
 //! the manifest's `defaultRank` order; if constructing an engine fails the
@@ -241,7 +244,7 @@ pub fn install(app: &AppHandle, id: &str) -> Result<(), String> {
     let entry = m.get(id).map_err(|e| e.to_string())?.clone();
     let store = ModelStore::new(models_root(app)?);
     // Silero VAD is a small mandatory helper: installed together with any
-    // speech model (Kroko/Zipformer/Parakeet) so resync segments by VAD.
+    // speech model (Nemotron/Zipformer/Parakeet) so resync segments by VAD.
     let helpers: Vec<ModelEntry> =
         m.vad_models().filter(|v| v.id != entry.id && !is_installed(&store, v)).cloned().collect();
     let app = app.clone();
@@ -409,7 +412,7 @@ mod http {
 pub struct BuiltEngine {
     pub engine: Box<dyn zt_stt::SpeechEngine>,
     pub resync: bool,
-    /// e.g. "zipformer-en-kroko-2025-08-06 failed: …; using zipformer-en-20m-2023-02-17".
+    /// e.g. "nemotron-3.5-streaming-0.6b-320ms-int8 failed: …; using zipformer-en-20m-2023-02-17".
     pub notes: Vec<String>,
 }
 
@@ -449,6 +452,15 @@ pub fn build_engine(
         "streaming model plan"
     );
     if chain.is_empty() {
+        return Ok(None);
+    }
+    // No model for the script language (e.g. German without Nemotron, since
+    // there is no light German model any more): prefer Windows speech in the
+    // right language over another language's model; the caller falls back
+    // to it on `Ok(None)` and the UI offers the Nemotron download.
+    if plan.language_fallback.is_some() && crate::winspeech::AVAILABLE {
+        tracing::info!(target: "zt::engine", language = %short,
+            "no model for language -> windows speech instead of cross-language model");
         return Ok(None);
     }
     let mut notes: Vec<String> = Vec::new();

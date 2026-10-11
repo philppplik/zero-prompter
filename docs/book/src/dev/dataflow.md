@@ -138,16 +138,16 @@ Setup: real models, 100 ms chunks, 500 ms lead silence, sherpa-onnx 1.13.8, 4-vC
 | Nemotron 3.5 160 ms int8 | win-arm64 | 0.53 / 0.60 | 107 to 126 | 0.20 / 0.30 to 0.40 | 0.59 / 0.90 | about 1500 | 773 |
 | Nemotron 3.5 160 ms int8 | linux-x64 | 1.23 / 1.13 | 214 to 281 | 0.20 / 0.30 to 0.50 | 0.59 / 0.90 | about 1800 | 966 |
 | Nemotron 3.5 160 ms int8 | win-x64 | 1.05 / 1.11 | 204 to 222 | 0.20 / 0.30 to 0.40 | 0.59 / 0.90 | about 1600 | 760 |
-| Kroko DE | win-arm64 | 0.030 / n/a | 0.2 | 1.30 / 1.30 | 0.99 / n/a | about 2800 | 249 |
-| Kroko DE | linux-x64 | 0.029 / n/a | 0.3 | 1.30 / 1.30 | 0.99 / n/a | about 2400 | 255 |
-| Kroko EN | win-arm64 | n/a / 0.044 | 51 | 1.30 / 1.30 | n/a / 1.00 | about 2800 | 249 |
-| Kroko EN | linux-x64 | n/a / 0.041 | 50 | 1.30 / 1.30 | n/a / 2.30 | about 2600 | 257 |
+| Kroko DE (removed) | win-arm64 | 0.030 / n/a | 0.2 | 1.30 / 1.30 | 0.99 / n/a | about 2800 | 249 |
+| Kroko DE (removed) | linux-x64 | 0.029 / n/a | 0.3 | 1.30 / 1.30 | 0.99 / n/a | about 2400 | 255 |
+| Kroko EN (removed) | win-arm64 | n/a / 0.044 | 51 | 1.30 / 1.30 | n/a / 1.00 | about 2800 | 249 |
+| Kroko EN (removed) | linux-x64 | n/a / 0.041 | 50 | 1.30 / 1.30 | n/a / 2.30 | about 2600 | 257 |
 | Zipformer EN 20M int8 | win-arm64 | n/a / 0.031 | 10 | 0.30 / 0.40 | n/a / 1.20 | about 620 | 158 |
 | Zipformer EN 20M int8 | linux-x64 | n/a / 0.038 | 12 | 0.30 / 0.40 | n/a / 1.20 | about 530 | 150 |
 
 Findings recorded in `docs/research/MODELS.md` and [ADR-007](../adr/index.md):
 
-- **Kroko's 1.3 s cadence comes from the model, not the app.** The Kroko encoders decode 128 feature frames (1.28 s of audio) per step (`decode_chunk_len = 128` in the encoder metadata). The app already decodes on every audio block and emits a partial on every text change, so nothing can be emitted in between. The 20M Zipformer shows 0.3 s with the same code.
+- **Kroko's 1.3 s cadence (Kroko was removed on 2026-10-11, but the finding still explains cadence) comes from the model, not the app.** The Kroko encoders decode 128 feature frames (1.28 s of audio) per step (`decode_chunk_len = 128` in the encoder metadata). The app already decodes on every audio block and emits a partial on every text change, so nothing can be emitted in between. The 20M Zipformer shows 0.3 s with the same code.
 - **Nemotron 160 ms is not real time on the 4-vCPU x86 runners** (RTF 1.05 to 1.23), while 320 ms uses about half the compute everywhere. That is why 320 ms is the default and 160 ms and 80 ms are selectable on strong CPUs.
 - **Run-to-run noise on shared runners is large.** The same 160 ms model measured RTF 0.6 to 0.7 on linux-x64 in one run and 2.3 to 2.4 on win-x64 in another. The ratio 160 ms : 320 ms of about 2 : 1 was stable across runs; absolute x86 values were not.
 - Without lead silence, Nemotron dropped the first word and the 20M model the first two. With 500 ms of silence (the normal case with an open microphone) all models recognized them.

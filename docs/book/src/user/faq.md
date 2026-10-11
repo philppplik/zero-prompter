@@ -22,7 +22,7 @@ Earlier builds failed on fresh Windows systems (seen on Windows 11 ARM64) with "
 
 ### Voice moves the text although I say nothing ("Demo")
 
-You are in **demo mode**: no streaming model is installed (Parakeet and Silero VAD alone are not enough), or the build contains no speech recognition. Click **Demo - load model (Demo · Modell laden)** next to the voice status and download, for example, the Nemotron 3.5 model (or the smaller Kroko model). A running voice session picks the model up after the download. See [Voice tracking](voice-tracking.md#which-engine-runs).
+You are in **demo mode**: no streaming model is installed (Parakeet and Silero VAD alone are not enough), or the build contains no speech recognition. Click **Demo - load model (Demo · Modell laden)** next to the voice status and download "NVIDIA Nemotron 3.5 ASR Streaming 0.6B int8, 320 ms" (German and English; English only and small: "Streaming Zipformer EN 20M"). On Windows, "Windows Spracherkennung (System)" also works without a download. A running voice session picks the model up after the download. See [Voice tracking](voice-tracking.md#which-engine-runs).
 
 ### "Model error" or "speech model could not be loaded" (Modellfehler)
 
@@ -68,11 +68,11 @@ The app is not sure enough, or it is waiting for the second confirmation of a ju
 - Set the correct language.
 - Move closer to the microphone or use a headset.
 - Set **When lost** to **Continue at constant speed** if you prefer that over stopping.
-- Consider a different model. Kroko updates the cursor only about every 1.3 s; Nemotron 320 ms about every 0.3 s.
+- Consider a different model. Nemotron 320 ms updates the cursor about every 0.3 s; 160 ms about every 0.2 s.
 
 ### A warning says the speech model is slower than real time
 
-The streaming model needs more compute than your CPU provides (the warning appears when the real-time factor stays above 0.9 for about 10 seconds). Pick a smaller model: Nemotron 320 ms instead of 160 or 80 ms, or Kroko, or (English) Zipformer 20M. Also switch off background resync, which adds CPU load.
+The streaming model needs more compute than your CPU provides (the warning appears when the real-time factor stays above 0.9 for about 10 seconds). Pick a smaller model: Nemotron 320 ms instead of 160 or 80 ms, or (English) Zipformer 20M. Also switch off background resync, which adds CPU load.
 
 ### No microphone found
 
@@ -127,4 +127,4 @@ In the app's log folder. The Diagnostics tab shows the path and can copy it. Fil
 - No remote control, no overlay mode, no custom themes, no auto-updater, no `.docx` import. See [Project status](../status.md).
 - Installers are not signed by default, so expect operating system warnings. See [Installation](installation.md#unsigned-installers).
 - Global hotkeys may not work under Wayland.
-- The Kroko German model has an unresolved license question (`docs/legal/LEGAL.md`).
+- Kroko models were removed for license reasons (`docs/legal/LEGAL.md`).

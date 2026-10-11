@@ -18,4 +18,4 @@ zero-teleprompter is licensed under either MIT or Apache-2.0, at the user's opti
 
 ## Addendum 2026-10-10: models
 
-Models are downloaded separately and are not covered by the project licence. The licence status per model is listed in `THIRD_PARTY_MODELS.md`, `docs/research/MODELS.md` and `docs/legal/LEGAL.md`. In particular, the licence of Kroko-DE is unresolved (CC-BY-SA according to the model page vs. "non-commercial" according to a third-party source).
+Models are downloaded separately and are not covered by the project licence. The licence status per model is listed in `THIRD_PARTY_MODELS.md`, `docs/research/MODELS.md` and `docs/legal/LEGAL.md`. The Kroko models (CC-BY-SA community license, commercial use under a separate license) were removed on 2026-10-11; all offered models are permissive, CC-BY-4.0 or OpenMDW-1.1.

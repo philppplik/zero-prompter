@@ -9,7 +9,7 @@ Terminology: the model that produces results while you speak is the **streaming 
 | Building block | Where it comes from |
 |---|---|
 | Microphone | Build feature `cpal` (on by default). |
-| Speech recognition | Build feature `sherpa` (included in all release builds) and an installed streaming model: NVIDIA Nemotron 3.5 Streaming, a Kroko model or the English Zipformer 20M model. |
+| Speech recognition | Build feature `sherpa` (included in all release builds) and an installed streaming model: NVIDIA Nemotron 3.5 Streaming or, English only, Zipformer EN 20M, or Windows speech recognition. |
 
 ### Which engine runs
 
@@ -18,7 +18,7 @@ When you start voice tracking or the microphone test, the app picks the engine a
 | Situation | What happens |
 |---|---|
 | A streaming model for the script language is installed | Real recognition with that model. |
-| Only a streaming model for **another** language is installed | That model is used and a notice appears. |
+| Only a streaming model for **another** language is installed (for example German, but only Zipformer EN 20M) | On Windows: Windows speech recognition in the right language; otherwise the other model is used and a notice appears. For German, download Nemotron. |
 | **No** streaming model is installed (Parakeet and Silero VAD do not count; they are helper models) | **Demo mode**: a mock engine "reads" the script by itself at about 2.3 words per second. A **Demo - load model (Demo · Modell laden)** badge appears next to the status and leads to Settings, Voice and models. On Windows builds with the `winspeech` feature, the Windows speech fallback is tried first. |
 | The build does not include speech recognition (no `sherpa` feature) | Demo mode with a notice. |
 | A model is installed but cannot be loaded | **No demo.** An error message appears, plus a **Model error - details (Modellfehler · Details)** badge that opens the Diagnostics tab. The text does not move by itself. On Windows, the Windows speech fallback is tried first. |
@@ -34,13 +34,12 @@ The model catalog is `apps/desktop/src-tauri/resources/models.json` (8 entries).
 | **Nemotron 3.5 ASR Streaming 0.6B int8, 320 ms** (default) | streaming | de, en | 682 MB | OpenMDW-1.1 | Recommended. Cursor can move about every 0.3 s. Output with capitalization and punctuation. No hotwords. |
 | Nemotron 3.5, 160 ms | streaming | de, en | 682 MB | OpenMDW-1.1 | Faster reaction, needs a strong CPU. |
 | Nemotron 3.5, 80 ms | streaming | de, en | 682 MB | OpenMDW-1.1 | Fastest reaction, needs a very strong CPU. |
-| Kroko Streaming Zipformer DE (2025-08-06) | streaming | de | 71 MB | CC-BY-SA-4.0 | Small. Decodes in 1.28 s blocks, so new words arrive roughly every 1.3 s. Supports hotwords. The license status is flagged as unresolved in `docs/legal/LEGAL.md`. |
-| Kroko Streaming Zipformer EN (2025-08-06) | streaming | en | 71 MB | CC-BY-SA-4.0 | Same block behavior. |
+
 | Streaming Zipformer EN 20M int8 (2023-02-17) | streaming | en | 44 MB | Apache-2.0 | Smallest. English only. |
 | NVIDIA Parakeet TDT 0.6B v3 int8 | resync (offline) | de, en | 670 MB | CC-BY-4.0 | Used only for [resync](#resync-in-the-background). |
 | Silero VAD | helper (segmentation) | - | 0.6 MB | MIT | Installed automatically together with any speech model. |
 
-Timing figures (cursor cadence, real-time factor on CI machines) come from `docs/research/MODELS.md` and ADR-007; they depend on your CPU. Hotwords (words from your script handed to the recognizer) work only with `modified_beam_search` decoding, which is the case for Kroko and Zipformer. Nemotron runs only with greedy search in the pinned sherpa-onnx 1.13.8 and therefore has no hotwords.
+Timing figures (cursor cadence, real-time factor on CI machines) come from `docs/research/MODELS.md` and ADR-007; they depend on your CPU. Hotwords (words from your script handed to the recognizer) work only with `modified_beam_search` decoding, which is the case for Zipformer EN 20M. Nemotron runs only with greedy search in the pinned sherpa-onnx 1.13.8 and therefore has no hotwords.
 
 ### Downloading and removing models
 
@@ -52,7 +51,7 @@ You can supply your own manifest as `<data folder>/models/manifest.json`; it rep
 
 Under **Speech recognition (Spracherkennung)** pick a streaming model per language (German and English) or **Automatic (Automatisch)**. "Not downloaded" is appended to models that are not installed.
 
-Automatic picks the first **installed** model in manifest order: Nemotron 320 ms, then Kroko, then (English only) Zipformer 20M. If you have not installed Nemotron, you keep using Kroko. If a model cannot be loaded, the app falls back to the next installed one. A line under the selection shows the active chain for the script language. Changes take effect the next time voice starts; changing the choice while voice runs restarts the voice session.
+Automatic picks the first **installed** model in manifest order: Nemotron 320 ms, then (English only) Zipformer 20M, then Windows speech recognition. There is no light German model any more (Kroko was removed for license reasons); German without Nemotron uses Windows speech recognition, otherwise the app shows demo mode with a download prompt. Folders of previously downloaded Kroko models are ignored (delete them by hand from `<data folder>/models/`), and a saved Kroko choice falls back to Automatic (Nemotron). If a model cannot be loaded, the app falls back to the next installed one. A line under the selection shows the active chain for the script language. Changes take effect the next time voice starts; changing the choice while voice runs restarts the voice session.
 
 If a model decodes more slowly than real time on your computer (text would lag further and further behind), a warning appears after about 10 seconds with the recommendation to choose a smaller model (the threshold is a real-time factor above 0.9).
 
@@ -64,7 +63,7 @@ The switch **Resync in the background (Resync im Hintergrund)** (off by default)
 
 On Windows builds that include the `winspeech` feature (the official Windows release builds do), the app can use the speech recognition built into Windows (`Windows.Media.SpeechRecognition`). No download is needed (ADR-008).
 
-- **Automatic fallback.** If no streaming model is installed, or none can be loaded, the app tries Windows speech recognition before it falls back to demo mode or shows a model error. The note under the model selection then reads like "Nemotron -> Kroko -> Windows speech recognition (system)".
+- **Automatic fallback.** If no streaming model is installed, or none can be loaded, the app tries Windows speech recognition before it falls back to demo mode or shows a model error. The note under the model selection then reads like "Nemotron -> Windows speech recognition (system)".
 - **Manual choice.** Select **Windows Spracherkennung (System)** (Windows speech recognition, system) in the model dropdown. It is offered only where available.
 - **Requirements:**
   - The speech language pack is installed: Settings, Time and language, Language and region, your language, Language options, "Speech recognition" (`ms-settings:regionlanguage`). Choose the language under Time and language, Speech (`ms-settings:speech`).
@@ -131,7 +130,7 @@ These values are the tracker defaults in `crates/zt-align/src/tracker.rs`.
 ## Tips
 
 - A headset or directional microphone close to your mouth improves recognition considerably.
-- Rare words from your script (names, technical terms) are passed to the recognizer as hotwords if the engine supports them (Kroko and Zipformer do; Nemotron does not).
+- Rare words from your script (names, technical terms) are passed to the recognizer as hotwords if the engine supports them (Zipformer EN 20M does; Nemotron does not).
 - Write numbers as digits ("2026"); the app compares them with the spoken form.
 
 ## Diagnostics tab and log export
@@ -153,7 +152,7 @@ The target is under 300 ms from spoken word to scroll start (p50), at most 1 s. 
 | Hypothesis to cursor | Alignment cost in the tracker. |
 | Audio to cursor (total) | From capture to the cursor event; the scroll animation starts at the next tick (at most 16 ms later) with a time constant of 150 ms. |
 
-How often the cursor can move is mostly determined by the model's decoder cadence: Kroko decodes in 1.28 s blocks and so delivers new words only about every 1.3 s, even when the other numbers are small. Nemotron 320 ms delivers about every 0.3 s (CI measurement). Your machine's numbers are in the Diagnostics tab.
+How often the cursor can move is mostly determined by the model's decoder cadence: Nemotron 320 ms delivers new words about every 0.3 s and 160 ms about every 0.2 s (CI measurement). Your machine's numbers are in the Diagnostics tab.
 
 ### Log files
 

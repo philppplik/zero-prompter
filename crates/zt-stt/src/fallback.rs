@@ -63,13 +63,13 @@ mod tests {
     #[test]
     fn first_working_candidate_wins() {
         let r = build_with_fallback(vec![
-            ("zipformer-en-kroko-2025-08-06".to_string(), broken()),
+            ("nemotron-3.5-streaming-0.6b-320ms-int8".to_string(), broken()),
             ("zipformer-en-20m-2023-02-17".to_string(), ok()),
         ])
         .unwrap();
         assert_eq!(r.chosen, "zipformer-en-20m-2023-02-17");
         assert!(r.fell_back());
-        assert_eq!(r.skipped[0].0, "zipformer-en-kroko-2025-08-06");
+        assert_eq!(r.skipped[0].0, "nemotron-3.5-streaming-0.6b-320ms-int8");
         assert!(r.skipped[0].1.contains("encoder"));
         assert_eq!(r.value.name(), "mock");
     }

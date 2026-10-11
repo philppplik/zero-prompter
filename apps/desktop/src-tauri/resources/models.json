@@ -60,37 +60,7 @@
       ]
     },
     {
-      "id": "zipformer-de-kroko-2025-08-06", "defaultRank": 1,
-      "name": "Kroko Streaming Zipformer DE (2025-08-06)",
-      "languages": ["de"],
-      "tier": "s",
-      "engine": "sherpaOnlineTransducer", "modelType": "online_transducer", "roles": ["streaming"],
-      "license": "CC-BY-SA-4.0",
-      "attribution": "Kroko ASR community model by Banafo (https://huggingface.co/Banafo/Kroko-ASR), CC-BY-SA; converted for sherpa-onnx by k2-fsa. TODO: confirm exact CC-BY-SA version.",
-      "files": [
-        { "path": "encoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/encoder.onnx", "sha256": "6e83993d6967ec7a3498b055b7e85ace85b5d64d1b1e8773cb29a43a11f5edb5", "size": 70091557, "role": "encoder" },
-        { "path": "decoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/decoder.onnx", "sha256": "94a29592b403c53fa2231b478637da1ab4abcef7f5e46e432098416a4a3ed562", "size": 617489, "role": "decoder" },
-        { "path": "joiner.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/joiner.onnx", "sha256": "28356bff070aea51ab1d725a3278e81d19f9300f860d3248a7014292264df15a", "size": 336817, "role": "joiner" },
-        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/tokens.txt", "sha256": "86e8370994ff2c01149ba8c4f8709aa93cdc18914b27a717e291e96faf39a6eb", "size": 5606, "role": "tokens" }
-      ]
-    },
-    {
-      "id": "zipformer-en-kroko-2025-08-06", "defaultRank": 1,
-      "name": "Kroko Streaming Zipformer EN (2025-08-06)",
-      "languages": ["en"],
-      "tier": "s",
-      "engine": "sherpaOnlineTransducer", "modelType": "online_transducer", "roles": ["streaming"],
-      "license": "CC-BY-SA-4.0",
-      "attribution": "Kroko ASR community model by Banafo (https://huggingface.co/Banafo/Kroko-ASR), CC-BY-SA; converted for sherpa-onnx by k2-fsa. TODO: confirm exact CC-BY-SA version.",
-      "files": [
-        { "path": "encoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/572aaf4e2e0c603c3fc2a574d096e755a178faa1/encoder.onnx", "sha256": "d4881c57449d581e0770fd53fa66c2fdc6cd167d92ece7c715e603defc96d9d4", "size": 70092599, "role": "encoder" },
-        { "path": "decoder.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/572aaf4e2e0c603c3fc2a574d096e755a178faa1/decoder.onnx", "sha256": "455ba38466fce8d5a57e7db68a323b684079ca4d9e1dd93a740d9b2429aae3b1", "size": 617488, "role": "decoder" },
-        { "path": "joiner.onnx", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/572aaf4e2e0c603c3fc2a574d096e755a178faa1/joiner.onnx", "sha256": "d406f616736350e2a7df3e39398b78eb2fc1a2ca6973a19d3853fa3227e25b52", "size": 336817, "role": "joiner" },
-        { "path": "tokens.txt", "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/572aaf4e2e0c603c3fc2a574d096e755a178faa1/tokens.txt", "sha256": "396dbeb5f4858875690716084f54e90d339679d0ba3e6b5b584f3d7589254d2d", "size": 6310, "role": "tokens" }
-      ]
-    },
-    {
-      "id": "zipformer-en-20m-2023-02-17", "defaultRank": 2,
+      "id": "zipformer-en-20m-2023-02-17", "defaultRank": 1,
       "name": "Streaming Zipformer EN 20M int8 (2023-02-17)",
       "languages": ["en"],
       "tier": "s",

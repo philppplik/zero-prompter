@@ -8,7 +8,7 @@ const ABC_SHA: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f
 
 fn manifest_json(sha: &str, size: u64) -> String {
     format!(
-        r#"{{"schemaVersion":1,"models":[{{"id":"kroko-de","name":"Kroko DE","languages":["de"],"tier":"s",
+        r#"{{"schemaVersion":1,"models":[{{"id":"test-de","name":"Test DE","languages":["de"],"tier":"s",
         "engine":"sherpaOnlineTransducer","license":"unknown","files":[
         {{"path":"tokens.txt","url":"https://example.invalid/tokens.txt","sha256":"{sha}","size":{size},"role":"tokens"}}]}}]}}"#
     )
@@ -30,7 +30,7 @@ fn sha256_known_vectors() {
 #[test]
 fn manifest_roundtrip_and_validation() {
     let m = Manifest::parse(&manifest_json(ABC_SHA, 3)).unwrap();
-    assert_eq!(m.get("kroko-de").unwrap().file_by_role("tokens").unwrap().size, 3);
+    assert_eq!(m.get("test-de").unwrap().file_by_role("tokens").unwrap().size, 3);
     assert_eq!(m.for_language("de").count(), 1);
     let again = Manifest::parse(&m.to_json().unwrap()).unwrap();
     assert_eq!(m, again);
@@ -51,7 +51,7 @@ fn safe_paths() {
 fn store_status_and_finalize() {
     let root = tmpdir("store");
     let m = Manifest::parse(&manifest_json(ABC_SHA, 3)).unwrap();
-    let e = m.get("kroko-de").unwrap();
+    let e = m.get("test-de").unwrap();
     let f = &e.files[0];
     let store = ModelStore::new(&root);
     assert_eq!(store.status(e), ModelStatus::NotInstalled);
@@ -86,7 +86,7 @@ impl Downloader for FakeDl {
 fn install_with_fake_downloader() {
     let root = tmpdir("install");
     let m = Manifest::parse(&manifest_json(ABC_SHA, 3)).unwrap();
-    let e = m.get("kroko-de").unwrap();
+    let e = m.get("test-de").unwrap();
     let store = ModelStore::new(&root);
     let mut last = (0, 0);
     let report = install(&store, e, &mut FakeDl(b"abc"), &mut |d, t| last = (d, t)).unwrap();
@@ -100,7 +100,7 @@ fn install_with_fake_downloader() {
 fn missing_sha_is_a_warning_not_an_error() {
     // Empty string (bundled tokens.txt) and absent field both mean "unverified".
     let m = Manifest::parse(&manifest_json("", 3)).unwrap();
-    assert_eq!(m.get("kroko-de").unwrap().files[0].sha256, None);
+    assert_eq!(m.get("test-de").unwrap().files[0].sha256, None);
     assert_eq!(m.warnings().len(), 1);
     // A malformed hash is still fatal.
     assert!(Manifest::parse(&manifest_json("abc", 3)).is_err());
@@ -113,7 +113,7 @@ fn missing_sha_is_a_warning_not_an_error() {
 fn unverified_install_reports_computed_hash_and_size_still_guards() {
     let root = tmpdir("unverified");
     let m = Manifest::parse(&manifest_json("", 3)).unwrap();
-    let e = m.get("kroko-de").unwrap();
+    let e = m.get("test-de").unwrap();
     let store = ModelStore::new(&root);
     let report = install(&store, e, &mut FakeDl(b"abc"), &mut |_, _| {}).unwrap();
     assert_eq!(report.unverified, vec![("tokens.txt".to_string(), ABC_SHA.to_string())]);
@@ -134,7 +134,7 @@ const BUNDLED: &str = include_str!("../../../apps/desktop/src-tauri/resources/mo
 #[test]
 fn bundled_manifest_is_valid_and_complete() {
     let m = Manifest::parse(BUNDLED).expect("bundled models.json must parse");
-    assert_eq!(m.models.len(), 8);
+    assert_eq!(m.models.len(), 6);
     // Every file is pinned and hashed (no unverified files in the release manifest).
     assert!(m.warnings().is_empty(), "{:?}", m.warnings());
     for e in &m.models {
@@ -152,8 +152,6 @@ fn bundled_manifest_is_valid_and_complete() {
         "nemotron-3.5-streaming-0.6b-160ms-int8",
         "nemotron-3.5-streaming-0.6b-80ms-int8",
         "nemotron-3.5-streaming-0.6b-320ms-int8",
-        "zipformer-de-kroko-2025-08-06",
-        "zipformer-en-kroko-2025-08-06",
         "zipformer-en-20m-2023-02-17",
         "parakeet-tdt-0.6b-v3-int8",
     ] {
@@ -177,20 +175,25 @@ fn default_selection_and_fallback_chain() {
     const N80: &str = "nemotron-3.5-streaming-0.6b-80ms-int8";
     const N320: &str = "nemotron-3.5-streaming-0.6b-320ms-int8";
     // Nemotron 320 ms is the default for DE and EN (CI: half the CPU of the
-    // 160 ms export, real time on all runners), Kroko/20M stay selectable;
-    // the other chunk variants are user choices only (no defaultRank).
-    assert_eq!(
-        ids(m.candidates("de-DE", ModelRole::Streaming)),
-        [N320, "zipformer-de-kroko-2025-08-06", N160, N80]
-    );
+    // 160 ms export, real time on all runners), 20M stays the light EN
+    // option; the other chunk variants are user choices only (no defaultRank).
+    // Kroko was removed (licence); no light German model remains.
+    assert!(m.models.iter().all(|e| !e.id.contains("kroko")));
+    assert_eq!(ids(m.candidates("de-DE", ModelRole::Streaming)), [N320, N160, N80]);
     assert_eq!(
         ids(m.candidates("en", ModelRole::Streaming)),
-        [N320, "zipformer-en-kroko-2025-08-06", "zipformer-en-20m-2023-02-17", N160, N80]
+        [N320, "zipformer-en-20m-2023-02-17", N160, N80]
     );
-    // Nemotron not installed (existing users): Kroko keeps being used.
+    // Nemotron not installed, German: no German model.
+    assert!(m
+        .select("de", ModelRole::Streaming, None, |e| !e.id.starts_with("nemotron"))
+        .is_none());
+    // A saved preference for a removed Kroko model is ignored -> Nemotron.
     assert_eq!(
-        m.select("de", ModelRole::Streaming, None, |e| !e.id.starts_with("nemotron")).unwrap().id,
-        "zipformer-de-kroko-2025-08-06"
+        m.select("de", ModelRole::Streaming, Some("zipformer-de-kroko-2025-08-06"), |_| true)
+            .unwrap()
+            .id,
+        N320
     );
     let n = m.get(N160).unwrap();
     assert_eq!(n.model_type(), Some(ModelType::OnlineNemoTransducer));
@@ -199,8 +202,8 @@ fn default_selection_and_fallback_chain() {
     assert_eq!(n.language_prompt("de-DE").as_deref(), Some("de"));
     assert_eq!(n.language_prompt("fr").as_deref(), Some("auto"));
     assert!(n.requires_attribution());
-    assert_eq!(m.get("zipformer-de-kroko-2025-08-06").unwrap().language_prompt("de"), None);
-    // Legacy expectations below: Nemotron unranked (as for users who pin Kroko).
+    assert_eq!(m.get("zipformer-en-20m-2023-02-17").unwrap().language_prompt("en"), None);
+    // Expectations below: Nemotron 320 unranked.
     let old = format!("\"id\": \"{N320}\", \"defaultRank\": 0");
     let new = format!("\"id\": \"{N320}\"");
     let m = Manifest::parse(&BUNDLED.replace(&old, &new)).unwrap();
@@ -211,13 +214,9 @@ fn default_selection_and_fallback_chain() {
         "zipformer-en-20m-2023-02-17"
     );
     // A preference for another language is ignored.
-    assert_eq!(
-        ids(m.fallback_chain("en", ModelRole::Streaming, Some("zipformer-de-kroko-2025-08-06")))[0],
-        "zipformer-en-kroko-2025-08-06"
-    );
-    // Kroko EN not installed -> falls back to the Apache-2.0 20M model.
-    let sel =
-        m.select("en-US", ModelRole::Streaming, None, |e| e.id != "zipformer-en-kroko-2025-08-06");
+    assert_eq!(ids(m.fallback_chain("en", ModelRole::Streaming, Some(N80)))[0], N80);
+    // Unranked Nemotron 320 not installed -> the Apache-2.0 20M model.
+    let sel = m.select("en-US", ModelRole::Streaming, None, |e| !e.id.starts_with("nemotron"));
     assert_eq!(sel.unwrap().id, "zipformer-en-20m-2023-02-17");
     assert!(m.select("fr", ModelRole::Streaming, None, |_| true).is_none());
 }
@@ -233,8 +232,9 @@ fn streaming_plan_language_fallback() {
     assert_eq!(ids(&p), ["zipformer-en-20m-2023-02-17"]);
     assert_eq!(p.language_fallback.as_deref(), Some("en"));
     // Matching language installed: no fallback flag.
-    let p = m.streaming_plan("de-DE", None, |e| e.id == "zipformer-de-kroko-2025-08-06");
-    assert_eq!(ids(&p), ["zipformer-de-kroko-2025-08-06"]);
+    let n320 = "nemotron-3.5-streaming-0.6b-320ms-int8";
+    let p = m.streaming_plan("de-DE", None, |e| e.id == n320);
+    assert_eq!(ids(&p), [n320]);
     assert_eq!(p.language_fallback, None);
     // Resync-only (Parakeet) or VAD-only installs give no streaming model.
     let p = m.streaming_plan("de", None, |e| {
@@ -247,7 +247,7 @@ fn streaming_plan_language_fallback() {
 #[test]
 fn schema_v1_still_accepted_and_roles_derived() {
     let m = Manifest::parse(&manifest_json(ABC_SHA, 3)).unwrap();
-    let e = m.get("kroko-de").unwrap();
+    let e = m.get("test-de").unwrap();
     assert_eq!(e.model_type(), Some(ModelType::OnlineTransducer));
     assert_eq!(e.effective_roles(), [ModelRole::Streaming]);
     assert!(Manifest::parse(

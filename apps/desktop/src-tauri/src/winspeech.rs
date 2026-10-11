@@ -1,6 +1,6 @@
 //! Windows speech recognition as system fallback engine (ADR-008).
 //!
-//! Chain: installed sherpa models (Nemotron / Kroko / Zipformer 20M) ->
+//! Chain: installed sherpa models (Nemotron / Zipformer EN 20M) ->
 //! Windows speech recognition -> error status (or demo mode when no model is
 //! installed and Windows speech is unavailable). The user can also pick it
 //! directly as model "Windows Spracherkennung (System)" (id

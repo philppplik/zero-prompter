@@ -9,7 +9,7 @@ downloaded or run locally.
 Source: GitHub Actions run 38132699828 (`scripts/stt-smoke.py`, sherpa-onnx
 1.13.8, real models, 100 ms chunks, 500 ms lead silence, 2 s tail). Runners:
 `ubuntu-22.04` / `windows-latest` (x86-64, 4 vCPU) and `windows-11-arm`
-(Arm64, 4 vCPU). Test audio: `de-kroko-0` ("Alles hat ein Ende, nur die Wurst
+(Arm64, 4 vCPU). Test audio: `de-0` (German test clip from the former Kroko repo, CI only, "Alles hat ein Ende, nur die Wurst
 hat zwei", 2.75 s) and `en-librispeech-0` (6.6 s). Threads: Nemotron 4,
 Zipformers 2.
 
@@ -26,10 +26,10 @@ Zipformers 2.
 | Nemotron 3.5 160 ms int8 | win-arm64 | 0.53 / 0.60 | 107–126 | 0.20 / 0.30–0.40 | 0.59 / 0.90 | ~1500 | 773 | DE + EN exact (cased, punctuated) |
 | Nemotron 3.5 160 ms int8 | linux-x64 | 1.23 / 1.13 | 214–281 | 0.20 / 0.30–0.50 | 0.59 / 0.90 | ~1800 | 966 | as above |
 | Nemotron 3.5 160 ms int8 | win-x64 | 1.05 / 1.11 | 204–222 | 0.20 / 0.30–0.40 | 0.59 / 0.90 | ~1600 | 760 | as above |
-| Kroko DE | win-arm64 | 0.030 / – | 0.2 | **1.30 / 1.30** | 0.99 / – | ~2800 | 249 | exact |
-| Kroko DE | linux-x64 | 0.029 / – | 0.3 | 1.30 / 1.30 | 0.99 / – | ~2400 | 255 | exact |
-| Kroko EN | win-arm64 | – / 0.044 | 51 | 1.30 / 1.30 | – / 1.00 | ~2800 | 249 | exact |
-| Kroko EN | linux-x64 | – / 0.041 | 50 | 1.30 / 1.30 | – / 2.30 | ~2600 | 257 | exact |
+| Kroko DE (removed) | win-arm64 | 0.030 / – | 0.2 | **1.30 / 1.30** | 0.99 / – | ~2800 | 249 | exact |
+| Kroko DE (removed) | linux-x64 | 0.029 / – | 0.3 | 1.30 / 1.30 | 0.99 / – | ~2400 | 255 | exact |
+| Kroko EN (removed) | win-arm64 | – / 0.044 | 51 | 1.30 / 1.30 | – / 1.00 | ~2800 | 249 | exact |
+| Kroko EN (removed) | linux-x64 | – / 0.041 | 50 | 1.30 / 1.30 | – / 2.30 | ~2600 | 257 | exact |
 | Zipformer EN 20M int8 | win-arm64 | – / 0.031 | 10 | 0.30 / 0.40 | – / 1.20 | ~620 | 158 | upper case, no punctuation |
 | Zipformer EN 20M int8 | linux-x64 | – / 0.038 | 12 | 0.30 / 0.40 | – / 1.20 | ~530 | 150 | as above |
 
@@ -68,8 +68,7 @@ Findings:
 | Id | Type | Languages | Download (MB, roughly) | Licence | WER (source) | Files |
 |---|---|---|---|---|---|---|
 | nemotron-3.5-streaming-0.6b-{80,160,320}ms-int8 | streaming NeMo cache-aware FastConformer-RNNT, language prompt | 40 locales incl. de, en (app: de, en) | 682 | OpenMDW-1.1 | see NVIDIA card (FLEURS per chunk size) | encoder.int8.onnx, decoder.int8.onnx, joiner.int8.onnx, tokens.txt |
-| zipformer-de-kroko-2025-08-06 | streaming zipformer transducer | de | 71 | CC-BY-SA (Banafo) | not published | encoder.onnx, decoder.onnx, joiner.onnx, tokens.txt |
-| zipformer-en-kroko-2025-08-06 | streaming zipformer transducer | en | 71 | CC-BY-SA (Banafo) | not published | encoder.onnx, decoder.onnx, joiner.onnx, tokens.txt |
+| zipformer-{de,en}-kroko-2025-08-06 (**removed 2026-10-11**) | streaming zipformer transducer | de / en | 71 | CC-BY-SA community + separate commercial licence (Banafo) | not published | – |
 | zipformer-en-20m-2023-02-17 (int8) | streaming zipformer transducer, 20M params | en | 44 | Apache-2.0 | not on card; LibriSpeech-only | encoder/decoder/joiner-epoch-99-avg-1.int8.onnx, tokens.txt |
 | zipformer-en-2023-06-26 (int8, chunk16-left128) | streaming zipformer transducer | en | 73 | unknown | not on card; LibriSpeech-only | encoder/decoder/joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx, tokens.txt |
 | parakeet-tdt-0.6b-v3-int8 | **offline** NeMo TDT transducer (resync) | 25 EU languages incl. de, en | 670 | CC-BY-4.0 | FLEURS en 4.85 / de 5.04; CoVoST en 6.80 / de 4.84; Open ASR avg (en) 6.34 | encoder.int8.onnx, decoder.int8.onnx, joiner.int8.onnx, tokens.txt |
@@ -87,11 +86,13 @@ for each file.
   (NVIDIA, OpenMDW-1.1, 682 MB, sherpa-onnx `csukuangfj2/...-320ms-int8-2026-06-11`
   @424ce58). Language prompt per stream (`de`/`en`, else `auto`), greedy only.
   80 ms and 160 ms exports are selectable. See the measured comparison above.
-- **Kroko DE / EN** (`zipformer-*-kroko-2025-08-06`) stay as the light
-  alternative (71 MB, RTF ~0.03) and as fallback when Nemotron is not
-  installed; their 1.28 s decoder chunk limits the cursor to ~1.3 s steps.
-  Caveats: CC-BY-SA, attribution required, and no published WER.
-- **Permissive EN fallback:** `zipformer-en-20m-2023-02-17`
+- **Kroko DE / EN removed (2026-10-11)** for a licence-clean public release
+  (CC-BY-SA community licence, commercial use needs a separate Banafo licence).
+  There is **no light German model** any more: German needs Nemotron; without
+  it the app falls back to Windows speech recognition (if available) or demo
+  mode with a download prompt. Leftover Kroko folders are ignored; saved
+  preferences pointing to Kroko fall back to the default chain (Nemotron).
+- **Light EN option:** `zipformer-en-20m-2023-02-17` (`defaultRank: 1`)
   (Apache-2.0, 44 MB, very fast, but LibriSpeech-only, so expect weaker results on free speech).
 - **Resync (optional, tier L):** `parakeet-tdt-0.6b-v3-int8` decodes VAD segments offline and
   re-anchors the position after a slip. It is large (about 670 MB) and needs
@@ -102,8 +103,7 @@ for each file.
 | Role | Engine (sherpa-onnx 1.13.8) | Manifest |
 |---|---|---|
 | Streaming DE / EN (Nemotron) | `OnlineRecognizer`, transducer fields (sherpa detects NeMo from the encoder metadata), `greedy_search`, `stream.set_option("language", "de")` after create and every reset, 4 threads | `modelType: online_nemo_transducer`, `roles: ["streaming"]`, `defaultRank: 0` (320 ms) |
-| Streaming DE / EN (Kroko) | `OnlineRecognizer`, transducer (encoder/decoder/joiner/tokens) | `modelType: online_transducer`, `defaultRank: 1` |
-| Fallback EN | same, tried automatically when the preferred model fails to load | `defaultRank: 2` |
+| Light EN (Zipformer 20M) | `OnlineRecognizer`, transducer (encoder/decoder/joiner/tokens), tried automatically when Nemotron is missing or fails to load | `modelType: online_transducer`, `defaultRank: 1` |
 | Resync | `OfflineRecognizer`, `model_config.transducer` + `model_type = "nemo_transducer"` | `modelType: offline_nemo_transducer`, `roles: ["resync"]` |
 
 The user picks a streaming model per primary language (or "automatic") and
@@ -128,7 +128,7 @@ Not a downloadable model: `Windows.Media.SpeechRecognition` (WinRT), id `windows
 | Platforms | Windows 10/11 x64 + ARM64; unpackaged Win32 use documented, not yet verified on hardware |
 | Licence | OS component, no redistribution |
 
-Role: fallback after Nemotron / Kroko / Zipformer 20M and explicit choice "Windows Spracherkennung (System)". Accuracy and latency were not measured (CI has no microphone or consent). Newer Windows AI APIs (Windows App SDK) offer no general streaming ASR for unpackaged apps as of 2026-10. SAPI 5 desktop recognition is deprecated in Windows 11.
+Role: fallback after Nemotron / Zipformer EN 20M (and the only fallback for German without Nemotron) and explicit choice "Windows Spracherkennung (System)". Accuracy and latency were not measured (CI has no microphone or consent). Newer Windows AI APIs (Windows App SDK) offer no general streaming ASR for unpackaged apps as of 2026-10. SAPI 5 desktop recognition is deprecated in Windows 11.
 
 ## Open points (not verified)
 
@@ -136,7 +136,6 @@ Role: fallback after Nemotron / Kroko / Zipformer 20M and explicit choice "Windo
   optional: such files are size-checked, their SHA-256 is computed after download and
   stored as `unverified-sha256.json` in the model folder, and the UI marks them as
   unverified. Pin the reported hashes before a release.
-- The exact CC-BY-SA version for Kroko, and whether the share-alike terms are acceptable.
 - The licence of `zipformer-en-2023-06-26`.
 - Measured latency/RTF on the target CPU (Snapdragon X): CI covers Arm64 and
   x86-64 runners only; the app's Diagnose tab and the `RealtimeWatch` warning
@@ -149,9 +148,8 @@ Role: fallback after Nemotron / Kroko / Zipformer 20M and explicit choice "Windo
 - https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b (licence OpenMDW-1.1, @ea30d66)
 - https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-320ms-int8-2026-06-11 (@424ce58; 160 ms @b3a4dbd, 80 ms @2ac5952)
 - https://github.com/k2-fsa/sherpa-onnx/tree/master/scripts/nemo/nemotron-3.5-asr-streaming-0.6b
-- https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06
-- https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06
-- https://huggingface.co/Banafo/Kroko-ASR
+- https://huggingface.co/Banafo/Kroko-ASR (removed model, licence reference)
+
 - https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17
 - https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26
 - https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8

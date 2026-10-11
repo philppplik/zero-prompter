@@ -53,3 +53,6 @@ reliably.
 - - The sherpa adapters are written against docs.rs 1.13.8; CI only checks the
   feature build (non-blocking), and runtime tests with real models are still missing.
 - - Pin the SHA-256 of `tokens.txt` before a release.
+
+> Addendum 2026-10-11: Kroko DE/EN removed (license). The default is Nemotron 3.5 Streaming 320 ms (ADR-007), the light English option is Zipformer EN 20M, and the fallback is Windows speech recognition (ADR-008).
+
