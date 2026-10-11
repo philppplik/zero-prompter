@@ -281,12 +281,9 @@ mod tests {
             .sanitized(&t);
         assert_eq!(s.mic_gain_db, Settings::MIC_GAIN_MAX_DB);
         assert_eq!(s.mic_channel, "auto");
-        let s = Settings {
-            mic_gain_db: f32::NAN,
-            mic_channel: " MIX ".into(),
-            ..Default::default()
-        }
-        .sanitized(&t);
+        let s =
+            Settings { mic_gain_db: f32::NAN, mic_channel: " MIX ".into(), ..Default::default() }
+                .sanitized(&t);
         assert_eq!(s.mic_gain_db, 0.0);
         assert_eq!(s.mic_channel, "mix");
         let s = Settings { mic_channel: "2".into(), ..Default::default() }.sanitized(&t);

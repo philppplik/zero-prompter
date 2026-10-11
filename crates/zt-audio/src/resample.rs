@@ -231,6 +231,7 @@ fn lowpass_taps(cutoff: f32, n: usize) -> Vec<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::f32::consts::FRAC_1_SQRT_2;
 
     fn sine(rate: u32, freq: f32, secs: f32) -> Vec<f32> {
         (0..(rate as f32 * secs) as usize)
@@ -316,7 +317,7 @@ mod tests {
         let (mix, _) = run_mode(&[a.clone(), b.clone()], ChannelMode::Mix);
         assert!(rms(&mix[400..]) < 1e-3, "mix cancels antiphase channels");
         let (auto, _) = run_mode(&[a, b], ChannelMode::Auto);
-        assert!(db(rms(&auto[400..]) / 0.7071).abs() < 1.0);
+        assert!(db(rms(&auto[400..]) / FRAC_1_SQRT_2).abs() < 1.0);
     }
 
     #[test]
@@ -326,13 +327,14 @@ mod tests {
         // Signal on the second channel: Auto must switch away from channel 0.
         let (auto, r) = run_mode(&[z.clone(), a.clone()], ChannelMode::Auto);
         assert_eq!(r.selector.active_channel(), Some(1));
-        assert!(db(rms(&auto[8000..]) / 0.7071).abs() < 1.0);
+        assert!(db(rms(&auto[8000..]) / FRAC_1_SQRT_2).abs() < 1.0);
         let lv = r.selector.channel_dbfs();
         assert_eq!(lv[0], -100.0);
-        assert!((lv[1] + 3.0).abs() < 1.0, "{lv:?}"); // EMA ~86 % settled after 2 tau
+        // EMA is ~86 % settled after 2 tau.
+        assert!((lv[1] + 3.0).abs() < 1.0, "{lv:?}");
         // Mix loses 6 dB.
         let (mix, _) = run_mode(&[z.clone(), a.clone()], ChannelMode::Mix);
-        assert!((db(rms(&mix[400..]) / 0.7071) + 6.02).abs() < 1.0);
+        assert!((db(rms(&mix[400..]) / FRAC_1_SQRT_2) + 6.02).abs() < 1.0);
         // Fixed channel.
         let (fixed, r) = run_mode(&[z, a], ChannelMode::Channel(0));
         assert_eq!(r.selector.active_channel(), Some(0));

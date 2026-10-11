@@ -99,10 +99,7 @@ fn initial_state() -> Mutex<DiagState> {
 }
 
 pub fn state() -> MutexGuard<'static, DiagState> {
-    STATE
-        .get_or_init(initial_state)
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
+    STATE.get_or_init(initial_state).lock().unwrap_or_else(|e| e.into_inner())
 }
 
 pub fn now_unix_ms() -> u64 {
