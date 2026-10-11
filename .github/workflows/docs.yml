@@ -1,0 +1,33 @@
+﻿name: docs
+on:
+  pull_request:
+    paths: ['docs/**', '**/*.md', '.github/workflows/docs.yml']
+  push:
+    branches: [main]
+    paths: ['docs/**', '**/*.md', '.github/workflows/docs.yml']
+permissions:
+  contents: read
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook@0.5.4,mdbook-mermaid@0.17.1
+      - name: Generate mermaid assets
+        run: mdbook-mermaid install docs/book
+      - name: Build book
+        run: mdbook build docs/book
+      - name: Link check (built HTML + repo markdown, offline)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --offline --no-progress
+            --exclude 'releases'
+            'docs/book/book/**/*.html'
+            './**/*.md'
+          fail: true
