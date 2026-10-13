@@ -172,7 +172,8 @@ export class ScrollMotion {
     }
     const tS = i.now / 1000;
     const voiceMode = i.playing && i.mode === 'voiceTracking' && !(i.lostConstant && i.phase === 'lost');
-    if (voiceMode && i.target !== this.lastTarget) {
+    const targetMoved = voiceMode && i.target !== this.lastTarget;
+    if (targetMoved) {
       this.voice.push(tS, i.target);
       this.lastTarget = i.target;
     }
@@ -180,10 +181,11 @@ export class ScrollMotion {
     let auth: number;
     let nominal: number;
     let tau: number = MOTION.tauVelocity;
+    let holding = false;
     if (!i.playing || i.mode === 'manual') {
       return this.follow(i.mode === 'voiceTracking' && i.playing ? i.target : i.position, dt);
     } else if (voiceMode) {
-      const holding = i.phase === 'hold' || i.phase === 'lost' || i.phase === 'idle';
+      holding = i.phase === 'hold' || i.phase === 'lost' || i.phase === 'idle';
       nominal = this.voice.rateAt(tS, holding);
       const age = Math.max(0, tS - this.voice.lastUpdate);
       // Predicted speaker position: cursor + rate * time since the update.
@@ -197,7 +199,9 @@ export class ScrollMotion {
     }
 
     const err = auth - this.x;
-    if (this.state === 'seek' || err > MOTION.seekForward || err < -MOTION.seekBackward) {
+    // Holding without a new cursor: never glide back to the last recognised word
+    // (the speaker was further). Real backward seeks change the target.
+    if (this.state === 'seek' || err > MOTION.seekForward || (err < -MOTION.seekBackward && (!holding || targetMoved))) {
       return this.seek(auth, nominal, dt);
     }
     this.state = 'glide';
