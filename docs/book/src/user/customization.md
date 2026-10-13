@@ -55,8 +55,8 @@ Older preference files stay valid: the former `serif` choice now maps to Source 
 
 ## Colors and dimming
 
-- **Custom colors** for text, background and marker override the theme. A readout shows the contrast ratio between your text and background colors (AAA at 7:1 or more, AA between 4.5:1 and 7:1, "too low" below 4.5:1). Check it yourself, since the app does not stop you. **Reset (Zurücksetzen)** returns to the theme colors.
-- **Dim read text (Gelesenen Text dimmen):** fades the words you have already read. The opacity slider covers 0.3 to 1; without a value the theme's default applies.
+- **Custom colors** for text and background override the theme (the marker color is set only under **Lesemarker**, see below). A readout shows the contrast ratio between your text and background colors (AAA at 7:1 or more, AA between 4.5:1 and 7:1, "too low" below 4.5:1). Check it yourself, since the app does not stop you. **Reset (Zurücksetzen)** returns to the theme colors.
+- **Text dimming (Text dimmen)** lives only here: **Dim read text (Gelesenen Text dimmen)** fades the words you have already read (opacity 0.1 to 1, "Theme" restores the theme default); **Dim unread text (Ungelesenen Text dimmen)** darkens the text below the reading zone (0 to 0.9, default off).
 - **Interface appearance (Oberfläche):** System, Light or Dark. This affects only the control window, not the prompter text. The interface theme is a neutral gray design with the DM Sans and Geist Mono fonts, bundled locally. Optionally enable a frame-time display.
 
 ## Reading marker styles
@@ -83,13 +83,11 @@ Further controls:
 | Opacity / Darkening | 0.1 to 1.0 | Labeled "darkening" (Abdunklung) for Spotlight and Gradient. |
 | Thickness / height (Dicke / Höhe) | 0.5x to 3.0x | |
 | Position | 5 % to 70 % | Same as the focus line. |
-| Dim read text | 0 to 0.9 | "Theme" resets to the theme default. |
-| Dim unread text | 0 to 0.9 | Text below the reading zone. Default 0 (off). |
 | Glow | 0 to 1 | 0 is off. |
-| Soft focus outside the zone (Weichzeichnen außerhalb) | 0 to 8 px | Applies to Spotlight and Gradient. |
+| Soft focus outside the zone (Weichzeichnen außerhalb) | 0 to 8 px | Applies to Spotlight and Gradient. Rendered as a stronger static veil (no live blur of the scrolling text, which stuttered on ARM/integrated GPUs). |
 | Animation | None, Glide (Gleiten), Pulse (Puls) | Motion when the marker moves. |
 
-A command palette entry ("Lesemarker: ...") cycles to the next style. An older `markerStyle` preference is migrated once to the new setting.
+A command palette entry ("Lesemarker: ...") cycles to the next style. An older `markerStyle` preference is migrated once to the new setting. Older versions had the marker color and read dimming in both tabs; on first start a marker color set under Darstellung moves to the marker (if it had none) and a marker read-dimming value moves to the Darstellung slider.
 
 ## Tempo and countdown
 

@@ -86,11 +86,11 @@ Source: `crates/zt-core/src/marker.rs`. The frontend renderer (`ReadingMarker.sv
 | Field | Type | Default | Range / valid values | Notes |
 |---|---|---|---|---|
 | `style` | enum | `"line"` | `line`, `band`, `arrows`, `brackets`, `spotlight`, `gradient`, `underline`, `sidebar`, `none` | |
-| `color` | string or null | `null` | `#RGB` or `#RRGGBB` (case-insensitive) | Normalized to lowercase `#rrggbb`; anything else becomes `null`. `null` = UI pref or theme marker color. |
+| `color` | string or null | `null` | `#RGB` or `#RRGGBB` (case-insensitive) | Normalized to lowercase `#rrggbb`; anything else becomes `null`. `null` = theme marker color. Only place for the marker color. |
 | `opacity` | f32 | `1.0` | `0.1`-`1.0` | For `spotlight`/`gradient` it is the strength of the darkening. Non-finite -> `1.0`. |
 | `size` | f32 | `1.0` | `0.5`-`3.0` | Thickness/height multiplier. Non-finite -> `1.0`. |
-| `dimRead` | f32 or null | `null` | `0.0`-`0.9` | Dimming of already-read text. `null` = theme `readOpacity`. A non-finite value becomes `null`. |
-| `dimUnread` | f32 | `0.0` | `0.0`-`0.9` | Dimming of not-yet-read text below the reading zone. |
+| `dimRead` | f32 or null | `null` | `0.0`-`0.9` | **Legacy.** Read dimming now lives only in the UI prefs `dimRead`/`readOpacity`; the frontend migrates a stored value once (`readOpacity = 1 - dimRead` if unset) and clears it. Not serialized when `null`. |
+| `dimUnread` | f32 | `0.0` | `0.0`-`0.9` | Dimming of not-yet-read text below the reading zone. Edited under Settings > Darstellung. |
 | `glow` | f32 | `0.0` | `0.0`-`1.0` | Glow around the marker; `0` = off. |
 | `blur` | f32 | `0.0` | `0.0`-`8.0` | Soft-focus blur in px outside the reading zone (spotlight/gradient). |
 | `animation` | enum | `"glide"` | `none`, `glide`, `pulse` | Motion when the marker moves. |
@@ -107,10 +107,10 @@ Source of truth: `UiPrefs` in `apps/desktop/src/lib/types.ts`. Rust treats this 
 | `measureCh` | number | `32` | Text column width in `ch`. |
 | `markerStyle` | `MarkerStyle` | `"line"` | UI-side marker style preference. |
 | `dimRead` | boolean | `true` | |
-| `readOpacity` | number or null | `null` | `null` = theme default. |
+| `readOpacity` | number or null | `null` | `0.1`-`1`; `null` = theme default. Only read-dimming setting (Settings > Darstellung). |
 | `textColor` | string or null | `null` | `null` = theme default. |
 | `bgColor` | string or null | `null` | `null` = theme default. |
-| `markerColor` | string or null | `null` | `null` = theme default. |
+| `markerColor` | string or null | `null` | **Legacy**, no longer editable: migrated once into `marker.color` (if that is `null`) and reset to `null`. |
 | `uiTheme` | `"system"` \| `"light"` \| `"dark"` | `"system"` | Control-window appearance. |
 | `onboarded` | boolean | `false` | |
 | `lastScriptId` | string or null | `null` | Script reopened at start. |

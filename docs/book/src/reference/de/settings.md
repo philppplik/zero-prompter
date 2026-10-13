@@ -38,8 +38,9 @@ Nur für das Frontend. Die App speichert die Datei per `set_ui_prefs` und sendet
 | `measureCh` | number (16–60) | 32 |
 | `markerStyle` | `line` \| `band` | `line` |
 | `dimRead` | bool | true |
-| `readOpacity` | number \| null (null = Theme-Wert) | null |
-| `textColor`, `bgColor`, `markerColor` | string \| null | null |
+| `readOpacity` | number \| null (0,1–1; null = Theme-Wert; einzige Einstellung fürs Dimmen gelesenen Texts, Darstellung) | null |
+| `textColor`, `bgColor` | string \| null | null |
+| `markerColor` | string \| null (veraltet: wird einmalig nach `marker.color` übernommen, falls dort leer, und auf null gesetzt; Markerfarbe nur unter Lesemarker) | null |
 | `uiTheme` | `system` \| `light` \| `dark` | `system` |
 | `onboarded` | bool | false |
 | `lastScriptId` | string \| null | null |
