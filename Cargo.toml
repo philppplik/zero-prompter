@@ -22,7 +22,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 rust-version = "1.80"
 license = "MIT OR Apache-2.0"
@@ -39,12 +39,12 @@ sha2 = "0.10"
 cpal = "0.15"            # VERIFY: bump to latest 0.15.x/0.16 when building
 sherpa-onnx = "=1.13.8"  # API checked against docs.rs 1.13.8 (not compiled); keep pinned
 
-zt-core = { path = "crates/zt-core", version = "0.2.0" }
-zt-align = { path = "crates/zt-align", version = "0.2.0" }
-zt-audio = { path = "crates/zt-audio", version = "0.2.0" }
-zt-stt = { path = "crates/zt-stt", version = "0.2.0" }
-zt-models = { path = "crates/zt-models", version = "0.2.0" }
-zt-testkit = { path = "crates/zt-testkit", version = "0.2.0" }
+zt-core = { path = "crates/zt-core", version = "0.2.1" }
+zt-align = { path = "crates/zt-align", version = "0.2.1" }
+zt-audio = { path = "crates/zt-audio", version = "0.2.1" }
+zt-stt = { path = "crates/zt-stt", version = "0.2.1" }
+zt-models = { path = "crates/zt-models", version = "0.2.1" }
+zt-testkit = { path = "crates/zt-testkit", version = "0.2.1" }
 
 # Test-only (dev-dependencies). proptest 1.x: stable API (`proptest!`,
 # `prop_assert*!`, `prop_oneof!`, regex string strategies).
