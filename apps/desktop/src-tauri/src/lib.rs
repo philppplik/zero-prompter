@@ -36,9 +36,22 @@ pub fn run() {
         std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
 
+    // Register the shared state before any window can load: config windows may
+    // start invoking commands (e.g. `get_state`) while `setup` is still doing
+    // file I/O, which used to fail with "state not managed for field `shared`".
+    // `setup` replaces this placeholder core with the persisted one.
+    let placeholder = {
+        let tokens = Tokens::embedded();
+        let settings = Settings::from_tokens(&tokens);
+        let mut ctl = Controller::new(tokens, settings);
+        let _ = ctl.apply(Command::LoadScript(String::new()));
+        Shared::new(AppCore::new(ctl))
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(hotkeys::plugin())
+        .manage(placeholder)
         .setup(|app| {
             let handle = app.handle().clone();
             diag::init_logging(&handle);
@@ -50,8 +63,8 @@ pub fn run() {
             let _ = ctl.apply(Command::LoadScript(String::new()));
             let mut core = AppCore::new(ctl);
             core.voice_models = models::load_prefs(&handle);
-            let shared = Shared::new(core);
-            app.manage(shared.clone());
+            let shared = app.state::<Shared>().inner().clone();
+            *shared.lock() = core;
             appcore::spawn_tick_loop(handle.clone(), shared);
             hotkeys::register_all(&handle);
             Ok(())

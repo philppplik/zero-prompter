@@ -6,6 +6,11 @@ All notable changes. Format follows [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+## [0.2.1] – 2026-10-13
+
+### Fixed
+- **Startup error "state not managed for field `shared` on command `get_state`"**: the windows could call `get_state` before the `setup` hook had registered the app state (it first initializes logging and reads settings and model preferences from disk). The state is now registered on the builder before any window loads, and `setup` fills in the persisted settings.
+
 ## [0.2.0] – 2026-10-13
 
 ### Fixed (2026-10-13, smoother scrolling)
