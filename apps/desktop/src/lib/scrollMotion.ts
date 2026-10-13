@@ -207,7 +207,9 @@ export class ScrollMotion {
     for (let k = 0; k < steps; k++) {
       this.v += (nominal - this.v) * a;
       const e = auth + nominal * (k * h) - this.x;
-      const corr = Math.max(-cap, Math.min(cap, e * MOTION.gain));
+      // Ahead of the authority: may brake down to a stop (never reverse);
+      // behind: catch up at most `cap` faster than nominal.
+      const corr = Math.max(-Math.max(cap, this.v), Math.min(cap, e * MOTION.gain));
       // Forward only: corrections may slow down or stop, never reverse.
       this.x += Math.max(0, this.v + corr) * h;
     }
