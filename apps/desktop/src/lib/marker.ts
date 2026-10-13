@@ -124,6 +124,7 @@ export function markerVars(m: MarkerSettings, color: string, dimReadEnabled: boo
     '--mk-size': String(m.size),
     '--mk-glow': `${Math.round(m.glow * 16)}px`,
     '--mk-blur': `${m.blur}px`,
+    '--mk-blur-k': String(Math.round((m.blur / MARKER_BOUNDS.blur[1]) * 0.35 * 100) / 100),
     '--mk-dim-unread': String(m.dimUnread),
     '--mk-dur': reduced || m.animation !== 'glide' ? '0ms' : '180ms',
   };

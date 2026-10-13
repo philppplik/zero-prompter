@@ -16,7 +16,9 @@ use tauri::{AppHandle, Emitter};
 use zt_align::{
     Lang, ScriptIndex, TrackerConfig, TrackerEvent, TrackerOutput, VoiceState, VoiceTracker,
 };
-use zt_core::{AppState, Command, Controller, PlaybackState, StatePatch, VoicePhase, VoiceSignal};
+use zt_core::{
+    AppState, Command, Controller, PlaybackState, ScrollMode, StatePatch, VoicePhase, VoiceSignal,
+};
 
 use crate::persist;
 use crate::voice::VoiceRuntime;
@@ -185,9 +187,16 @@ fn emit<P: Serialize + Clone>(app: &AppHandle, ev: &str, payload: P) {
 fn scroll_frame(core: &mut AppCore, dt_ms: u32) -> ScrollFrame {
     let st = core.ctl.state();
     let pos = st.scroll.position;
-    let velocity =
-        if dt_ms > 0 { (pos - core.last_scroll_pos) * 1000.0 / dt_ms as f64 } else { 0.0 };
+    let diff = pos - core.last_scroll_pos;
     core.last_scroll_pos = pos;
+    let velocity = frame_velocity(
+        st.scroll.mode,
+        st.scroll.wpm,
+        diff,
+        dt_ms,
+        st.voice.phase,
+        st.settings.lost_policy,
+    );
     ScrollFrame {
         position: pos,
         target: st.scroll.target,
@@ -196,6 +205,32 @@ fn scroll_frame(core: &mut AppCore, dt_ms: u32) -> ScrollFrame {
         script_version: st.script.version,
         layout_lines: current_layout_lines(core.layout, st.script.version),
     }
+}
+
+/// Velocity hint for the frontend (tokens/s). In the clock modes this is the
+/// exact nominal speed (WPM / 60) whenever the core advanced, instead of a
+/// position difference over a jittery millisecond `dt` (Windows timer
+/// granularity made that hint noisy). Voice tracking keeps the measured value.
+pub fn frame_velocity(
+    mode: ScrollMode,
+    wpm: u16,
+    diff: f64,
+    dt_ms: u32,
+    phase: VoicePhase,
+    lost: zt_core::LostPolicy,
+) -> f64 {
+    let nominal = wpm as f64 / 60.0;
+    let clock = match mode {
+        ScrollMode::Constant | ScrollMode::VoiceActivated => true,
+        ScrollMode::VoiceTracking => {
+            phase == VoicePhase::Lost && lost == zt_core::LostPolicy::ConstantSpeed
+        }
+        ScrollMode::Manual => false,
+    };
+    if clock {
+        return if diff > 0.0 { nominal } else { 0.0 };
+    }
+    if dt_ms > 0 { diff * 1000.0 / dt_ms as f64 } else { 0.0 }
 }
 
 /// The one mutation path. Returns the error text for the UI toast.
@@ -279,6 +314,20 @@ pub fn apply_tracker_output(app: &AppHandle, shared: &Shared, out: TrackerOutput
     }
 }
 
+/// Splits elapsed wall time (µs, plus the carried remainder) into whole
+/// milliseconds for `Command::Tick` and the sub-millisecond remainder.
+/// Without the carry, `as_millis()` truncation lost up to 1 ms per tick
+/// (~6 % on a 16 ms tick), so the core clock ran slow and unevenly.
+/// Hitches are capped at 250 ms (remainder dropped).
+pub fn split_tick(elapsed_us: u64, carry_us: u64) -> (u32, u64) {
+    let total = elapsed_us + carry_us;
+    let ms = total / 1000;
+    if ms > 250 {
+        return (250, 0);
+    }
+    (ms as u32, total % 1000)
+}
+
 /// ~60 Hz clock: the only place where wall time enters the core (`Command::Tick`).
 pub fn spawn_tick_loop(app: AppHandle, shared: Shared) {
     std::thread::Builder::new()
@@ -286,12 +335,18 @@ pub fn spawn_tick_loop(app: AppHandle, shared: Shared) {
         .spawn(move || {
             let start = Instant::now();
             let mut last = start;
+            let mut carry_us: u64 = 0;
             let mut rate = zt_core::metrics::RateCounter::default();
             loop {
                 std::thread::sleep(Duration::from_millis(16));
                 let now = Instant::now();
-                let dt = now.duration_since(last).as_millis().clamp(1, 250) as u32;
+                let elapsed = now.duration_since(last).as_micros() as u64;
                 last = now;
+                let (dt, carry) = split_tick(elapsed, carry_us);
+                carry_us = carry;
+                if dt == 0 {
+                    continue;
+                }
                 tick(&app, &shared, dt);
                 // Measured tick rate (target ~60 Hz) for the diagnostics panel.
                 if let Some(hz) = rate.hit(now.duration_since(start).as_millis() as u64) {
@@ -347,7 +402,37 @@ fn tick(app: &AppHandle, shared: &Shared, dt: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::current_layout_lines;
+    use super::{current_layout_lines, frame_velocity, split_tick};
+    use zt_core::{LostPolicy, ScrollMode, VoicePhase};
+
+    #[test]
+    fn split_tick_carries_sub_milliseconds() {
+        // 16.6 ms ticks must add up to wall time (no truncation drift).
+        let (mut carry, mut sum) = (0, 0u64);
+        for _ in 0..60 {
+            let (dt, c) = split_tick(16_600, carry);
+            carry = c;
+            sum += dt as u64;
+        }
+        assert_eq!(sum * 1000 + carry, 60 * 16_600);
+        assert_eq!(split_tick(999, 0), (0, 999));
+        assert_eq!(split_tick(5_000_000, 500), (250, 0));
+    }
+
+    #[test]
+    fn clock_modes_report_exact_velocity() {
+        let stop = LostPolicy::Stop;
+        let v = frame_velocity(ScrollMode::Constant, 120, 0.03, 15, VoicePhase::Idle, stop);
+        assert_eq!(v, 2.0);
+        let v = frame_velocity(ScrollMode::Constant, 120, 0.0, 15, VoicePhase::Idle, stop);
+        assert_eq!(v, 0.0);
+        let v =
+            frame_velocity(ScrollMode::VoiceTracking, 120, 0.5, 100, VoicePhase::Tracking, stop);
+        assert!((v - 5.0).abs() < 1e-9);
+        let lc = LostPolicy::ConstantSpeed;
+        let v = frame_velocity(ScrollMode::VoiceTracking, 60, 0.1, 100, VoicePhase::Lost, lc);
+        assert_eq!(v, 1.0);
+    }
 
     #[test]
     fn layout_lines_only_for_current_version() {

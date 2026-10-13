@@ -3,9 +3,14 @@
 // Rust sends the scroll position in *token units* (~60 Hz, `scroll://frame`).
 // The frontend owns layout: it measures token boxes, groups them into visual
 // lines and maps a fractional token position to a continuous pixel offset.
-// A rAF loop (time-delta based, not frame based) extrapolates between frames
-// and follows the target with a spring (tokens.json motion.easing.spring),
-// rendered with `transform: translate3d` on a single layer (DESIGN §2.8).
+// The rAF loop owns the clock (lib/scrollMotion.ts: frame-rate independent
+// integration, Rust frames only correct gently) and renders with a single
+// sub-pixel `translate3d` on one composited layer (DESIGN §2.8).
+
+import { FrameMeter, type FrameStats } from './frameMeter';
+import { PixelSmoother, ScrollMotion, type MotionInput } from './scrollMotion';
+
+export { stepSpring, type SpringState } from './scrollMotion';
 
 export interface Line {
   top: number;
@@ -54,26 +59,6 @@ export function yOfPosition(layout: LayoutMap, pos: number): number {
   return line.top + Math.min(1, within) * line.height;
 }
 
-export interface SpringState {
-  x: number;
-  v: number;
-}
-
-const SPRING = { k: 170, d: 26 }; // tokens.json motion.easing.spring (mass 1)
-
-/** Advances a spring toward `target` by dt seconds (sub-stepped, stable). */
-export function stepSpring(s: SpringState, target: number, dt: number): SpringState {
-  let { x, v } = s;
-  const steps = Math.max(1, Math.ceil(dt / (1 / 240)));
-  const h = dt / steps;
-  for (let i = 0; i < steps; i++) {
-    const a = SPRING.k * (target - x) - SPRING.d * v;
-    v += a * h;
-    x += v * h;
-  }
-  return { x, v };
-}
-
 export interface FrameSource {
   position: number;
   velocity: number;
@@ -91,27 +76,44 @@ export function predict(f: FrameSource, now: number): number {
 export interface ScrollerOptions {
   content: HTMLElement; // translated layer
   viewport: HTMLElement; // clipping box
-  source: FrameSource;
+  /** Per-frame motion inputs (authority frame + mode/WPM/voice phase), without `now`. */
+  input: () => Omit<MotionInput, 'now'>;
   focusLine: () => number; // 0..1 of viewport height
   reducedMotion: () => boolean;
   onFrame?: (pos: number, layout: LayoutMap | null) => void;
-  onStats?: (fps: number, worstMs: number) => void;
+  /** Once per second: fps + worst frame (ms) + full frame stats. */
+  onStats?: (fps: number, worstMs: number, stats: FrameStats | null) => void;
+  /** Optional shared meter (Diagnostics tab). */
+  meter?: FrameMeter;
 }
 
-const isLinux = typeof navigator !== 'undefined' && /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent);
-
+/**
+ * rAF driver. Per frame: integrate motion (token space, frame-rate
+ * independent) -> map to pixels via the cached layout -> critically damped
+ * pixel smoothing -> one `translate3d` on the composited content layer.
+ * No layout reads per frame (viewport height is cached on measure/resize),
+ * sub-pixel offsets (no rounding), no allocations in the hot path except the
+ * transform string.
+ */
 export class Scroller {
   layout: LayoutMap | null = null;
   /** Current content offset in px (positive = scrolled down). */
   offset = 0;
-  private spring: SpringState = { x: 0, v: 0 };
+  readonly motion = new ScrollMotion();
+  private px = new PixelSmoother();
+  private pxInit = false;
+  private viewportH = 0;
   private raf = 0;
   private last = 0;
   private frames = 0;
   private statT = 0;
   private worst = 0;
+  private lastTransform = NaN;
+  private meter: FrameMeter;
 
-  constructor(private o: ScrollerOptions) {}
+  constructor(private o: ScrollerOptions) {
+    this.meter = o.meter ?? new FrameMeter();
+  }
 
   /** Measures all `[data-t]` spans. Call after script/font/size/width changes. */
   measure(tokenCount: number): LayoutMap {
@@ -126,13 +128,26 @@ export class Scroller {
         boxes[id * 4 + 3] = el.offsetHeight;
       }
     });
+    this.viewportH = this.o.viewport.clientHeight;
     this.layout = buildLayout(boxes, tokenCount);
+    // Layout changed: re-anchor the pixel stage (no glide across a reflow).
+    this.pxInit = false;
     return this.layout;
+  }
+
+  get viewportHeight(): number {
+    return this.viewportH;
+  }
+
+  /** Viewport resized (ResizeObserver) – cached so the frame loop never reads layout. */
+  setViewportHeight(h: number): void {
+    this.viewportH = h;
   }
 
   /** Jump without animation (script load, seek while stopped). */
   snap(pos: number): void {
-    this.spring = { x: pos, v: 0 };
+    this.motion.snap(pos);
+    this.pxInit = false;
   }
 
   start(): void {
@@ -140,15 +155,23 @@ export class Scroller {
       this.raf = requestAnimationFrame(loop);
       const dt = this.last ? Math.min(0.1, (t - this.last) / 1000) : 1 / 60;
       this.last = t;
-      this.stats(t, dt);
-      const target = predict(this.o.source, performance.now());
-      const dist = Math.abs(target - this.spring.x);
-      if (dist > 400 || (this.o.reducedMotion() && dist > 3)) {
-        this.snap(target); // DESIGN §2.8: reduced motion -> hard resync
+      const inp = this.o.input();
+      const now = performance.now();
+      const reduced = this.o.reducedMotion();
+      if (reduced) {
+        // DESIGN §2.8: reduced motion -> follow the authority without animation.
+        const p = inp.playing && inp.mode === 'voiceTracking' ? inp.target : inp.position;
+        if (Math.abs(p - this.motion.x) > 3 || !inp.playing) this.motion.snap(p);
+        else this.motion.step({ ...inp, now }, dt);
+        this.pxInit = false;
       } else {
-        this.spring = stepSpring(this.spring, target, dt);
+        const big = Math.abs(inp.position - this.motion.x) > 400;
+        if (big) this.snap(inp.position);
+        else this.motion.step({ ...inp, now }, dt);
       }
-      this.render();
+      const before = this.offset;
+      this.render(dt);
+      this.stats(t, dt, this.offset - before);
     };
     this.raf = requestAnimationFrame(loop);
   }
@@ -156,28 +179,44 @@ export class Scroller {
   stop(): void {
     cancelAnimationFrame(this.raf);
     this.raf = 0;
+    this.last = 0;
   }
 
   get position(): number {
-    return this.spring.x;
+    return this.motion.x;
   }
 
-  render(): void {
+  /** `dt` = 0: re-render at the current position without smoothing (after measure). */
+  render(dt = 0): void {
     const l = this.layout;
-    const y = l ? yOfPosition(l, this.spring.x) : 0;
-    const off = y - this.o.viewport.clientHeight * this.o.focusLine();
-    const px = isLinux ? Math.round(off) : off; // Linux: pixel snapping avoids shimmer
-    this.offset = px;
-    this.o.content.style.transform = `translate3d(0, ${-px}px, 0)`;
-    this.o.onFrame?.(this.spring.x, l);
+    const y = l ? yOfPosition(l, this.motion.x) : 0;
+    if (!this.pxInit || dt === 0 || Math.abs(y - this.px.y) > this.viewportH) {
+      this.px.snap(y);
+      this.pxInit = !!l;
+    } else {
+      this.px.step(y, dt);
+    }
+    const off = this.px.y - this.viewportH * this.o.focusLine();
+    this.offset = off;
+    // Sub-pixel transform; skip the style write when nothing moved.
+    if (Math.abs(off - this.lastTransform) > 1e-3) {
+      this.lastTransform = off;
+      this.o.content.style.transform = `translate3d(0, ${(-off).toFixed(3)}px, 0)`;
+    }
+    this.o.onFrame?.(this.motion.x, l);
   }
 
-  private stats(t: number, dt: number): void {
+  private stats(t: number, dt: number, dy: number): void {
+    this.meter.push(dt * 1000, dy);
     if (!this.o.onStats) return;
     this.frames++;
     this.worst = Math.max(this.worst, dt * 1000);
     if (t - this.statT >= 1000) {
-      this.o.onStats(Math.round((this.frames * 1000) / (t - this.statT || 1000)), Math.round(this.worst));
+      this.o.onStats(
+        Math.round((this.frames * 1000) / (t - this.statT || 1000)),
+        Math.round(this.worst),
+        this.meter.stats(),
+      );
       this.frames = 0;
       this.worst = 0;
       this.statT = t;
