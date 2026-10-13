@@ -187,7 +187,8 @@ export class ScrollMotion {
       nominal = this.voice.rateAt(tS, holding);
       const age = Math.max(0, tS - this.voice.lastUpdate);
       // Predicted speaker position: cursor + rate * time since the update.
-      auth = i.target + nominal * Math.min(age, this.voice.gap * 1.5);
+      // On hold: no prediction past the last recognised word.
+      auth = holding ? i.target : i.target + nominal * Math.min(age, this.voice.gap * 1.5);
       tau = MOTION.tauVoice;
     } else {
       nominal = ScrollMotion.clockVelocity(i);

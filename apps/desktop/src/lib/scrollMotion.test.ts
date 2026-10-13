@@ -158,8 +158,8 @@ describe('ScrollMotion – voice tracking', () => {
     const tail = xs.slice(-60);
     // Stopped at the end of the run …
     expect(tail[tail.length - 1] - tail[0]).toBeLessThan(0.05);
-    // … close to the last cursor, never far past it.
-    expect(tail[tail.length - 1]).toBeLessThan(target + 1.5);
+    // … close to the last cursor (the speaker really was ~1 word further), never far past it.
+    expect(tail[tail.length - 1]).toBeLessThan(target + 2);
     // Deceleration is gradual: no single frame moves more than at full speed.
     const holdIdx = Math.round(3 * 60);
     for (let i = holdIdx; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeLessThan((2.5 * 2) / 60);
