@@ -6,6 +6,17 @@ Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachan
 
 > Noch nie kompiliert oder ausgeführt (Erstellung ohne Toolchain). Siehe README → „Erste Schritte nach dem Klonen“.
 
+### Behoben (2026-10-13, ruhigeres Scrollen)
+- **Ruckelfreieres Scrollen in allen Modi** (Meldung: Windows 11 ARM64 / Snapdragon). Das Frontend führt die Uhr: jeder rAF-Frame integriert die Geschwindigkeit mit der echten Frame-Zeit (gleiche Strecke bei 30–144 Hz); Rust-Positionen korrigieren nur noch sanft, begrenzt und vorwärts. Konstant / sprachaktiviert: WPM/60 mit weichen Tempowechseln (Mausrad). Voice-Tracking: Sprechtempo aus den Cursor-Updates geschätzt, gleichmäßiges Gleiten statt Stop-and-go, kein Rückwärtszittern, sanftes Anhalten bei Hold. Sprünge mit kritisch gedämpfter Feder.
+- Rendering: eine Subpixel-`translate3d`-Ebene, keine Layout-Abfragen pro Frame, Lese-Dimmung per Transform, Marker-Weichzeichnung als statischer Schleier statt `backdrop-filter`.
+- Rust-Tick: Sub-Millisekunden-Rest wird übertragen; exakte Nenngeschwindigkeit in Scroll-Frames.
+
+### Hinzugefügt (2026-10-13)
+- Diagnose: **Scroll-Laufruhe** (rAF-Frame-Zeit p50/p95/max, verworfene Frames, Positions-Jitter in px).
+
+### Geändert (2026-10-13, Einstellungen entdoppelt)
+- **Markerfarbe** nur noch unter Einstellungen > Lesemarker, **Textdimmen** (gelesen/ungelesen) nur unter Darstellung. Einmalige Migration beim Start (Darstellung-Markerfarbe → `marker.color`, Marker-Dimmwert → `readOpacity`, jeweils nur wenn dort noch nichts gesetzt ist).
+
 ### Hinzugefügt (2026-10-11, Windows-Spracherkennung)
 - **Windows-Spracherkennung als Fallback-Engine** (ADR-008, nur Windows, Feature `winspeech`, in den Windows-Release-Builds aktiv): `Windows.Media.SpeechRecognition` mit Diktat (Partials über `HypothesisGenerated`, Finals über `ResultGenerated`, VAD über `StateChanged`). Ohne Online-Spracherkennung läuft ein Offline-Skriptwort-Modus (List-Constraint). Die Engine nimmt selbst auf (neue Trait-Methode `SpeechEngine::self_capturing`) und läuft auf einem eigenen MTA-Thread.
 - Fallback-Kette: Modelle (Nemotron/Kroko/20M) → Windows-Spracherkennung → Fehlerstatus bzw. Demo. Zusätzlich in der Modellauswahl wählbar: „Windows Spracherkennung (System)“, ohne Download.

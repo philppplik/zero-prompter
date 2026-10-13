@@ -1,7 +1,7 @@
 <!--
   Settings tab "Lesemarker" (DESIGN §3.7): style tiles with mini previews,
   live preview, colour (picker + presets from the theme accent), opacity,
-  size, position, dimming, glow/blur and animation. Writes core settings
+  size, position, glow/blur and animation (text dimming: Darstellung tab). Writes core settings
   (`Settings.marker`, `focusLine`) via replaceSettings.
 -->
 <script lang="ts">
@@ -24,14 +24,14 @@
   const prefs = $derived(store.prefs);
   const m = $derived(sanitizeMarker(st?.settings.marker));
   const theme = $derived(THEMES[st?.settings.theme ?? 'studioDark'] ?? THEMES.studioDark);
-  const color = $derived(markerColor(m, prefs.markerColor, theme));
+  const color = $derived(markerColor(m, theme));
   const presets = $derived(colorPresets(theme));
   const reduced = $derived(!!st?.settings.reducedMotion);
   const previewVars = $derived(
     st
       ? prompterVars(st.settings.theme, prefs, 72, st.settings.lineHeight, st.settings) +
           ';' +
-          markerVars(m, color, prefs.dimRead, reduced) +
+          markerVars(m, color, reduced) +
           `;--pr-scale:0.28;--focus:0.5`
       : '',
   );
@@ -170,24 +170,8 @@
   </section>
 
   <section>
-    <h3 class="caption">Dimmen &amp; Effekte</h3>
-    <div class="field">
-      <span class="lbl" id="mk-dr">Gelesenen Text dimmen</span>
-      <div class="field-row">
-        <input type="range" min="0" max={MARKER_BOUNDS.dim[1]} step="0.05" aria-labelledby="mk-dr" disabled={!prefs.dimRead}
-          value={m.dimRead ?? 1 - theme.readOpacity} aria-valuetext={pct(m.dimRead ?? 1 - theme.readOpacity)} onchange={(e) => updateMarker({ dimRead: num(e) })} />
-        <span class="num val">{pct(m.dimRead ?? 1 - theme.readOpacity)}</span>
-        {#if m.dimRead != null}<button class="btn" onclick={() => updateMarker({ dimRead: null })}>Theme</button>{/if}
-      </div>
-      {#if !prefs.dimRead}<span class="footnote">Dimmen ist unter Darstellung ausgeschaltet.</span>{/if}
-    </div>
-    <div class="field">
-      <span class="lbl" id="mk-du">Ungelesenen Text dimmen</span>
-      <div class="field-row">
-        <input type="range" min="0" max={MARKER_BOUNDS.dim[1]} step="0.05" aria-labelledby="mk-du" value={m.dimUnread} aria-valuetext={pct(m.dimUnread)} onchange={(e) => updateMarker({ dimUnread: num(e) })} />
-        <span class="num val">{pct(m.dimUnread)}</span>
-      </div>
-    </div>
+    <h3 class="caption">Effekte</h3>
+    <p class="footnote">Textdimmen (gelesen / ungelesen) steht unter <button class="linklike" onclick={() => (store.settingsTab = 'appearance')}>Darstellung</button>.</p>
     <div class="field">
       <span class="lbl" id="mk-glow">Glow</span>
       <div class="field-row">
@@ -219,6 +203,7 @@
   section { padding: 16px 0; border-bottom: 1px solid var(--ui-border); }
   section:last-child { border-bottom: 0; }
   section h3 { margin: 0 0 10px; }
+  .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--ui-accent, currentColor); text-decoration: underline; cursor: pointer; }
   .lbl { font: 500 12px/16px var(--font-ui); color: var(--ui-text-muted); }
   .val { min-width: 48px; text-align: right; }
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

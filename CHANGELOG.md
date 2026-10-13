@@ -8,6 +8,17 @@ All notable changes. Format follows [Keep a Changelog](https://keepachangelog.co
 
 > Historical note: this entry was written before the first CI builds. See [Project Status](docs/book/src/status.md) for the current state.
 
+### Fixed (2026-10-13, smoother scrolling)
+- **Smoother scrolling in all modes** (report: judder on Windows 11 ARM64 / Snapdragon). The frontend now owns the clock: each rAF frame integrates the speed with the real frame time (identical distance at 30/60/90/120/144 Hz); Rust positions only feed a capped, forward-only correction instead of a re-extrapolated target per IPC frame. Constant / voice-activated: WPM/60 with eased speed changes (mouse wheel). Voice tracking: speaking rate estimated from the cursor updates, glide at that rate, no stop-and-go between words, no backward jitter, smooth stop on hold. Seeks glide with a critically damped spring.
+- Rendering: one sub-pixel `translate3d` layer (no pixel rounding), no per-frame layout reads, read-dimming overlay moved by transform only, marker "soft focus" as a static veil instead of `backdrop-filter`, HUD without backdrop blur.
+- Rust tick loop: sub-millisecond remainders are carried (timer truncation made the core clock run slow and uneven); scroll frames report the exact nominal speed in clock modes.
+
+### Added (2026-10-13)
+- Diagnostics: **scroll smoothness** (rAF frame time p50/p95/max, dropped frames, position jitter in px). The frame-time overlay shows the same values in the talent window.
+
+### Changed (2026-10-13, settings de-duplication)
+- The reading-marker **color** is set only under Settings > Lesemarker; **text dimming** (read / unread) only under Settings > Darstellung. Migration on first start: a marker color from Darstellung moves into `marker.color` (if unset), a marker read-dimming value moves into `readOpacity` (if unset). `marker.dimRead` is legacy (still read, no longer written when empty).
+
 ### Removed (2026-10-11, license-clean model stack)
 - **Kroko DE/EN** (`zipformer-de-kroko-2025-08-06`, `zipformer-en-kroko-2025-08-06`, Banafo, CC-BY-SA community license with a separate commercial license) removed from the manifest, the default/fallback order, CI `stt-smoke` and the tests. The model stack is now: Nemotron 3.5 Streaming (OpenMDW-1.1; 320 ms default, 160/80 ms optional), Zipformer EN 20M (Apache-2.0, light English option, now `defaultRank 1`), Parakeet TDT 0.6B v3 (CC-BY-4.0, resync), Silero VAD (MIT), Windows speech recognition (OS).
 - Existing installations: Kroko folders are ignored (can be deleted by hand), and a saved Kroko choice falls back to Nemotron or the default chain. There is no light German model any more: German without Nemotron uses Windows speech recognition on Windows instead of an English model, otherwise demo mode with "Load model".

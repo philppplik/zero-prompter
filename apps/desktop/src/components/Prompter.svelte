@@ -10,6 +10,7 @@
   import { onMount, tick } from 'svelte';
   import { fade } from 'svelte/transition';
   import { Scroller, type LayoutMap } from '../lib/scroller';
+  import { frameMeter, type FrameStats } from '../lib/frameMeter';
   import { frame, store } from '../lib/store.svelte';
   import { api } from '../lib/bridge';
   import { layoutKey, prompterVars, THEMES } from '../lib/tokens';
@@ -40,10 +41,15 @@
   let hl: HTMLDivElement;
   let scroller: Scroller | null = null;
   let layoutRev = $state(0);
-  let stats = $state<{ fps: number; worst: number } | null>(null);
+  let stats = $state<{ fps: number; worst: number; full: FrameStats | null } | null>(null);
 
   const reduced = () =>
     app.settings.reducedMotion || (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  // Cached for the frame loop (refreshed on setting / media-query change).
+  let reducedNow = false;
+  $effect(() => {
+    reducedNow = reduced();
+  });
 
   const paragraphs = $derived(
     app.script.paragraphs.map((p) => app.script.tokens.slice(p.tokens.start, p.tokens.end)),
@@ -57,7 +63,7 @@
   const style = $derived(
     prompterVars(app.settings.theme, prefs, app.settings.fontSizePx, app.settings.lineHeight, app.settings) +
       ';' +
-      markerVars(marker, markerColor(marker, prefs.markerColor, THEMES[app.settings.theme] ?? THEMES.studioDark), prefs.dimRead, reduced()) +
+      markerVars(marker, markerColor(marker, THEMES[app.settings.theme] ?? THEMES.studioDark), reduced()) +
       `;--pr-scale:${scale};--focus:${app.settings.focusLine}`,
   );
   const mirrorTransform = $derived(
@@ -73,7 +79,7 @@
     await tick();
     const layout = scroller.measure(app.script.tokens.length);
     layoutRev++;
-    scroller.render();
+    scroller.render(0);
     if (report) {
       api.reportLayout(app.script.version, layout.lines.length).catch(() => {});
     }
@@ -93,19 +99,25 @@
     scroller?.snap(frame.position);
   });
 
+  // Read-dimming overlay: full-height layer moved with transform only (no
+  // per-frame height change -> no layout/paint, compositor only).
+  let dimY = NaN;
   function placeDim(pos: number, layout: LayoutMap | null) {
     rm?.frame(pos, layout, app.script.tokens);
-    if (!dim || !layout || layout.lines.length === 0) {
-      if (dim) dim.style.height = '0px';
-      return;
+    if (!dim) return;
+    const vh = scroller?.viewportHeight ?? 0;
+    let edge = 0;
+    if (layout && layout.lines.length > 0) {
+      let i = Math.max(0, Math.min(layout.lineOf.length - 1, Math.floor(pos)));
+      while (i > 0 && layout.lineOf[i] < 0) i--;
+      const li = layout.lineOf[i];
+      const line = li >= 0 ? layout.lines[li] : null;
+      if (line) edge = Math.max(0, line.top - (scroller?.offset ?? 0));
     }
-    let i = Math.max(0, Math.min(layout.lineOf.length - 1, Math.floor(pos)));
-    while (i > 0 && layout.lineOf[i] < 0) i--;
-    const li = layout.lineOf[i];
-    const line = li >= 0 ? layout.lines[li] : null;
-    if (!line) return;
-    const off = scroller?.offset ?? 0;
-    dim.style.height = `${Math.max(0, line.top - off)}px`;
+    const y = Math.min(edge, vh) - vh;
+    if (Math.abs(y - dimY) < 1e-3) return;
+    dimY = y;
+    dim.style.transform = `translate3d(0, ${y.toFixed(3)}px, 0)`;
   }
 
   // Voice word highlight (moves with the content layer; 120 ms transition).
@@ -163,18 +175,34 @@
     scroller = new Scroller({
       content,
       viewport,
-      source: frame,
+      // Plain reads (no reactivity in the hot path): authority frame + mode.
+      input: () => ({
+        mode: app.scroll.mode,
+        phase: app.voice.phase,
+        playing: frame.playing,
+        position: frame.position,
+        target: frame.target,
+        receivedAt: frame.receivedAt,
+        wpm: app.scroll.wpm,
+        lostConstant: app.settings.lostPolicy === 'constantSpeed',
+      }),
       focusLine: () => app.settings.focusLine,
-      reducedMotion: reduced,
+      reducedMotion: () => reducedNow,
       onFrame: placeDim,
-      onStats: (fps, worst) => {
-        if (prefs.showFrameStats) stats = { fps, worst };
+      meter: frameMeter,
+      onStats: (fps, worst, full) => {
+        reducedNow = reduced();
+        if (prefs.showFrameStats) stats = { fps, worst, full };
         else if (stats) stats = null;
       },
     });
     scroller.snap(frame.position);
     remeasure();
     scroller.start();
+    // prefers-reduced-motion is cached (matchMedia per frame is not free).
+    const mq = typeof matchMedia !== 'undefined' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+    const onMq = () => (reducedNow = reduced());
+    mq?.addEventListener?.('change', onMq);
     // Non-passive so preventDefault works (Svelte may attach wheel listeners passively).
     const wheel = (e: WheelEvent) => onWheel(e);
     viewport.addEventListener('wheel', wheel, { passive: false });
@@ -185,6 +213,7 @@
     const fontsDone = () => remeasure();
     document.fonts?.addEventListener?.('loadingdone', fontsDone);
     return () => {
+      mq?.removeEventListener?.('change', onMq);
       clearTimeout(hudTimer);
       document.fonts?.removeEventListener?.('loadingdone', fontsDone);
       ro.disconnect();
@@ -247,7 +276,9 @@
     </div>
   {/if}
   {#if stats}
-    <div class="stats mono" aria-hidden="true">{stats.fps} fps · max {stats.worst} ms</div>
+    <div class="stats mono" aria-hidden="true">
+      {stats.fps} fps · max {stats.worst} ms{#if stats.full} · p95 {stats.full.p95.toFixed(1)} ms · drop {stats.full.dropped}{#if stats.full.jitterPx != null} · jitter {stats.full.jitterPx.toFixed(2)} px{/if}{/if}
+    </div>
   {/if}
 </div>
 
@@ -321,7 +352,9 @@
     left: 0;
     right: 0;
     top: 0;
-    height: 0;
+    height: 100%;
+    transform: translate3d(0, -100%, 0);
+    will-change: transform;
     background: var(--pr-bg);
     opacity: calc(1 - var(--pr-read-opacity));
     pointer-events: none;
@@ -378,7 +411,6 @@
     background: rgba(0, 0, 0, 0.62);
     color: #fff;
     pointer-events: none;
-    backdrop-filter: blur(6px);
   }
   .stats {
     position: absolute;

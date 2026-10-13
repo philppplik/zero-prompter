@@ -16,7 +16,8 @@
   import MarkerPanel from './MarkerPanel.svelte';
   import { store, type SettingsTab } from '../lib/store.svelte';
   import { api, errorText } from '../lib/bridge';
-  import { setMode } from '../lib/actions';
+  import { setMode, updateMarker } from '../lib/actions';
+  import { MARKER_BOUNDS, READ_OPACITY_MIN, sanitizeMarker } from '../lib/marker';
   import { displayChord } from '../lib/hotkeys';
   import { dur, EASE } from '../lib/motion';
   import { contrastRatio, prompterVars, THEME_IDS, THEME_LABELS, THEMES, tokens, TYPO_RANGES } from '../lib/tokens';
@@ -76,6 +77,7 @@
   }
 
   const theme = $derived(THEMES[st?.settings.theme ?? 'studioDark'] ?? THEMES.studioDark);
+  const marker = $derived(sanitizeMarker(st?.settings.marker));
   const effText = $derived(prefs.textColor ?? theme.text);
   const effBg = $derived(prefs.bgColor ?? theme.bg);
   const ratio = $derived(contrastRatio(effText, effBg));
@@ -286,16 +288,26 @@
                   </div>
                 </div>
                 <button class="btn" onclick={resetTypo}>Typografie zurücksetzen</button>
+                <h3 class="caption" style="margin-top:12px">Text dimmen</h3>
                 <label class="check"><input type="checkbox" checked={prefs.dimRead} onchange={() => store.setPrefs({ dimRead: !prefs.dimRead })} /> Gelesenen Text dimmen</label>
                 {#if prefs.dimRead}
                   <div class="field indent">
                     <div class="field-row">
-                      <input type="range" min="0.3" max="1" step="0.05" aria-label="Gelesen-Opazität" value={prefs.readOpacity ?? theme.readOpacity}
+                      <input type="range" min={READ_OPACITY_MIN} max="1" step="0.05" aria-label="Gelesen-Opazität" value={prefs.readOpacity ?? theme.readOpacity}
                         oninput={(e) => store.setPrefs({ readOpacity: Number((e.currentTarget as HTMLInputElement).value) })} />
                       <span class="num val">{Math.round((prefs.readOpacity ?? theme.readOpacity) * 100)} %</span>
+                      {#if prefs.readOpacity != null}<button class="btn" onclick={() => store.setPrefs({ readOpacity: null })}>Theme</button>{/if}
                     </div>
                   </div>
                 {/if}
+                <div class="field">
+                  <span class="lbl" id="dim-unread">Ungelesenen Text dimmen</span>
+                  <div class="field-row">
+                    <input type="range" min="0" max={MARKER_BOUNDS.dim[1]} step="0.05" aria-labelledby="dim-unread" value={marker.dimUnread}
+                      aria-valuetext="{Math.round(marker.dimUnread * 100)} %" onchange={(e) => updateMarker({ dimUnread: Number((e.currentTarget as HTMLInputElement).value) })} />
+                    <span class="num val">{Math.round(marker.dimUnread * 100)} %</span>
+                  </div>
+                </div>
               </section>
 
               <section>
@@ -303,16 +315,16 @@
                 <div class="colors">
                   <label title="Text"><input type="color" value={effText} oninput={(e) => store.setPrefs({ textColor: (e.currentTarget as HTMLInputElement).value })} /> Text</label>
                   <label title="Hintergrund"><input type="color" value={effBg} oninput={(e) => store.setPrefs({ bgColor: (e.currentTarget as HTMLInputElement).value })} /> Hintergrund</label>
-                  <label title="Marker"><input type="color" value={prefs.markerColor ?? theme.marker} oninput={(e) => store.setPrefs({ markerColor: (e.currentTarget as HTMLInputElement).value })} /> Marker</label>
                 </div>
                 <div class="field-row">
                   <span class="footnote num" class:bad={ratio < 4.5} class:warn={ratio >= 4.5 && ratio < 7}>
                     Kontrast {fmtRatio(ratio)} {ratio >= 7 ? '(AAA)' : ratio >= 4.5 ? '(AA – unter 7:1)' : '– zu gering'}
                   </span>
-                  {#if prefs.textColor || prefs.bgColor || prefs.markerColor}
-                    <button class="btn" onclick={() => store.setPrefs({ textColor: null, bgColor: null, markerColor: null })}>Zurücksetzen</button>
+                  {#if prefs.textColor || prefs.bgColor}
+                    <button class="btn" onclick={() => store.setPrefs({ textColor: null, bgColor: null })}>Zurücksetzen</button>
                   {/if}
                 </div>
+                <p class="footnote">Die Markerfarbe steht unter <b>Lesemarker</b>.</p>
               </section>
 
               <section>

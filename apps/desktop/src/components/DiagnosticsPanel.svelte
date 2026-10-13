@@ -11,11 +11,14 @@
   import { store } from '../lib/store.svelte';
   import { api, errorText } from '../lib/bridge';
   import { engineHeadline, fmtMs, LATENCY_ROWS } from '../lib/diagnostics';
+  import { frameMeter, type FrameStats } from '../lib/frameMeter';
   import type { DiagReport } from '../lib/types';
 
   let report = $state<DiagReport | null>(null);
   let micTest = $state(false);
   let loadError = $state<string | null>(null);
+  // Scroll smoothness of the operator preview in this window (rAF, last ~240 frames).
+  let frames = $state<FrameStats | null>(null);
 
   const voiceOn = $derived(store.state?.voice.enabled ?? false);
   const levelPct = $derived(Math.max(0, Math.min(100, ((store.level + 60) / 60) * 100)));
@@ -32,6 +35,7 @@
   const fmtDb = (db: number | undefined) => (db == null || db <= -100 ? '–' : `${db.toFixed(0)} dBFS`);
 
   async function refresh() {
+    frames = frameMeter.stats();
     try {
       const r = await api.diagSnapshot();
       report = r;
@@ -149,6 +153,33 @@
     <p class="footnote">Gemessen im Rust-Voice-Thread. Scroll-Animation im Fenster (~1–2 Frames) kommt hinzu.</p>
   </section>
 
+  <section>
+    <h3 class="caption">Scroll-Laufruhe (Vorschau, letzte {frames?.frames ?? 0} Frames)</h3>
+    {#if frames}
+      <table class="lat">
+        <thead><tr><th>Frame-Zeit</th><th>p50</th><th>p95</th><th>max</th></tr></thead>
+        <tbody>
+          <tr title="requestAnimationFrame-Abstand im Bedienfenster">
+            <td>rAF ({frames.hz.toFixed(0)} Hz)</td><td>{fmtMs(frames.p50)}</td><td>{fmtMs(frames.p95)}</td><td>{fmtMs(frames.max)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <dl class="kv">
+        <dt>Verworfene Frames</dt><dd class:warn={frames.dropped > 0}>{frames.dropped} im Fenster · {frames.droppedTotal} gesamt (Frame &gt; 1,5 × Median)</dd>
+        <dt>Positions-Jitter</dt>
+        <dd class:warn={(frames.jitterPx ?? 0) > 0.5}>
+          {frames.jitterPx == null ? '– (steht)' : `${frames.jitterPx.toFixed(2)} px`}
+          <span class="footnote">Standardabweichung der Bewegung pro Frame gegenüber gleichmäßigem Lauf (0 = perfekt)</span>
+        </dd>
+      </dl>
+      <div class="field-row">
+        <button class="btn" onclick={() => { frameMeter.reset(); frames = null; }}>Zurücksetzen</button>
+        <span class="footnote">Talent-Fenster: Frametime-Anzeige unter Darstellung zeigt dieselben Werte dort.</span>
+      </div>
+    {:else}
+      <p class="footnote">Noch keine Messwerte (Vorschau nicht sichtbar).</p>
+    {/if}
+  </section>
   <section>
     <h3 class="caption">Letzte Fehler</h3>
     {#if report?.errors.length}

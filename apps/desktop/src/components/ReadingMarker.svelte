@@ -336,10 +336,12 @@
     background: linear-gradient(to bottom, transparent, var(--pr-bg) calc(var(--zone) * 3));
     opacity: var(--mk-opacity, 1);
   }
+  /* Soft focus without backdrop-filter: blurring the scrolling text behind the
+     overlay is recomputed every frame and stutters on integrated / ARM GPUs.
+     A stronger static veil (compositor only) gives a similar calm. */
   .blur .shade,
   .blur .fade {
-    backdrop-filter: blur(var(--mk-blur));
-    -webkit-backdrop-filter: blur(var(--mk-blur));
+    opacity: min(1, calc(var(--mk-opacity, 1) + var(--mk-blur-k, 0)));
   }
   .unread {
     background: var(--pr-bg);
