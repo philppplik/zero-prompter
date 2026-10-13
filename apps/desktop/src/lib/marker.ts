@@ -18,12 +18,16 @@ export type UnderlineScope = 'word' | 'sentence';
 
 export interface MarkerSettings {
   style: MarkerStyle;
-  /** `#rrggbb`; null = UI pref `markerColor` / theme marker. */
+  /** `#rrggbb`; null = theme marker colour. The only place for the marker colour (Settings > Lesemarker). */
   color: string | null;
   opacity: number;
   /** Thickness / height multiplier. */
   size: number;
-  /** Dimming strength for read text; null = theme `readOpacity`. */
+  /**
+   * Legacy (<= 0.x): read-text dimming used to live here. Migrated once into
+   * the UI pref `readOpacity` (Settings > Darstellung, see `migrateDisplaySettings`)
+   * and then cleared; no longer rendered.
+   */
   dimRead: number | null;
   dimUnread: number;
   glow: number;
@@ -97,9 +101,9 @@ export function sanitizeMarker(raw: Partial<MarkerSettings> | null | undefined):
   };
 }
 
-/** Effective marker colour: marker setting > UI pref > theme. */
-export function markerColor(m: MarkerSettings, prefColor: string | null, theme: PrompterTheme): string {
-  return m.color ?? prefColor ?? theme.marker;
+/** Effective marker colour: marker setting > theme. */
+export function markerColor(m: MarkerSettings, theme: PrompterTheme): string {
+  return m.color ?? theme.marker;
 }
 
 /** Colour presets: theme accents first, then a few broadcast classics (deduplicated). */
@@ -115,9 +119,10 @@ export function colorPresets(theme: PrompterTheme): string[] {
 
 /**
  * CSS custom properties for the marker layer. Appended after `prompterVars`,
- * so `--pr-marker` / `--pr-read-opacity` overrides win.
+ * so the `--pr-marker` override wins. Read-text dimming is not part of the
+ * marker (UI prefs `dimRead` / `readOpacity`, Settings > Darstellung).
  */
-export function markerVars(m: MarkerSettings, color: string, dimReadEnabled: boolean, reduced: boolean): string {
+export function markerVars(m: MarkerSettings, color: string, reduced: boolean): string {
   const vars: Record<string, string> = {
     '--pr-marker': color,
     '--mk-opacity': String(m.opacity),
@@ -128,7 +133,6 @@ export function markerVars(m: MarkerSettings, color: string, dimReadEnabled: boo
     '--mk-dim-unread': String(m.dimUnread),
     '--mk-dur': reduced || m.animation !== 'glide' ? '0ms' : '180ms',
   };
-  if (m.dimRead != null) vars['--pr-read-opacity'] = String(dimReadEnabled ? 1 - m.dimRead : 1);
   return Object.entries(vars).map(([k, v]) => `${k}:${v}`).join(';');
 }
 
@@ -188,4 +192,43 @@ export function lineRects(boxes: ArrayLike<number>, start: number, end: number, 
 export function migrateLegacyStyle(prefStyle: string | undefined, m: MarkerSettings): MarkerSettings | null {
   if (prefStyle === 'band' && m.style === 'line') return { ...m, style: 'band' };
   return null;
+}
+
+/** Lower bound of the read-opacity slider (= 1 - max marker dim 0.9). */
+export const READ_OPACITY_MIN = 0.1;
+
+/** UI prefs touched by `migrateDisplaySettings`. */
+export interface DisplayPrefs {
+  markerColor: string | null;
+  readOpacity: number | null;
+}
+
+/**
+ * One-time cleanup of duplicated settings (marker colour existed under
+ * Darstellung *and* Lesemarker, read dimming under both as well):
+ * - legacy UI pref `markerColor` -> `marker.color` (only if the marker has
+ *   no colour of its own), then the pref is cleared;
+ * - legacy `marker.dimRead` -> UI pref `readOpacity = 1 - dimRead` (only if
+ *   no read opacity is set yet), then `marker.dimRead` is cleared.
+ * Returns null when nothing needs to change.
+ */
+export function migrateDisplaySettings(
+  prefs: DisplayPrefs,
+  m: MarkerSettings,
+): { marker: MarkerSettings | null; prefs: Partial<DisplayPrefs> | null } | null {
+  let marker: MarkerSettings | null = null;
+  let p: Partial<DisplayPrefs> | null = null;
+  if (prefs.markerColor != null) {
+    const c = normalizeHex(prefs.markerColor);
+    if (m.color == null && c) marker = { ...m, color: c };
+    p = { markerColor: null };
+  }
+  if (m.dimRead != null) {
+    if (prefs.readOpacity == null) {
+      const o = Math.round((1 - m.dimRead) * 100) / 100;
+      p = { ...(p ?? {}), readOpacity: Math.min(1, Math.max(READ_OPACITY_MIN, o)) };
+    }
+    marker = { ...(marker ?? m), dimRead: null };
+  }
+  return marker || p ? { marker, prefs: p } : null;
 }

@@ -7,9 +7,11 @@ import {
   MARKER_STYLES,
   markerColor,
   markerVars,
+  migrateDisplaySettings,
   migrateLegacyStyle,
   nextStyle,
   normalizeHex,
+  READ_OPACITY_MIN,
   sanitizeMarker,
   sentenceRange,
 } from './marker';
@@ -46,10 +48,9 @@ describe('colours', () => {
     expect(normalizeHex('#12345')).toBeNull();
     expect(normalizeHex('123456')).toBeNull();
   });
-  it('resolves marker > pref > theme', () => {
-    expect(markerColor(DEFAULT_MARKER, null, theme)).toBe(theme.marker);
-    expect(markerColor(DEFAULT_MARKER, '#111111', theme)).toBe('#111111');
-    expect(markerColor({ ...DEFAULT_MARKER, color: '#222222' }, '#111111', theme)).toBe('#222222');
+  it('resolves marker > theme', () => {
+    expect(markerColor(DEFAULT_MARKER, theme)).toBe(theme.marker);
+    expect(markerColor({ ...DEFAULT_MARKER, color: '#222222' }, theme)).toBe('#222222');
   });
   it('presets start with the theme accent and are unique', () => {
     const p = colorPresets(theme);
@@ -60,17 +61,54 @@ describe('colours', () => {
 
 describe('markerVars', () => {
   it('emits vars and respects reduced motion', () => {
-    const v = parseVars(markerVars({ ...DEFAULT_MARKER, glow: 0.5 }, '#ff0000', true, false));
+    const v = parseVars(markerVars({ ...DEFAULT_MARKER, glow: 0.5 }, '#ff0000', false));
     expect(v['--pr-marker']).toBe('#ff0000');
     expect(v['--mk-glow']).toBe('8px');
     expect(v['--mk-dur']).toBe('180ms');
     expect(v['--pr-read-opacity']).toBeUndefined();
-    expect(parseVars(markerVars(DEFAULT_MARKER, '#000000', true, true))['--mk-dur']).toBe('0ms');
+    expect(parseVars(markerVars(DEFAULT_MARKER, '#000000', true))['--mk-dur']).toBe('0ms');
   });
-  it('overrides read opacity only when dimming is on', () => {
+  it('never touches read opacity (dimming lives in the Darstellung prefs)', () => {
     const m = { ...DEFAULT_MARKER, dimRead: 0.6 };
-    expect(Number(parseVars(markerVars(m, '#000000', true, false))['--pr-read-opacity'])).toBeCloseTo(0.4);
-    expect(parseVars(markerVars(m, '#000000', false, false))['--pr-read-opacity']).toBe('1');
+    expect(parseVars(markerVars(m, '#000000', false))['--pr-read-opacity']).toBeUndefined();
+  });
+});
+
+describe('migrateDisplaySettings', () => {
+  const p = (o: Partial<{ markerColor: string | null; readOpacity: number | null }> = {}) => ({
+    markerColor: null,
+    readOpacity: null,
+    ...o,
+  });
+
+  it('does nothing for clean settings', () => {
+    expect(migrateDisplaySettings(p(), DEFAULT_MARKER)).toBeNull();
+  });
+
+  it('moves the old Darstellung marker colour into marker.color', () => {
+    const r = migrateDisplaySettings(p({ markerColor: '#FF0000' }), DEFAULT_MARKER)!;
+    expect(r.marker?.color).toBe('#ff0000');
+    expect(r.prefs).toEqual({ markerColor: null });
+  });
+
+  it('keeps an existing marker colour and only clears the pref', () => {
+    const r = migrateDisplaySettings(p({ markerColor: '#ff0000' }), { ...DEFAULT_MARKER, color: '#00ff00' })!;
+    expect(r.marker).toBeNull();
+    expect(r.prefs).toEqual({ markerColor: null });
+  });
+
+  it('moves marker.dimRead into readOpacity and clears it', () => {
+    const r = migrateDisplaySettings(p(), { ...DEFAULT_MARKER, dimRead: 0.6 })!;
+    expect(r.prefs?.readOpacity).toBeCloseTo(0.4);
+    expect(r.marker?.dimRead).toBeNull();
+  });
+
+  it('keeps an existing readOpacity, clamps to the slider range', () => {
+    const r = migrateDisplaySettings(p({ readOpacity: 0.8 }), { ...DEFAULT_MARKER, dimRead: 0.6 })!;
+    expect(r.prefs).toBeNull();
+    expect(r.marker?.dimRead).toBeNull();
+    const c = migrateDisplaySettings(p(), { ...DEFAULT_MARKER, dimRead: 0.9 })!;
+    expect(c.prefs?.readOpacity).toBeGreaterThanOrEqual(READ_OPACITY_MIN);
   });
 });
 

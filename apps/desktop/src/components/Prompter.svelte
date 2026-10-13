@@ -63,7 +63,7 @@
   const style = $derived(
     prompterVars(app.settings.theme, prefs, app.settings.fontSizePx, app.settings.lineHeight, app.settings) +
       ';' +
-      markerVars(marker, markerColor(marker, prefs.markerColor, THEMES[app.settings.theme] ?? THEMES.studioDark), prefs.dimRead, reduced()) +
+      markerVars(marker, markerColor(marker, THEMES[app.settings.theme] ?? THEMES.studioDark), reduced()) +
       `;--pr-scale:${scale};--focus:${app.settings.focusLine}`,
   );
   const mirrorTransform = $derived(

@@ -43,15 +43,21 @@ pub enum MarkerAnimation {
 #[serde(rename_all = "camelCase", default)]
 pub struct MarkerSettings {
     pub style: MarkerStyle,
-    /// `#rrggbb`; `None` = UI pref / theme marker colour.
+    /// `#rrggbb`; `None` = theme marker colour. Single source of the marker
+    /// colour (Settings > Lesemarker; the old UI pref `markerColor` is migrated here).
     pub color: Option<String>,
     /// Marker opacity (spotlight/gradient: strength of the darkening).
     pub opacity: f32,
     /// Thickness / height multiplier (line 2 px, band one line, arrows 12 px … × size).
     pub size: f32,
-    /// Dimming of already-read text (0 = none). `None` = theme `readOpacity`.
+    /// Legacy: dimming of already-read text. Read dimming now lives only in the
+    /// UI prefs (`dimRead` / `readOpacity`, Settings > Darstellung); the frontend
+    /// migrates a stored value there once and writes `None` back. Kept so old
+    /// settings files still deserialize; not serialized when `None`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dim_read: Option<f32>,
-    /// Dimming of not-yet-read text below the reading zone (0 = none).
+    /// Dimming of not-yet-read text below the reading zone (0 = none). Edited
+    /// under Settings > Darstellung (text dimming), rendered by the marker layer.
     pub dim_unread: f32,
     /// Glow around the marker (0 = off).
     pub glow: f32,
@@ -161,6 +167,14 @@ mod tests {
     }
 
     #[test]
+    fn legacy_dim_read_still_deserializes() {
+        let s: MarkerSettings = serde_json::from_str(r#"{"dimRead":0.6}"#).unwrap();
+        assert_eq!(s.clone().sanitized().dim_read, Some(0.6));
+        let j = serde_json::to_value(s).unwrap();
+        assert_eq!(j["dimRead"].as_f64().map(|v| (v * 10.0).round()), Some(6.0));
+    }
+
+    #[test]
     fn hex_normalization() {
         assert_eq!(normalize_hex("#ABC").as_deref(), Some("#aabbcc"));
         assert_eq!(normalize_hex(" #FF8800 ").as_deref(), Some("#ff8800"));
@@ -179,7 +193,7 @@ mod tests {
         assert_eq!(s.opacity, 1.0);
         let j = serde_json::to_value(MarkerSettings::default()).unwrap();
         assert_eq!(j["animation"], "glide");
-        assert!(j.get("dimRead").is_some());
+        assert!(j.get("dimRead").is_none(), "legacy field is not written when unset");
         let all = "line band arrows brackets spotlight gradient underline sidebar none";
         for st in all.split(' ') {
             let v: MarkerStyle = serde_json::from_value(serde_json::json!(st)).unwrap();

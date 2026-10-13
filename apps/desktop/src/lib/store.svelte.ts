@@ -2,7 +2,7 @@
 // source of truth: the UI never mutates `state` locally, it dispatches commands
 // and applies `state://patch` events.
 import { api, errorText, events, type UnlistenFn } from './bridge';
-import { migrateLegacyStyle, sanitizeMarker } from './marker';
+import { migrateDisplaySettings, migrateLegacyStyle, sanitizeMarker } from './marker';
 import { DEFAULT_PREFS, type AppState, type Command, type EngineInfo, type ResyncInfo, type UiPrefs } from './types';
 
 export type SettingsTab = 'appearance' | 'marker' | 'scroll' | 'voice' | 'hotkeys' | 'output' | 'diagnostics' | 'about';
@@ -93,10 +93,27 @@ class Store {
     Object.assign(this.prefs, { ...DEFAULT_PREFS, ...prefs });
     this.talentVisible = visible;
     // One-time migration: legacy UI pref markerStyle 'band' -> Settings.marker.style.
-    const migrated = migrateLegacyStyle(this.prefs.markerStyle, sanitizeMarker(st.settings.marker));
+    let marker = sanitizeMarker(st.settings.marker);
+    let markerChanged = false;
+    const migrated = migrateLegacyStyle(this.prefs.markerStyle, marker);
     if (migrated) {
-      this.send({ type: 'replaceSettings', value: { ...st.settings, marker: migrated } });
+      marker = migrated;
+      markerChanged = true;
       this.setPrefs({ markerStyle: 'line' });
+    }
+    // One-time cleanup of duplicated settings: marker colour lives only in
+    // Settings.marker (Lesemarker tab), read dimming only in the UI prefs
+    // (Darstellung tab). Only the control window migrates (talent is render-only).
+    const dup = migrateDisplaySettings(this.prefs, marker);
+    if (dup && typeof location !== 'undefined' && !location.pathname.includes('talent')) {
+      if (dup.marker) {
+        marker = dup.marker;
+        markerChanged = true;
+      }
+      if (dup.prefs) this.setPrefs(dup.prefs);
+    }
+    if (markerChanged) {
+      this.send({ type: 'replaceSettings', value: { ...st.settings, marker } });
     }
     frame.position = frame.target = this.position = st.scroll.position;
     frame.version = st.script.version;
