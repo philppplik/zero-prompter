@@ -230,7 +230,11 @@ pub fn frame_velocity(
     if clock {
         return if diff > 0.0 { nominal } else { 0.0 };
     }
-    if dt_ms > 0 { diff * 1000.0 / dt_ms as f64 } else { 0.0 }
+    if dt_ms > 0 {
+        diff * 1000.0 / dt_ms as f64
+    } else {
+        0.0
+    }
 }
 
 /// The one mutation path. Returns the error text for the UI toast.

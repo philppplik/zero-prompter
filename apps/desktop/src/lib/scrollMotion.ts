@@ -179,7 +179,7 @@ export class ScrollMotion {
 
     let auth: number;
     let nominal: number;
-    let tau = MOTION.tauVelocity;
+    let tau: number = MOTION.tauVelocity;
     if (!i.playing || i.mode === 'manual') {
       return this.follow(i.mode === 'voiceTracking' && i.playing ? i.target : i.position, dt);
     } else if (voiceMode) {
